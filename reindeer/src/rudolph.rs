@@ -4,7 +4,7 @@ use moose_modules::choreography::filesystem::FilesystemChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::{Certificate, ClientTlsConfig, ServerTlsConfig};
+use tonic::transport::{Certificate, ClientTlsConfig, ServerTlsConfig, Server};
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -113,14 +113,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let my_cert_name = certificate(&opt.identity);
 
     let manager = match opt.certs {
-        Some(certs_dir) => {
+        Some(ref certs_dir) => {
             let client = setup_tls_client(&my_cert_name, &certs_dir)?;
-            let server = setup_tls_server(&my_cert_name, &certs_dir)?;
-            GrpcNetworkingManager::from_tls_config(client, server)
+            GrpcNetworkingManager::from_tls_config(client)
         }
         None => GrpcNetworkingManager::without_tls(),
     };
-    let _server_task = manager.start_server(opt.port)?;
+    
+    let addr = format!("0.0.0.0:{}", &opt.port).parse()?;
+
+    let mut server = Server::builder();
+    
+    match opt.certs {
+        Some(ref certs_dir) => {
+            let tls_server_config = setup_tls_server(&my_cert_name, &certs_dir)?;
+            server = server.tls_config(tls_server_config)?;
+        }
+        None => (),
+    };
+    
+    let router = server.add_service(manager.new_server());
+
+    let _server_task = tokio::spawn(async move {
+        let res = router.serve(addr).await;
+        if let Err(e) = res {
+            tracing::error!("gRPC error: {}", e);
+        }
+    });
     let own_identity = Identity::from(opt.identity);
 
     // NOTE(Morten) if we want to move this into separate task then we need
