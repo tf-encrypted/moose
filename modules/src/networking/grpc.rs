@@ -1,5 +1,5 @@
 mod gen {
-    tonic::include_proto!("moose");
+    tonic::include_proto!("moose_networking");
 }
 
 use self::gen::networking_client::NetworkingClient;

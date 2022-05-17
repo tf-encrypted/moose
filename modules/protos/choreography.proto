@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package moose_choreography;
+
+service Choreography {
+    rpc RunComputation(RunComputationRequest) returns(RunComputationResponse) {}
+}
+
+message RunComputationRequest {
+    bytes computation = 1;
+}
+
+message RunComputationResponse {}
