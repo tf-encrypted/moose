@@ -4,7 +4,7 @@ use moose_modules::choreography::filesystem::FilesystemChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::{Certificate, ClientTlsConfig, Server, ServerTlsConfig};
+use tonic::transport::{Server};
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -42,44 +42,6 @@ pub fn certificate(endpoint: &str) -> String {
     endpoint.replace(':', "_")
 }
 
-fn setup_tls_server(
-    my_cert_name: &str,
-    certs_dir: &str,
-) -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
-    use tonic::transport::Identity;
-    let cert_raw = std::fs::read(format!("{}/{}.crt", certs_dir, my_cert_name))?;
-    let key_raw = std::fs::read(format!("{}/{}.key", certs_dir, my_cert_name))?;
-    let identity = Identity::from_pem(cert_raw, key_raw);
-
-    let ca_cert_raw = std::fs::read(format!("{}/{}.crt", certs_dir, CA_NAME))?;
-    let ca_cert = Certificate::from_pem(ca_cert_raw);
-
-    let server_tls = ServerTlsConfig::new()
-        .identity(identity)
-        .client_ca_root(ca_cert);
-
-    Ok(server_tls)
-}
-
-fn setup_tls_client(
-    my_cert_name: &str,
-    certs_dir: &str,
-) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
-    use tonic::transport::Identity;
-    let server_root_ca_cert =
-        Certificate::from_pem(std::fs::read(format!("{}/{}.crt", certs_dir, CA_NAME))?);
-
-    let client_cert = std::fs::read(format!("{}/{}.crt", certs_dir, my_cert_name))?;
-    let client_key = std::fs::read(format!("{}/{}.key", certs_dir, my_cert_name))?;
-    let client_identity = Identity::from_pem(client_cert, client_key);
-
-    let client_tls = ClientTlsConfig::new()
-        .ca_certificate(server_root_ca_cert)
-        .identity(client_identity);
-
-    Ok(client_tls)
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
@@ -92,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let manager = match opt.certs {
         Some(ref certs_dir) => {
-            let client = setup_tls_client(&my_cert_name, &certs_dir)?;
+            let client = reindeer::setup_tls_client(&my_cert_name, &certs_dir)?;
             GrpcNetworkingManager::from_tls_config(client)
         }
         None => GrpcNetworkingManager::without_tls(),
@@ -106,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match opt.certs {
         Some(ref certs_dir) => {
-            let tls_server_config = setup_tls_server(&my_cert_name, &certs_dir)?;
+            let tls_server_config = reindeer::setup_tls_server(&my_cert_name, &certs_dir)?;
             server = server.tls_config(tls_server_config)?;
         }
         None => (),

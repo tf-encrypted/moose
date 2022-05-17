@@ -1,4 +1,4 @@
-use tonic::transport::{Identity, Certificate, Server, ClientTlsConfig};
+use tonic::transport::{Identity, Certificate, Server, ClientTlsConfig, ServerTlsConfig};
 
 pub fn setup_tracing(telemetry: bool, identity: &String) -> Result<(), Box<dyn std::error::Error>> {
     if !telemetry {
@@ -26,8 +26,7 @@ pub fn setup_tracing(telemetry: bool, identity: &String) -> Result<(), Box<dyn s
     Ok(())
 }
 
-
-fn setup_tls_client(
+pub fn setup_tls_client(
     my_cert_name: &str,
     certs_dir: &str,
 ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
@@ -38,6 +37,16 @@ fn setup_tls_client(
     Ok(client_tls)
 }
 
+pub fn setup_tls_server(
+    my_cert_name: &str,
+    certs_dir: &str,
+) -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
+    let (identity, ca_cert) = load_identity_and_ca(my_cert_name, certs_dir)?;
+    let server_tls = ServerTlsConfig::new()
+        .identity(identity)    
+        .client_ca_root(ca_cert);
+    Ok(server_tls)
+}
 
 // pub fn grpc_server(port: u16, certs_dir: Option<String>) -> Result<tonic::transport::Server, Box<dyn std::error::Error>> {
 

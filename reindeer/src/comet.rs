@@ -4,7 +4,7 @@ use moose_modules::networking::grpc::GrpcNetworkingManager;
 use moose_modules::choreography::grpc::GrpcChoreography;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::{ClientTlsConfig, Server, ServerTlsConfig};
+use tonic::transport::{Server};
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -29,29 +29,6 @@ pub fn certificate(endpoint: &str) -> String {
     endpoint.replace(':', "_")
 }
 
-fn setup_tls_server(
-    my_cert_name: &str,
-    certs_dir: &str,
-) -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
-    let (identity, ca_cert) = reindeer::load_identity_and_ca(my_cert_name, certs_dir)?;
-    let server_tls = ServerTlsConfig::new()
-        .identity(identity)    
-        .client_ca_root(ca_cert);
-    Ok(server_tls)
-}
-
-fn setup_tls_client(
-    my_cert_name: &str,
-    certs_dir: &str,
-) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
-    let (client_identity, ca_cert) = reindeer::load_identity_and_ca(my_cert_name, certs_dir)?;
-    let client_tls = ClientTlsConfig::new()
-        .identity(client_identity)    
-        .ca_certificate(ca_cert);
-    Ok(client_tls)
-}
-
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
@@ -65,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let networking = match opt.certs {
         Some(ref certs_dir) => {
-            let client = setup_tls_client(&my_cert_name, &certs_dir)?;
+            let client = reindeer::setup_tls_client(&my_cert_name, &certs_dir)?;
             GrpcNetworkingManager::from_tls_config(client)
         }
         None => GrpcNetworkingManager::without_tls(),
@@ -81,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match opt.certs {
         Some(ref certs_dir) => {
-            let tls_server_config = setup_tls_server(&my_cert_name, &certs_dir)?;
+            let tls_server_config = reindeer::setup_tls_server(&my_cert_name, &certs_dir)?;
             server = server.tls_config(tls_server_config)?;
         }
         None => (),
