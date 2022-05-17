@@ -1,4 +1,4 @@
-use tonic::transport::{Identity, Certificate, Server, ClientTlsConfig, ServerTlsConfig};
+use tonic::transport::{Identity, Certificate, ClientTlsConfig, ServerTlsConfig};
 
 pub fn setup_tracing(telemetry: bool, identity: &String) -> Result<(), Box<dyn std::error::Error>> {
     if !telemetry {
