@@ -1194,7 +1194,9 @@ impl TransposeOp {
         plc: &HostPlacement,
         x: HostBitTensor,
     ) -> Result<HostBitTensor> {
-        let raw_tensor = x.0.reversed_axes();
+        let raw_tensor =
+            x.0.reversed_axes()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
         Ok(HostBitTensor(raw_tensor, plc.clone()))
     }
 }

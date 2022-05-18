@@ -132,7 +132,7 @@ impl BitArrayRepr {
         Err(anyhow::anyhow!("slicing not implemented for BitArray yet"))
     }
 
-    pub(crate) fn reversed_axes(&self) -> BitArrayRepr {
+    pub(crate) fn reversed_axes(&self) -> anyhow::Result<BitArrayRepr> {
         // TODO(Dragos) handle zero dim
         let mut dim = IxDyn(self.dim.slice());
 
@@ -174,13 +174,17 @@ impl BitArrayRepr {
                     }
                 }
             }
-            _ => todo!(),
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "tranposing not implemented for 4D tensors or larger yet"
+                ))
+            }
         }
         dim.slice_mut().reverse();
-        BitArrayRepr {
+        Ok(BitArrayRepr {
             data: Arc::new(new_data),
             dim: Arc::new(dim),
-        }
+        })
     }
 }
 
