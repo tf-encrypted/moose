@@ -1,4 +1,4 @@
-use tonic::transport::{Identity, Certificate, ClientTlsConfig, ServerTlsConfig};
+use tonic::transport::{Certificate, ClientTlsConfig, Identity, ServerTlsConfig};
 
 pub fn setup_tracing(telemetry: bool, identity: &String) -> Result<(), Box<dyn std::error::Error>> {
     if !telemetry {
@@ -32,7 +32,7 @@ pub fn setup_tls_client(
 ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
     let (client_identity, ca_cert) = load_identity_and_ca(my_cert_name, certs_dir)?;
     let client_tls = ClientTlsConfig::new()
-        .identity(client_identity)    
+        .identity(client_identity)
         .ca_certificate(ca_cert);
     Ok(client_tls)
 }
@@ -43,7 +43,7 @@ pub fn setup_tls_server(
 ) -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
     let (identity, ca_cert) = load_identity_and_ca(my_cert_name, certs_dir)?;
     let server_tls = ServerTlsConfig::new()
-        .identity(identity)    
+        .identity(identity)
         .client_ca_root(ca_cert);
     Ok(server_tls)
 }

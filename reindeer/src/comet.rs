@@ -1,10 +1,10 @@
 use moose::prelude::*;
 use moose::storage::LocalAsyncStorage;
-use moose_modules::networking::grpc::GrpcNetworkingManager;
 use moose_modules::choreography::grpc::GrpcChoreography;
+use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::{Server};
+use tonic::transport::Server;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_service(choreography.new_server());
 
     let addr = format!("0.0.0.0:{}", &opt.port).parse()?;
-    let _server_task = tokio::spawn(async move {    
+    let _server_task = tokio::spawn(async move {
         let res = router.serve(addr).await;
         if let Err(e) = res {
             tracing::error!("gRPC error: {}", e);

@@ -3,7 +3,10 @@ mod gen {
 }
 
 use self::gen::choreography_server::{Choreography, ChoreographyServer};
-use self::gen::{RunComputationRequest, RunComputationResponse};
+use self::gen::{
+    AbortComputationRequest, AbortComputationResponse, LaunchComputationRequest,
+    LaunchComputationResponse,
+};
 use async_trait::async_trait;
 use moose::error::Error;
 use moose::execution::Identity;
@@ -23,10 +26,17 @@ struct ChoreographyImpl {}
 
 #[async_trait]
 impl Choreography for ChoreographyImpl {
-    async fn run_computation(
+    async fn launch_computation(
         &self,
-        request: tonic::Request<RunComputationRequest>,
-    ) -> Result<tonic::Response<RunComputationResponse>, tonic::Status> {
+        request: tonic::Request<LaunchComputationRequest>,
+    ) -> Result<tonic::Response<LaunchComputationResponse>, tonic::Status> {
+        unimplemented!()
+    }
+
+    async fn abort_computation(
+        &self,
+        request: tonic::Request<AbortComputationRequest>,
+    ) -> Result<tonic::Response<AbortComputationResponse>, tonic::Status> {
         unimplemented!()
     }
 }

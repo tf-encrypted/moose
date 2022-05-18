@@ -3,11 +3,19 @@ syntax = "proto3";
 package moose_choreography;
 
 service Choreography {
-    rpc RunComputation(RunComputationRequest) returns(RunComputationResponse) {}
+    rpc LaunchComputation(LaunchComputationRequest) returns(LaunchComputationResponse);
+    rpc AbortComputation(AbortComputationRequest) returns(AbortComputationResponse);
 }
 
-message RunComputationRequest {
-    bytes computation = 1;
+message LaunchComputationRequest {
+    bytes session_id = 1;
+    bytes computation = 2;
 }
 
-message RunComputationResponse {}
+message LaunchComputationResponse {}
+
+message AbortComputationRequest {
+    string session_id = 1;
+}
+
+message AbortComputationResponse {}

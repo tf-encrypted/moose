@@ -4,7 +4,7 @@ use moose_modules::choreography::filesystem::FilesystemChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tonic::transport::{Server};
+use tonic::transport::Server;
 
 #[derive(Debug, StructOpt, Clone)]
 struct Opt {
