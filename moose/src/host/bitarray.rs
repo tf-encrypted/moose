@@ -135,14 +135,46 @@ impl BitArrayRepr {
     pub(crate) fn reversed_axes(&self) -> BitArrayRepr {
         // TODO(Dragos) handle zero dim
         let mut dim = IxDyn(self.dim.slice());
-        let strides = dim.default_strides();
-        let fortran_strides = dim.fortran_strides();
 
         let mut new_data = (*self.data).clone();
-        for i in 0..dim[0] {
-            for j in 0..strides[0] {
-                new_data.set(fortran_strides[0] * j + i, (*self.data)[i * strides[0] + j]);
+
+        let default_strides = dim.default_strides();
+        let fortran_strides = dim.fortran_strides();
+
+        match dim.ndim() {
+            1 => (),
+            2 => {
+                // default_strides (a, b) => (b, 1)
+                // fortran_strides (a, b) => (1, a)
+                for i in 0..dim[0] {
+                    for j in 0..dim[1] {
+                        new_data.set(
+                            j * fortran_strides[1] + i * fortran_strides[0],
+                            (*self.data)[i * default_strides[0] + j * default_strides[1]],
+                        );
+                    }
+                }
             }
+            3 => {
+                // default strides (a,b,c) => (b*c, c, 1)
+                // fortran strides (a,b,c) => (1, a, a*b)
+                for i in 0..dim[0] {
+                    for j in 0..dim[1] {
+                        for k in 0..dim[2] {
+                            // (k, j, i) <- (i, j, k)
+                            new_data.set(
+                                k * fortran_strides[2]
+                                    + j * fortran_strides[1]
+                                    + i * fortran_strides[0],
+                                (*self.data)[i * default_strides[0]
+                                    + j * default_strides[1]
+                                    + k * default_strides[2]],
+                            )
+                        }
+                    }
+                }
+            }
+            _ => todo!(),
         }
         dim.slice_mut().reverse();
         BitArrayRepr {
