@@ -194,7 +194,7 @@ class SqrtOperation(Operation):
 
 @dataclass
 class TransposeOperation(Operation):
-    axes: Optional[Tuple[int]]
+    pass
 
 
 @dataclass

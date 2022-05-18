@@ -315,8 +315,6 @@ class SqrtExpression(Expression):
 
 @dataclass
 class TransposeExpression(Expression):
-    axes: Optional[Tuple[int]]
-
     def __hash__(self):
         return id(self)
 
@@ -867,12 +865,10 @@ def strided_slice(x, slices, placement=None):
     )
 
 
-def transpose(x, axes=None, placement=None):
+def transpose(x, placement=None):
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
-    return TransposeExpression(
-        placement=placement, inputs=[x], axes=axes, vtype=x.vtype
-    )
+    return TransposeExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def atleast_2d(x, to_column_vector=False, placement=None):
