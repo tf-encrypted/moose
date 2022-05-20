@@ -3,7 +3,6 @@ pub(crate) mod gen {
 }
 
 use crate::execution::ExecutionContext;
-
 use self::gen::choreography_server::{Choreography, ChoreographyServer};
 use self::gen::{
     AbortComputationRequest, AbortComputationResponse, LaunchComputationRequest,
@@ -13,11 +12,9 @@ use super::{NetworkingStrategy, StorageStrategy};
 use async_trait::async_trait;
 use dashmap::DashMap;
 use moose::computation::{Computation, Role, SessionId, Value};
-use moose::error::Error;
 use moose::execution::Identity;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tonic::transport::Server;
 
 type ResultsStores = DashMap<SessionId, HashMap<String, Value>>;
 

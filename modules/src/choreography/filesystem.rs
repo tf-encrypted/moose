@@ -3,7 +3,6 @@ use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
 use moose::prelude::*;
 use notify::{DebouncedEvent, Watcher};
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::Path;
