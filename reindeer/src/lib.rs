@@ -1,28 +1,25 @@
 use tonic::transport::{Certificate, ClientTlsConfig, Identity, ServerTlsConfig};
 
-pub fn setup_tracing(telemetry: bool, identity: &String) -> Result<(), Box<dyn std::error::Error>> {
-    if !telemetry {
-        tracing_subscriber::fmt::init();
-    } else {
-        use opentelemetry::sdk::trace::Config;
-        use opentelemetry::sdk::Resource;
-        use opentelemetry::KeyValue;
-        use tracing_subscriber::{prelude::*, EnvFilter};
+pub fn setup_tracing(identity: &String) -> Result<(), Box<dyn std::error::Error>> {
+    use opentelemetry::sdk::trace::Config;
+    use opentelemetry::sdk::Resource;
+    use opentelemetry::KeyValue;
+    use tracing_subscriber::{prelude::*, EnvFilter};
 
-        let tracer =
-            opentelemetry_jaeger::new_pipeline()
-                .with_service_name("rudolph")
-                .with_trace_config(Config::default().with_resource(Resource::new(vec![
-                    KeyValue::new("identity", identity.clone()),
-                ])))
-                .install_simple()?;
-        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let tracer =
+        opentelemetry_jaeger::new_pipeline()
+            .with_service_name("rudolph")
+            .with_trace_config(Config::default().with_resource(Resource::new(vec![
+                KeyValue::new("identity", identity.clone()),
+            ])))
+            .install_simple()?;
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
-        tracing_subscriber::registry()
-            .with(EnvFilter::from_default_env())
-            .with(telemetry)
-            .try_init()?;
-    };
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env())
+        .with(telemetry)
+        .try_init()?;
+
     Ok(())
 }
 

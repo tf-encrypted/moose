@@ -28,7 +28,11 @@ struct Opt {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
-    reindeer::setup_tracing(opt.telemetry, &opt.identity)?;
+    if !opt.telemetry {
+        tracing_subscriber::fmt::init();
+    } else {
+        reindeer::setup_tracing(&opt.identity)?;
+    }
 
     let root_span = tracing::span!(tracing::Level::INFO, "app_start");
     let _enter = root_span.enter();

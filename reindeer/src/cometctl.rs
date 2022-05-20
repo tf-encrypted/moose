@@ -35,21 +35,17 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
+    tracing_subscriber::fmt::init();
 
     match args.command {
         Commands::Launch {
             session_id,
-            session_config,
+            session_config: session_config_file,
         } => {
-            let session_config_filename = session_config
-                .file_stem()
-                .unwrap()
-                .to_string_lossy()
-                .to_string();
-            tracing::info!("Launching session from {:?}", session_config_filename);
+            tracing::info!("Launching session from {:?}", session_config_file);
 
             let session_config =
-                SessionConfig::from_str(&std::fs::read_to_string(&session_config_filename)?)?;
+                SessionConfig::from_str(&std::fs::read_to_string(&session_config_file)?)?;
 
             let computation = {
                 let comp_path = &session_config.computation.path;
@@ -77,10 +73,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect();
 
             let session_id: SessionId =
-                SessionId::try_from(session_id.unwrap_or(session_config_filename).as_str())?;
+                SessionId::try_from(session_id.unwrap_or_else(
+                    || {
+                        session_config_file
+                        .file_stem()
+                        .unwrap()
+                        .to_string_lossy()
+                        .to_string()
+                    }
+                ).as_str())?;
 
-            let runtime = GrpcMooseRuntime::new(role_assignments);
-            runtime.launch_computation(&session_id, &computation);
+            let runtime = GrpcMooseRuntime::new(role_assignments)?;
+            runtime.launch_computation(&session_id, &computation).await?;
         }
         Commands::Abort { session_id } => {}
     }

@@ -1,4 +1,4 @@
-mod gen {
+pub(crate) mod gen {
     tonic::include_proto!("moose_choreography");
 }
 
@@ -53,6 +53,8 @@ impl Choreography for GrpcChoreography {
         &self,
         request: tonic::Request<LaunchComputationRequest>,
     ) -> Result<tonic::Response<LaunchComputationResponse>, tonic::Status> {
+        tracing::info!("Launching computation");
+
         // TODO(Morten) extract session_id, computation, and role_assignments; then create new execution context and launch
 
         let request = request.into_inner();
@@ -104,6 +106,7 @@ impl Choreography for GrpcChoreography {
                 let value = output_value.await.unwrap();
                 results.insert(output_name, value);
             }
+            tracing::info!("Results ready, {:?}", results.keys());
             result_stores.insert(session_id, results);
         });
 
