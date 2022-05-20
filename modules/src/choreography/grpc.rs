@@ -2,13 +2,13 @@ pub(crate) mod gen {
     tonic::include_proto!("moose_choreography");
 }
 
-use crate::execution::ExecutionContext;
 use self::gen::choreography_server::{Choreography, ChoreographyServer};
 use self::gen::{
     AbortComputationRequest, AbortComputationResponse, LaunchComputationRequest,
     LaunchComputationResponse,
 };
 use super::{NetworkingStrategy, StorageStrategy};
+use crate::execution::ExecutionContext;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use moose::computation::{Computation, Role, SessionId, Value};
@@ -52,8 +52,6 @@ impl Choreography for GrpcChoreography {
     ) -> Result<tonic::Response<LaunchComputationResponse>, tonic::Status> {
         tracing::info!("Launching computation");
 
-        // TODO(Morten) extract session_id, computation, and role_assignments; then create new execution context and launch
-
         let request = request.into_inner();
 
         let session_id = bincode::deserialize::<SessionId>(&request.session_id).map_err(|_e| {
@@ -63,18 +61,14 @@ impl Choreography for GrpcChoreography {
             )
         })?;
 
-        let computation =
-            bincode::deserialize::<Computation>(&request.computation).map_err(|_e| {
-                tonic::Status::new(
-                    tonic::Code::Aborted,
-                    "failed to parse computation".to_string(),
-                )
-            })?;
+        let computation = bincode::deserialize(&request.computation).map_err(|_e| {
+            tonic::Status::new(
+                tonic::Code::Aborted,
+                "failed to parse computation".to_string(),
+            )
+        })?;
 
-        let role_assignments = bincode::deserialize::<HashMap<Role, Identity>>(
-            &request.role_assignment,
-        )
-        .map_err(|_e| {
+        let role_assignments = bincode::deserialize(&request.role_assignment).map_err(|_e| {
             tonic::Status::new(
                 tonic::Code::Aborted,
                 "failed to parse role assignment".to_string(),

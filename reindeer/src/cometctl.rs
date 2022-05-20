@@ -72,19 +72,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .collect();
 
-            let session_id: SessionId =
-                SessionId::try_from(session_id.unwrap_or_else(
-                    || {
+            let session_id: SessionId = SessionId::try_from(
+                session_id
+                    .unwrap_or_else(|| {
                         session_config_file
-                        .file_stem()
-                        .unwrap()
-                        .to_string_lossy()
-                        .to_string()
-                    }
-                ).as_str())?;
+                            .file_stem()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string()
+                    })
+                    .as_str(),
+            )?;
 
             let runtime = GrpcMooseRuntime::new(role_assignments)?;
-            runtime.launch_computation(&session_id, &computation).await?;
+            runtime
+                .launch_computation(&session_id, &computation)
+                .await?;
         }
         Commands::Abort { session_id } => {}
     }

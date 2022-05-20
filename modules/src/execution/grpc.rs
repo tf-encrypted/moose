@@ -1,8 +1,8 @@
-use moose::prelude::{Computation, Identity, Role, SessionId};
-use tonic::transport::{Channel, Uri};
-use std::collections::HashMap;
 use crate::choreography::grpc::gen::choreography_client::ChoreographyClient;
 use crate::choreography::grpc::gen::LaunchComputationRequest;
+use moose::prelude::{Computation, Identity, Role, SessionId};
+use std::collections::HashMap;
+use tonic::transport::{Channel, Uri};
 
 pub struct GrpcMooseRuntime {
     role_assignments: HashMap<Role, Identity>,
@@ -10,8 +10,11 @@ pub struct GrpcMooseRuntime {
 }
 
 impl GrpcMooseRuntime {
-    pub fn new(role_assignments: HashMap<Role, Identity>) -> Result<GrpcMooseRuntime, Box<dyn std::error::Error>> {
-        let channels = role_assignments.iter()
+    pub fn new(
+        role_assignments: HashMap<Role, Identity>,
+    ) -> Result<GrpcMooseRuntime, Box<dyn std::error::Error>> {
+        let channels = role_assignments
+            .iter()
             .map(|(role, identity)| {
                 let endpoint: Uri = format!("http://{}", identity).parse()?;
                 let channel = Channel::builder(endpoint);
@@ -28,10 +31,17 @@ impl GrpcMooseRuntime {
             })
             .collect::<Result<_, Box<dyn std::error::Error>>>()?;
 
-        Ok(GrpcMooseRuntime { role_assignments, channels })
+        Ok(GrpcMooseRuntime {
+            role_assignments,
+            channels,
+        })
     }
 
-    pub async fn launch_computation(&self, session_id: &SessionId, comp: &Computation) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn launch_computation(
+        &self,
+        session_id: &SessionId,
+        comp: &Computation,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let session_id = bincode::serialize(&session_id)?;
         let computation = bincode::serialize(&comp)?;
         let role_assignment = bincode::serialize(&self.role_assignments)?;

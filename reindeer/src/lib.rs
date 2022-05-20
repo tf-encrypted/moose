@@ -6,13 +6,15 @@ pub fn setup_tracing(identity: &String) -> Result<(), Box<dyn std::error::Error>
     use opentelemetry::KeyValue;
     use tracing_subscriber::{prelude::*, EnvFilter};
 
-    let tracer =
-        opentelemetry_jaeger::new_pipeline()
-            .with_service_name("rudolph")
-            .with_trace_config(Config::default().with_resource(Resource::new(vec![
-                KeyValue::new("identity", identity.clone()),
-            ])))
-            .install_simple()?;
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("rudolph")
+        .with_trace_config(
+            Config::default().with_resource(Resource::new(vec![KeyValue::new(
+                "identity",
+                identity.clone(),
+            )])),
+        )
+        .install_simple()?;
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     tracing_subscriber::registry()
