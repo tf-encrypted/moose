@@ -25,10 +25,6 @@ struct Opt {
     telemetry: bool,
 }
 
-pub fn certificate(endpoint: &str) -> String {
-    endpoint.replace(':', "_")
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
@@ -48,9 +44,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => GrpcNetworkingManager::without_tls(),
     };
 
-    let choreography = GrpcChoreography {
-        own_identity: own_identity.clone(),
-    };
+    let networking_server = networking.new_server();
+    let choreography = GrpcChoreography::new(
+        own_identity,
+        Box::new(move |session_id| networking.new_session(session_id)),
+        Box::new(|| Arc::new(LocalAsyncStorage::default())),
+    );
 
     let mut server = Server::builder();
 
@@ -60,16 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let router = server
-        .add_service(networking.new_server())
-        .add_service(choreography.new_server());
+        .add_service(networking_server)
+        .add_service(choreography.into_server());
 
     let addr = format!("0.0.0.0:{}", &opt.port).parse()?;
-    let _server_task = tokio::spawn(async move {
-        let res = router.serve(addr).await;
-        if let Err(e) = res {
-            tracing::error!("gRPC error: {}", e);
-        }
-    });
-
+    let res = router.serve(addr).await;
+    if let Err(e) = res {
+        tracing::error!("gRPC error: {}", e);
+    }
     Ok(())
 }

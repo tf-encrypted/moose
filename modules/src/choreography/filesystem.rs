@@ -1,3 +1,4 @@
+use super::{Format, SessionConfig};
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
 use moose::prelude::*;
@@ -172,29 +173,4 @@ impl FilesystemChoreography {
         // TODO
         Ok(())
     }
-}
-
-#[derive(Debug, Deserialize)]
-struct SessionConfig {
-    computation: ComputationConfig,
-    roles: Vec<RoleConfig>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ComputationConfig {
-    path: String,
-    format: Format,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum Format {
-    Binary,
-    Textual,
-}
-
-#[derive(Debug, Deserialize)]
-struct RoleConfig {
-    name: String,
-    endpoint: String,
 }
