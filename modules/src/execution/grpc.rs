@@ -1,6 +1,6 @@
 use crate::choreography::grpc::gen::choreography_client::ChoreographyClient;
-use crate::choreography::grpc::gen::LaunchComputationRequest;
-use moose::prelude::{Computation, Identity, Role, SessionId};
+use crate::choreography::grpc::gen::{LaunchComputationRequest, RetrieveResultsRequest};
+use moose::prelude::{Computation, Identity, Role, SessionId, Value};
 use std::collections::HashMap;
 use tonic::transport::{Channel, Uri};
 
@@ -63,5 +63,25 @@ impl GrpcMooseRuntime {
 
     pub fn abort_computation(&self, session_id: &SessionId) {
         // TODO(Morten) tell every identity in self.role_assignments to abort session_id
+    }
+
+    pub async fn retrieve_results(
+        &self,
+        session_id: &SessionId,
+    ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
+        let session_id = bincode::serialize(&session_id)?;
+
+        for channel in self.channels.values() {
+            let mut client = ChoreographyClient::new(channel.clone());
+
+            let request = RetrieveResultsRequest {
+                session_id: session_id.clone(),
+            };
+
+            let _response = client.retrieve_results(request).await?;
+            tracing::debug!("{:?}", _response);
+        }
+
+        Ok(HashMap::new())
     }
 }

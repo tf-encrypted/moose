@@ -1,8 +1,7 @@
-use std::str::FromStr;
-
 use moose::computation::SessionId;
 use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
 use serde::Deserialize;
+use std::str::FromStr;
 
 pub type NetworkingStrategy = Box<dyn Fn(SessionId) -> AsyncNetworkingImpl + Send + Sync>;
 

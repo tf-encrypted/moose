@@ -5,7 +5,7 @@ pub(crate) mod gen {
 use self::gen::choreography_server::{Choreography, ChoreographyServer};
 use self::gen::{
     AbortComputationRequest, AbortComputationResponse, LaunchComputationRequest,
-    LaunchComputationResponse,
+    LaunchComputationResponse, RetrieveResultsRequest, RetrieveResultsResponse,
 };
 use super::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
@@ -109,5 +109,30 @@ impl Choreography for GrpcChoreography {
         request: tonic::Request<AbortComputationRequest>,
     ) -> Result<tonic::Response<AbortComputationResponse>, tonic::Status> {
         unimplemented!()
+    }
+
+    async fn retrieve_results(
+        &self,
+        request: tonic::Request<RetrieveResultsRequest>,
+    ) -> Result<tonic::Response<RetrieveResultsResponse>, tonic::Status> {
+        let request = request.into_inner();
+
+        let session_id = bincode::deserialize::<SessionId>(&request.session_id).map_err(|_e| {
+            tonic::Status::new(
+                tonic::Code::Aborted,
+                "failed to parse session id".to_string(),
+            )
+        })?;
+
+        match self.result_stores.get(&session_id) {
+            None => Err(tonic::Status::new(
+                tonic::Code::NotFound,
+                "results not ready".to_string(),
+            )),
+            Some(results) => {
+                let values = bincode::serialize(results.value()).unwrap(); // TODO error handling
+                Ok(tonic::Response::new(RetrieveResultsResponse { values }))
+            }
+        }
     }
 }

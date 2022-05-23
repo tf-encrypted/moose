@@ -4,7 +4,7 @@ package moose_choreography;
 
 service Choreography {
     rpc LaunchComputation(LaunchComputationRequest) returns(LaunchComputationResponse);
-    // rpc RetrieveResults(RetrieveResultsRequest) returns(RetrieveResultsResponse);
+    rpc RetrieveResults(RetrieveResultsRequest) returns(RetrieveResultsResponse);
     rpc AbortComputation(AbortComputationRequest) returns(AbortComputationResponse);
 }
 
@@ -16,13 +16,13 @@ message LaunchComputationRequest {
 
 message LaunchComputationResponse {}
 
-// message RetrieveResultsRequest {
-//     bytes session_id = 1;
-// }
+message RetrieveResultsRequest {
+    bytes session_id = 1;
+}
 
-// message RetrieveResultsResponse {
-//     bytes values = 1;
-// }
+message RetrieveResultsResponse {
+    bytes values = 1;
+}
 
 message AbortComputationRequest {
     string session_id = 1;
