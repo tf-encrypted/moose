@@ -133,7 +133,6 @@ impl BitArrayRepr {
     }
 
     pub(crate) fn reversed_axes(&self) -> anyhow::Result<BitArrayRepr> {
-        // TODO(Dragos) handle zero dim
         let mut dim = IxDyn(self.dim.slice());
 
         let mut new_data = (*self.data).clone();
