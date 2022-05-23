@@ -69,6 +69,7 @@ impl GrpcMooseRuntime {
         &self,
         session_id: &SessionId,
     ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
+        tracing::info!("Retrieving results for {:?}", session_id);
         let session_id = bincode::serialize(&session_id)?;
 
         for channel in self.channels.values() {
