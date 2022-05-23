@@ -618,3 +618,45 @@ impl SqueezeOp {
         })
     }
 }
+
+impl TransposeOp {
+    pub(crate) fn rep_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepTensor<HostRingT>,
+    ) -> Result<RepTensor<HostRingT>>
+    where
+        HostPlacement: PlacementTranspose<S, HostRingT, HostRingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.transpose(sess, x00);
+        let z10 = player0.transpose(sess, x10);
+
+        let z11 = player1.transpose(sess, x11);
+        let z21 = player1.transpose(sess, x21);
+
+        let z22 = player2.transpose(sess, x22);
+        let z02 = player2.transpose(sess, x02);
+
+        Ok(RepTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        })
+    }
+
+    pub(crate) fn rep_uint_kernel<S: Session, RepRingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: RepUintTensor<RepRingT>,
+    ) -> Result<RepUintTensor<RepRingT>>
+    where
+        ReplicatedPlacement: PlacementTranspose<S, RepRingT, RepRingT>,
+    {
+        Ok(RepUintTensor {
+            tensor: rep.transpose(sess, &x.tensor),
+        })
+    }
+}

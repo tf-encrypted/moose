@@ -1195,6 +1195,26 @@ impl TransposeOp {
         let raw_tensor = x.0.reversed_axes();
         Ok(HostTensor(raw_tensor, plc.clone()))
     }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>> {
+        let raw_tensor = x.0.reversed_axes();
+        Ok(HostRingTensor(raw_tensor, plc.clone()))
+    }
+
+    pub(crate) fn host_bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+    ) -> Result<HostBitTensor> {
+        let raw_tensor =
+            x.0.reversed_axes()
+                .map_err(|e| Error::KernelError(e.to_string()))?;
+        Ok(HostBitTensor(raw_tensor, plc.clone()))
+    }
 }
 
 impl InverseOp {

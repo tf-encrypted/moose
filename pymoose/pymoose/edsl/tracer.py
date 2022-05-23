@@ -594,7 +594,6 @@ class AstTracer:
             ops.TransposeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("transpose"),
-                axes=transpose_expression.axes,
                 inputs={"x": x_operation.name},
                 signature=ops.OpSignature(
                     input_types={"x": x_operation.return_type},

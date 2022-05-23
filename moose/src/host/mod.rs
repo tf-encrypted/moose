@@ -1230,6 +1230,65 @@ mod tests {
     }
 
     #[test]
+    fn bit_transpose() {
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let x: HostRing64Tensor = plc.from_raw(array![6743216615002642708]);
+        let x_bits: HostBitTensor = plc.bit_decompose(&sess, &x);
+        let x_bits = plc.transpose(&sess, &x_bits);
+
+        let expected: HostBitTensor = plc.from_raw(
+            array![
+                0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0,
+                0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1,
+                1, 0, 1, 1, 1, 0, 1, 0
+            ]
+            .into_shape((64, 1))
+            .unwrap()
+            .reversed_axes(),
+        );
+        assert_eq!(x_bits, expected);
+    }
+
+    #[test]
+    fn bit_transpose2() {
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let x: HostBitTensor =
+            plc.from_raw(array![[1, 1, 1], [0, 0, 0]].into_shape((2, 3)).unwrap());
+
+        let xt = plc.transpose(&sess, &x);
+
+        let expected: HostBitTensor =
+            plc.from_raw(array![[1, 0], [1, 0], [1, 0]].into_shape((3, 2)).unwrap());
+        assert_eq!(xt, expected);
+    }
+
+    #[test]
+    fn bit_transpose3() {
+        let plc = HostPlacement::from("host");
+        let sess = SyncSession::default();
+
+        let x: HostBitTensor = plc.from_raw(
+            array![[[1, 1, 1], [0, 0, 0]], [[0, 1, 0], [1, 0, 0]]]
+                .into_shape((2, 2, 3))
+                .unwrap(),
+        );
+
+        let xt = plc.transpose(&sess, &x);
+
+        let expected: HostBitTensor = plc.from_raw(
+            array![[[1, 1, 1], [0, 0, 0]], [[0, 1, 0], [1, 0, 0]]]
+                .into_shape((2, 2, 3))
+                .unwrap()
+                .reversed_axes(),
+        );
+        assert_eq!(xt, expected);
+    }
+
+    #[test]
     fn test_host_mul() {
         let plc = HostPlacement::from("host");
         let x: HostRing128Tensor = plc.from_raw(array![340282366920938463463374415046855271599]);

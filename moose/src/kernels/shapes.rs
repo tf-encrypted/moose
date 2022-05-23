@@ -161,15 +161,41 @@ pub trait PlacementTranspose<S: Session, T, O> {
 modelled_kernel! {
     PlacementTranspose::transpose, TransposeOp,
     [
-        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_kernel),
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_kernel),
+        // host runtime kernels
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::host_bit_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::host_kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::host_kernel),
+        // host lowering kernels
+        (HostPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::bool_host_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [concrete] Self::float_kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [concrete] Self::float_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [concrete] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [concrete] Self::hostfixed_kernel),
+        (HostPlacement, (Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
+        (HostPlacement, (Uint64Tensor) -> Uint64Tensor => [concrete] Self::u64_host_kernel),
+        // replicated protocols
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [concrete] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [concrete] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [concrete] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedUint64Tensor) -> ReplicatedUint64Tensor => [concrete] Self::rep_uint_kernel),
+        // replicated lowerings
+        (ReplicatedPlacement, (BooleanTensor) -> BooleanTensor => [concrete] Self::bool_rep_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (Uint64Tensor) -> Uint64Tensor => [concrete] Self::u64_rep_kernel),
     ]
 }
 

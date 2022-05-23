@@ -131,6 +131,61 @@ impl BitArrayRepr {
         // TODO(Dragos) Implement this in future
         Err(anyhow::anyhow!("slicing not implemented for BitArray yet"))
     }
+
+    pub(crate) fn reversed_axes(&self) -> anyhow::Result<BitArrayRepr> {
+        let mut dim = IxDyn(self.dim.slice());
+
+        let mut new_data = (*self.data).clone();
+
+        let default_strides = dim.default_strides();
+        let fortran_strides = dim.fortran_strides();
+
+        match dim.ndim() {
+            0 => (),
+            1 => (),
+            2 => {
+                // default_strides (a, b) => (b, 1)
+                // fortran_strides (a, b) => (1, a)
+                for i in 0..dim[0] {
+                    for j in 0..dim[1] {
+                        new_data.set(
+                            j * fortran_strides[1] + i * fortran_strides[0],
+                            (*self.data)[i * default_strides[0] + j * default_strides[1]],
+                        );
+                    }
+                }
+            }
+            3 => {
+                // default strides (a,b,c) => (b*c, c, 1)
+                // fortran strides (a,b,c) => (1, a, a*b)
+                for i in 0..dim[0] {
+                    for j in 0..dim[1] {
+                        for k in 0..dim[2] {
+                            // (k, j, i) <- (i, j, k)
+                            new_data.set(
+                                k * fortran_strides[2]
+                                    + j * fortran_strides[1]
+                                    + i * fortran_strides[0],
+                                (*self.data)[i * default_strides[0]
+                                    + j * default_strides[1]
+                                    + k * default_strides[2]],
+                            )
+                        }
+                    }
+                }
+            }
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "tranposing not implemented for 4D tensors or larger yet"
+                ))
+            }
+        }
+        dim.slice_mut().reverse();
+        Ok(BitArrayRepr {
+            data: Arc::new(new_data),
+            dim: Arc::new(dim),
+        })
+    }
 }
 
 impl std::ops::BitXor for &BitArrayRepr {

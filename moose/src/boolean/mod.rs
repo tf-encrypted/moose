@@ -417,3 +417,39 @@ impl SqueezeOp {
         Ok(BoolTensor::Replicated(result))
     }
 }
+
+impl TransposeOp {
+    pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementTranspose<S, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let result = plc.transpose(sess, &x);
+        Ok(BoolTensor::Host(result))
+    }
+
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementTranspose<S, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+        let result = plc.transpose(sess, &x);
+        Ok(BoolTensor::Replicated(result))
+    }
+}

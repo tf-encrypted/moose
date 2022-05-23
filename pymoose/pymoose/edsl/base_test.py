@@ -290,7 +290,6 @@ class EdslTest(parameterized.TestCase):
         assert op == ops.TransposeOperation(
             placement_name="player0",
             name="transpose_0",
-            axes=None,
             inputs={"x": "constant_0"},
             signature=ops.OpSignature(
                 {"x": ty.TensorType(dtypes.float32)},
