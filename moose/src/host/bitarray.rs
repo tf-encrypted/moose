@@ -142,6 +142,7 @@ impl BitArrayRepr {
         let fortran_strides = dim.fortran_strides();
 
         match dim.ndim() {
+            0 => (),
             1 => (),
             2 => {
                 // default_strides (a, b) => (b, 1)
