@@ -12,7 +12,7 @@ use crate::execution::ExecutionContext;
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use dashmap::DashMap;
-use moose::computation::{Computation, Role, SessionId, Value};
+use moose::computation::{SessionId, Value};
 use moose::execution::Identity;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -110,7 +110,7 @@ impl Choreography for GrpcChoreography {
 
     async fn abort_computation(
         &self,
-        request: tonic::Request<AbortComputationRequest>,
+        _request: tonic::Request<AbortComputationRequest>,
     ) -> Result<tonic::Response<AbortComputationResponse>, tonic::Status> {
         unimplemented!()
     }
