@@ -30,6 +30,10 @@ enum Commands {
         /// Session config file to use
         session_config: PathBuf,
     },
+    Run {
+        /// Session config file to use
+        session_config: PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -63,7 +67,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 parse_session_file(&session_config_file, false)?;
             let runtime = GrpcMooseRuntime::new(role_assignments)?;
             let results = runtime.retrieve_results(&session_id).await?;
-            tracing::info!("Results: {:?}", results);
+            println!("Results: {:?}", results);
+        }
+        Commands::Run {
+            session_config: session_config_file,
+        } => {
+            let (session_id, computation, role_assignments) =
+                parse_session_file(&session_config_file, true)?;
+            let runtime = GrpcMooseRuntime::new(role_assignments)?;
+            let results = runtime
+                .run_computation(&session_id, &computation.unwrap())
+                .await?;
+            println!("Results: {:?}", results);
         }
     }
 
