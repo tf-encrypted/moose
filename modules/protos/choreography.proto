@@ -25,7 +25,7 @@ message RetrieveResultsResponse {
 }
 
 message AbortComputationRequest {
-    string session_id = 1;
+    bytes session_id = 1;
 }
 
 message AbortComputationResponse {}

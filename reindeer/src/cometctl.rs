@@ -50,11 +50,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Abort {
             session_config: session_config_file,
-        } => {}
+        } => {
+            let (session_id, _, role_assignments) =
+                parse_session_file(&session_config_file, false)?;
+            let runtime = GrpcMooseRuntime::new(role_assignments)?;
+            runtime.abort_computation(&session_id).await?;
+        }
         Commands::Results {
             session_config: session_config_file,
         } => {
-            let (session_id, _computation, role_assignments) =
+            let (session_id, _, role_assignments) =
                 parse_session_file(&session_config_file, false)?;
             let runtime = GrpcMooseRuntime::new(role_assignments)?;
             let results = runtime.retrieve_results(&session_id).await?;

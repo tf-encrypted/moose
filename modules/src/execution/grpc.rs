@@ -1,5 +1,7 @@
 use crate::choreography::grpc::gen::choreography_client::ChoreographyClient;
-use crate::choreography::grpc::gen::{LaunchComputationRequest, RetrieveResultsRequest};
+use crate::choreography::grpc::gen::{
+    AbortComputationRequest, LaunchComputationRequest, RetrieveResultsRequest,
+};
 use moose::prelude::{Computation, Identity, Role, SessionId, Value};
 use std::collections::HashMap;
 use tonic::transport::{Channel, Uri};
@@ -37,6 +39,15 @@ impl GrpcMooseRuntime {
         })
     }
 
+    pub async fn run_computation(
+        &self,
+        session_id: &SessionId,
+        comp: &Computation,
+    ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
+        self.launch_computation(session_id, comp).await?;
+        self.retrieve_results(session_id).await
+    }
+
     pub async fn launch_computation(
         &self,
         session_id: &SessionId,
@@ -61,8 +72,23 @@ impl GrpcMooseRuntime {
         Ok(())
     }
 
-    pub fn abort_computation(&self, session_id: &SessionId) {
-        // TODO(Morten) tell every identity in self.role_assignments to abort session_id
+    pub async fn abort_computation(
+        &self,
+        session_id: &SessionId,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let session_id = bincode::serialize(&session_id)?;
+
+        for channel in self.channels.values() {
+            let mut client = ChoreographyClient::new(channel.clone());
+
+            let request = AbortComputationRequest {
+                session_id: session_id.clone(),
+            };
+
+            let _response = client.abort_computation(request).await?;
+        }
+
+        Ok(())
     }
 
     pub async fn retrieve_results(
