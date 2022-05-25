@@ -265,6 +265,39 @@ impl LocalRuntime {
     }
 }
 
+#[pyclass(subclass)]
+pub struct GrpcRuntime {
+    runtime: AsyncTestRuntime,
+}
+
+#[pymethods]
+impl GrpcRuntime {
+    #[new]
+    fn new(py: Python, role_assignment: HashMap<String, String>) -> Self {
+        let typed_role_assignment = role_assignment
+            .into_iter()
+            .map(|(role, identity)| (Role::from(role), Identity::from(identity)))
+            .collect::<HashMap<Role, Identity>>();
+
+        let runtime = GrpcMooseRuntime::new(typed_role_assignment);
+        GrpcRuntime { runtime }
+    }
+
+    fn evaluate_compiled_computation(
+        &mut self,
+        py: Python,
+        computation: PyObject,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let computation = MooseComputation::from_py(py, computation)?.try_borrow(py)?;
+        self.evaluate_compiled_computation(
+            py,
+            &computation.computation,
+            arguments,
+        )
+    }
+}
+
 #[pyclass]
 pub struct MooseComputation {
     computation: Computation,
