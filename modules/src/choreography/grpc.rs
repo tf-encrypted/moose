@@ -9,6 +9,7 @@ use self::gen::{
 };
 use super::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
+use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use dashmap::DashMap;
 use moose::computation::{Computation, Role, SessionId, Value};
@@ -16,7 +17,7 @@ use moose::execution::Identity;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-type ResultsStores = DashMap<SessionId, HashMap<String, Value>>;
+type ResultsStores = DashMap<SessionId, Arc<AsyncCell<HashMap<String, Value>>>>;
 
 pub struct GrpcChoreography {
     own_identity: Arc<Identity>,
@@ -91,6 +92,9 @@ impl Choreography for GrpcChoreography {
             })?;
 
         let result_stores = Arc::clone(&self.result_stores);
+        let results_cell = AsyncCell::shared();
+        result_stores.insert(session_id.clone(), results_cell);
+
         tokio::spawn(async move {
             let mut results = HashMap::with_capacity(outputs.len());
             for (output_name, output_value) in outputs {
@@ -98,7 +102,7 @@ impl Choreography for GrpcChoreography {
                 results.insert(output_name, value);
             }
             tracing::info!("Results ready, {:?}", results.keys());
-            result_stores.insert(session_id, results);
+            result_stores.get(&session_id).unwrap().set(results); // TODO error handling
         });
 
         Ok(tonic::Response::new(LaunchComputationResponse::default()))
@@ -127,10 +131,11 @@ impl Choreography for GrpcChoreography {
         match self.result_stores.get(&session_id) {
             None => Err(tonic::Status::new(
                 tonic::Code::NotFound,
-                "results not ready".to_string(),
+                "unknown session id".to_string(),
             )),
             Some(results) => {
-                let values = bincode::serialize(results.value()).unwrap(); // TODO error handling
+                let results = results.value().get().await;
+                let values = bincode::serialize(&results).unwrap(); // TODO error handling
                 Ok(tonic::Response::new(RetrieveResultsResponse { values }))
             }
         }

@@ -69,9 +69,9 @@ impl GrpcMooseRuntime {
         &self,
         session_id: &SessionId,
     ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
-        tracing::info!("Retrieving results for {:?}", session_id);
         let session_id = bincode::serialize(&session_id)?;
 
+        let mut combined_results = HashMap::new();
         for channel in self.channels.values() {
             let mut client = ChoreographyClient::new(channel.clone());
 
@@ -79,10 +79,11 @@ impl GrpcMooseRuntime {
                 session_id: session_id.clone(),
             };
 
-            let _response = client.retrieve_results(request).await?;
-            tracing::debug!("{:?}", _response);
+            let response = client.retrieve_results(request).await?;
+            let vals = bincode::deserialize::<HashMap<String, Value>>(&response.get_ref().values)?;
+            combined_results.extend(vals);
         }
 
-        Ok(HashMap::new())
+        Ok(combined_results)
     }
 }

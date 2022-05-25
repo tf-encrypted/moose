@@ -42,10 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             session_config: session_config_file,
         } => {
             let (session_id, computation, role_assignments) =
-                parse_session_file(&session_config_file)?;
+                parse_session_file(&session_config_file, true)?;
             let runtime = GrpcMooseRuntime::new(role_assignments)?;
             runtime
-                .launch_computation(&session_id, &computation)
+                .launch_computation(&session_id, &computation.unwrap())
                 .await?;
         }
         Commands::Abort {
@@ -55,9 +55,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             session_config: session_config_file,
         } => {
             let (session_id, _computation, role_assignments) =
-                parse_session_file(&session_config_file)?;
+                parse_session_file(&session_config_file, false)?;
             let runtime = GrpcMooseRuntime::new(role_assignments)?;
-            runtime.retrieve_results(&session_id).await?;
+            let results = runtime.retrieve_results(&session_id).await?;
+            tracing::info!("Results: {:?}", results);
         }
     }
 
@@ -66,23 +67,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn parse_session_file(
     session_config_file: &PathBuf,
-) -> Result<(SessionId, Computation, RoleAssignments), Box<dyn std::error::Error>> {
+    load_computation: bool,
+) -> Result<(SessionId, Option<Computation>, RoleAssignments), Box<dyn std::error::Error>> {
     tracing::info!("Loading session from {:?}", session_config_file);
 
     let session_config = SessionConfig::from_str(&std::fs::read_to_string(session_config_file)?)?;
 
     let computation = {
-        let comp_path = &session_config.computation.path;
-        tracing::debug!("Loading computation from {:?}", comp_path);
-        match session_config.computation.format {
-            Format::Binary => {
-                let comp_raw = std::fs::read(comp_path)?;
-                moose::computation::Computation::from_msgpack(comp_raw)?
+        if load_computation {
+            let comp_path = &session_config.computation.path;
+            tracing::debug!("Loading computation from {:?}", comp_path);
+            match session_config.computation.format {
+                Format::Binary => {
+                    let comp_raw = std::fs::read(comp_path)?;
+                    Some(moose::computation::Computation::from_msgpack(comp_raw)?)
+                }
+                Format::Textual => {
+                    let comp_raw = std::fs::read_to_string(comp_path)?;
+                    Some(moose::computation::Computation::from_textual(&comp_raw)?)
+                }
             }
-            Format::Textual => {
-                let comp_raw = std::fs::read_to_string(comp_path)?;
-                moose::computation::Computation::from_textual(&comp_raw)?
-            }
+        } else {
+            None
         }
     };
 
