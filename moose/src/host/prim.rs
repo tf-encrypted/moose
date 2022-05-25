@@ -2,8 +2,7 @@ use super::HostPlacement;
 use crate::computation::{DeriveSeedOp, Placed, PrfKeyGenOp, TAG_BYTES};
 use crate::execution::{RuntimeSession, Session};
 use crate::kernels::PlacementPlace;
-use crate::prng::AesRng;
-use crate::prng::{RngSeed, SEED_SIZE};
+use aes_prng::{AesRng, RngSeed, SEED_SIZE};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 

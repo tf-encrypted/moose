@@ -19,6 +19,7 @@ async_execute = []
 
 [dependencies]
 aes = "~0.8"
+aes-prng = { path = "../../aes-prng" }
 anyhow = "~1.0"
 async_cell = "~0.2"
 async-trait = "~0.1"
@@ -60,10 +61,6 @@ proptest = "~1.0"
 rand_chacha = "~0.3"
 rstest = "~0.12"
 tempfile = "~3.3"
-
-[[bench]]
-name = "rng"
-harness = false
 
 [[bench]]
 name = "exec"
