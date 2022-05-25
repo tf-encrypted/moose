@@ -53,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let manager = match opt.certs {
         Some(ref certs_dir) => {
-            let client = reindeer::setup_tls_client(&my_cert_name, &certs_dir)?;
+            let client = reindeer::setup_tls_client(&my_cert_name, certs_dir)?;
             GrpcNetworkingManager::from_tls_config(client)
         }
         None => GrpcNetworkingManager::without_tls(),
@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut server = Server::builder();
 
     if let Some(ref certs_dir) = opt.certs {
-        let tls_server_config = reindeer::setup_tls_server(&my_cert_name, &certs_dir)?;
+        let tls_server_config = reindeer::setup_tls_server(&my_cert_name, certs_dir)?;
         server = server.tls_config(tls_server_config)?;
     }
 

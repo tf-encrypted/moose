@@ -1,6 +1,6 @@
 use tonic::transport::{Certificate, ClientTlsConfig, Identity, ServerTlsConfig};
 
-pub fn setup_tracing(identity: &String) -> Result<(), Box<dyn std::error::Error>> {
+pub fn setup_tracing(identity: &str) -> Result<(), Box<dyn std::error::Error>> {
     use opentelemetry::sdk::trace::Config;
     use opentelemetry::sdk::Resource;
     use opentelemetry::KeyValue;
@@ -11,7 +11,7 @@ pub fn setup_tracing(identity: &String) -> Result<(), Box<dyn std::error::Error>
         .with_trace_config(
             Config::default().with_resource(Resource::new(vec![KeyValue::new(
                 "identity",
-                identity.clone(),
+                identity.to_string(),
             )])),
         )
         .install_simple()?;
