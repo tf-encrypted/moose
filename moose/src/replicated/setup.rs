@@ -35,6 +35,7 @@ where
 }
 
 impl ReplicatedPlacement {
+    #[cfg(any(feature = "compile", feature = "sync_execute"))]
     pub(crate) fn gen_setup<S: Session, PrfKeyT>(&self, sess: &S) -> Result<RepSetup<PrfKeyT>>
     where
         PrfKeyT: Clone,
