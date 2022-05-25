@@ -1,10 +1,8 @@
-use super::{Format, SessionConfig};
+use super::parse_session_config_file_with_computation;
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
 use moose::prelude::*;
 use notify::{DebouncedEvent, Watcher};
-use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::path::Path;
 
 pub struct FilesystemChoreography {
@@ -82,14 +80,7 @@ impl FilesystemChoreography {
         if path.is_file() {
             match path.extension() {
                 Some(ext) if ext == "session" => {
-                    let filename = path.file_stem().unwrap().to_string_lossy().to_string();
-                    tracing::info!("Launching session from {:?}", filename);
-
-                    let session_id = SessionId::try_from(filename.as_str()).unwrap();
-                    let session_config: SessionConfig =
-                        toml::from_str(&std::fs::read_to_string(path)?)?;
-
-                    let session_handle = self.launch_session(session_id, session_config).await?;
+                    let session_handle = self.launch_session(path).await?;
                     let res = session_handle.join_on_first_error().await;
                     if let Err(e) = res {
                         tracing::error!("Session error: {}", e);
@@ -107,37 +98,14 @@ impl FilesystemChoreography {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, session_id, session_config))]
+    #[tracing::instrument(skip(self, path))]
     async fn launch_session(
         &self,
-        session_id: SessionId,
-        session_config: SessionConfig,
+        path: &Path,
     ) -> Result<AsyncSessionHandle, Box<dyn std::error::Error>> {
-        let computation = {
-            let comp_path = &session_config.computation.path;
-            tracing::debug!("Loading computation from {:?}", comp_path);
-            match session_config.computation.format {
-                Format::Binary => {
-                    let comp_raw = std::fs::read(comp_path)?;
-                    moose::computation::Computation::from_msgpack(comp_raw)?
-                }
-                Format::Textual => {
-                    let comp_raw = std::fs::read_to_string(comp_path)?;
-                    moose::computation::Computation::from_textual(&comp_raw)?
-                }
-            }
-        };
-
-        let role_assignments: HashMap<Role, Identity> = session_config
-            .roles
-            .into_iter()
-            .map(|role_config| {
-                let role = Role::from(&role_config.name);
-                let identity = Identity::from(&role_config.endpoint);
-                (role, identity)
-            })
-            .collect();
-
+        tracing::info!("Loading session from {:?}", path);
+        let (_, session_id, role_assignments, computation) =
+            parse_session_config_file_with_computation(path)?;
         let networking = (self.networking_strategy)(session_id.clone());
         let storage = (self.storage_strategy)();
 
