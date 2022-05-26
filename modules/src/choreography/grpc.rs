@@ -20,7 +20,7 @@ use std::sync::Arc;
 type ResultsStores = DashMap<SessionId, Arc<AsyncCell<HashMap<String, Value>>>>;
 
 pub struct GrpcChoreography {
-    own_identity: Arc<Identity>,
+    own_identity: Identity,
     choreographer: Option<String>,
     result_stores: Arc<ResultsStores>,
     networking_strategy: NetworkingStrategy,
@@ -35,7 +35,7 @@ impl GrpcChoreography {
         storage_strategy: StorageStrategy,
     ) -> GrpcChoreography {
         GrpcChoreography {
-            own_identity: Arc::new(own_identity),
+            own_identity,
             choreographer,
             result_stores: Arc::new(ResultsStores::default()),
             networking_strategy,
@@ -116,7 +116,7 @@ impl Choreography for GrpcChoreography {
         let networking = (self.networking_strategy)(session_id.clone());
         let storage = (self.storage_strategy)();
         let context =
-            ExecutionContext::new(self.own_identity.as_ref().clone(), networking, storage);
+            ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
         let (_handle, outputs) = context
             .execute_computation(session_id.clone(), &computation, role_assignments)
