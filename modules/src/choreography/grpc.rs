@@ -115,8 +115,7 @@ impl Choreography for GrpcChoreography {
 
         let networking = (self.networking_strategy)(session_id.clone());
         let storage = (self.storage_strategy)();
-        let context =
-            ExecutionContext::new(self.own_identity.clone(), networking, storage);
+        let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
         let (_handle, outputs) = context
             .execute_computation(session_id.clone(), &computation, role_assignments)
