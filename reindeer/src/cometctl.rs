@@ -11,6 +11,14 @@ use std::path::PathBuf;
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
+
+    #[clap(long)]
+    /// Directory to read certificates from
+    certs: Option<String>,
+
+    #[clap(long)]
+    /// Own identity; `certs` must be specified
+    identity: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -38,40 +46,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
     tracing_subscriber::fmt::init();
 
+    let tls_config = match (args.certs, args.identity) {
+        (Some(certs_dir), Some(identity)) => {
+            Some(reindeer::setup_tls_client(&identity, &certs_dir)?)
+        }
+        (None, None) => None,
+        _ => panic!("both --certs and --identity must be specified"),
+    };
+
     match args.command {
-        Commands::Launch {
-            session_config: session_config_file,
-        } => {
+        Commands::Launch { session_config } => {
             let (_, session_id, role_assignments, computation) =
-                parse_session_config_file_with_computation(&session_config_file)?;
-            let runtime = GrpcMooseRuntime::new(role_assignments)?;
+                parse_session_config_file_with_computation(&session_config)?;
+            let runtime = GrpcMooseRuntime::new(role_assignments, tls_config)?;
             runtime
                 .launch_computation(&session_id, &computation)
                 .await?;
         }
-        Commands::Abort {
-            session_config: session_config_file,
-        } => {
+        Commands::Abort { session_config } => {
             let (_, session_id, role_assignments) =
-                parse_session_config_file_without_computation(&session_config_file)?;
-            let runtime = GrpcMooseRuntime::new(role_assignments)?;
+                parse_session_config_file_without_computation(&session_config)?;
+            let runtime = GrpcMooseRuntime::new(role_assignments, tls_config)?;
             runtime.abort_computation(&session_id).await?;
         }
-        Commands::Results {
-            session_config: session_config_file,
-        } => {
+        Commands::Results { session_config } => {
             let (_, session_id, role_assignments) =
-                parse_session_config_file_without_computation(&session_config_file)?;
-            let runtime = GrpcMooseRuntime::new(role_assignments)?;
+                parse_session_config_file_without_computation(&session_config)?;
+            let runtime = GrpcMooseRuntime::new(role_assignments, tls_config)?;
             let results = runtime.retrieve_results(&session_id).await?;
             println!("Results: {:?}", results);
         }
-        Commands::Run {
-            session_config: session_config_file,
-        } => {
+        Commands::Run { session_config } => {
             let (_, session_id, role_assignments, computation) =
-                parse_session_config_file_with_computation(&session_config_file)?;
-            let runtime = GrpcMooseRuntime::new(role_assignments)?;
+                parse_session_config_file_with_computation(&session_config)?;
+            let runtime = GrpcMooseRuntime::new(role_assignments, tls_config)?;
             let results = runtime.run_computation(&session_id, &computation).await?;
             println!("Results: {:?}", results);
         }

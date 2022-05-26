@@ -16,7 +16,6 @@ use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tonic::transport::{Channel, ClientTlsConfig, Uri};
-use x509_parser::prelude::*;
 
 #[derive(Default, Clone)]
 pub struct GrpcNetworkingManager {
@@ -206,8 +205,9 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-        let sender =
-            extract_sender(&request).map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?;
+        let sender = crate::extract_sender(&request)
+            .map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?
+            .map(Identity::from);
 
         let request = request.into_inner();
         let tagged_value =
@@ -223,37 +223,6 @@ impl Networking for NetworkingImpl {
         cell.set((sender, tagged_value.value));
 
         Ok(tonic::Response::new(SendValueResponse::default()))
-    }
-}
-
-fn extract_sender(request: &tonic::Request<SendValueRequest>) -> Result<Option<Identity>, String> {
-    match request.peer_certs() {
-        None => Ok(None),
-        Some(certs) => {
-            if certs.len() != 1 {
-                return Err(format!(
-                    "cannot extract identity from certificate chain of length {:?}",
-                    certs.len()
-                ));
-            }
-
-            let (_rem, cert) = parse_x509_certificate(certs[0].as_ref()).map_err(|err| {
-                format!("failed to parse X509 certificate: {:?}", err.to_string())
-            })?;
-
-            let cns: Vec<_> = cert
-                .subject()
-                .iter_common_name()
-                .map(|attr| attr.as_str().map_err(|err| err.to_string()))
-                .collect::<Result<_, _>>()?;
-
-            if let Some(cn) = cns.first() {
-                let sender = Identity::from(*cn);
-                Ok(Some(sender))
-            } else {
-                Err("certificate common name was empty".to_string())
-            }
-        }
     }
 }
 

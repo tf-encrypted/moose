@@ -4,7 +4,7 @@ use crate::choreography::grpc::gen::{
 };
 use moose::prelude::{Computation, Identity, Role, SessionId, Value};
 use std::collections::HashMap;
-use tonic::transport::{Channel, Uri};
+use tonic::transport::{Channel, ClientTlsConfig, Uri};
 
 pub struct GrpcMooseRuntime {
     role_assignments: HashMap<Role, Identity>,
@@ -14,20 +14,16 @@ pub struct GrpcMooseRuntime {
 impl GrpcMooseRuntime {
     pub fn new(
         role_assignments: HashMap<Role, Identity>,
+        tls_config: Option<ClientTlsConfig>,
     ) -> Result<GrpcMooseRuntime, Box<dyn std::error::Error>> {
         let channels = role_assignments
             .iter()
             .map(|(role, identity)| {
                 let endpoint: Uri = format!("http://{}", identity).parse()?;
-                let channel = Channel::builder(endpoint);
-                // if let Some(ref tls_config) = self.tls_config {
-                //     channel = channel.tls_config(tls_config.clone()).map_err(|e| {
-                //         moose::Error::Networking(format!(
-                //             "failed to TLS config {:?}",
-                //             e.to_string()
-                //         ))
-                //     })?;
-                // };
+                let mut channel = Channel::builder(endpoint);
+                if let Some(ref tls_config) = tls_config {
+                    channel = channel.tls_config(tls_config.clone())?;
+                };
                 let channel = channel.connect_lazy();
                 Ok((role.clone(), channel))
             })

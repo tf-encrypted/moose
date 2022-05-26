@@ -20,6 +20,10 @@ struct Opt {
     /// Directory to read certificates from
     certs: Option<String>,
 
+    #[structopt(env, long)]
+    /// Expected identity of choreographer; `certs` must be specified
+    choreographer: Option<String>,
+
     #[structopt(long)]
     /// Report telemetry to Jaeger
     telemetry: bool,
@@ -51,6 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let networking_server = networking.new_server();
     let choreography = GrpcChoreography::new(
         own_identity,
+        opt.choreographer,
         Box::new(move |session_id| networking.new_session(session_id)),
         Box::new(|| Arc::new(LocalAsyncStorage::default())),
     );

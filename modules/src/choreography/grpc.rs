@@ -21,6 +21,7 @@ type ResultsStores = DashMap<SessionId, Arc<AsyncCell<HashMap<String, Value>>>>;
 
 pub struct GrpcChoreography {
     own_identity: Arc<Identity>,
+    choreographer: Option<String>,
     result_stores: Arc<ResultsStores>,
     networking_strategy: NetworkingStrategy,
     storage_strategy: StorageStrategy,
@@ -29,11 +30,13 @@ pub struct GrpcChoreography {
 impl GrpcChoreography {
     pub fn new(
         own_identity: Identity,
+        choreographer: Option<String>,
         networking_strategy: NetworkingStrategy,
         storage_strategy: StorageStrategy,
     ) -> GrpcChoreography {
         GrpcChoreography {
             own_identity: Arc::new(own_identity),
+            choreographer,
             result_stores: Arc::new(ResultsStores::default()),
             networking_strategy,
             storage_strategy,
@@ -45,6 +48,39 @@ impl GrpcChoreography {
     }
 }
 
+impl GrpcChoreography {
+    fn check_choreographer<T>(&self, request: &tonic::Request<T>) -> Result<(), tonic::Status> {
+        let choreographer = crate::extract_sender(request).map_err(|_e| {
+            tonic::Status::new(
+                tonic::Code::Aborted,
+                "failed to extract sender identity".to_string(),
+            )
+        })?;
+
+        match (&self.choreographer, choreographer) {
+            (None, None) => Ok(()),
+            (None, Some(_actual)) => Err(tonic::Status::new(
+                tonic::Code::Aborted,
+                "did not expect choreographer certificate".to_string(),
+            )),
+            (Some(_expected), None) => Err(tonic::Status::new(
+                tonic::Code::Aborted,
+                "expected choreographer certificate".to_string(),
+            )),
+            (Some(expected), Some(actual)) => {
+                if expected != &actual {
+                    Err(tonic::Status::new(
+                        tonic::Code::Aborted,
+                        "expected choreographer did not match actual".to_string(),
+                    ))
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
+}
+
 #[async_trait]
 impl Choreography for GrpcChoreography {
     async fn launch_computation(
@@ -53,6 +89,7 @@ impl Choreography for GrpcChoreography {
     ) -> Result<tonic::Response<LaunchComputationResponse>, tonic::Status> {
         tracing::info!("Launching computation");
 
+        self.check_choreographer(&request)?;
         let request = request.into_inner();
 
         let session_id = bincode::deserialize::<SessionId>(&request.session_id).map_err(|_e| {
@@ -119,6 +156,7 @@ impl Choreography for GrpcChoreography {
         &self,
         request: tonic::Request<RetrieveResultsRequest>,
     ) -> Result<tonic::Response<RetrieveResultsResponse>, tonic::Status> {
+        self.check_choreographer(&request)?;
         let request = request.into_inner();
 
         let session_id = bincode::deserialize::<SessionId>(&request.session_id).map_err(|_e| {
