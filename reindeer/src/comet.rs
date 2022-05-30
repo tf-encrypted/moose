@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !opt.telemetry {
         tracing_subscriber::fmt::init();
     } else {
-        reindeer::setup_tracing(&opt.identity)?;
+        reindeer::setup_tracing(&opt.identity, "comet")?;
     }
 
     let root_span = tracing::span!(tracing::Level::INFO, "app_start");
