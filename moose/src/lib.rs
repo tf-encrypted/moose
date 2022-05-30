@@ -2788,7 +2788,6 @@ pub mod logical;
 pub mod mirrored;
 pub mod networking;
 pub mod prelude;
-pub mod prng;
 pub mod replicated;
 pub mod storage;
 pub mod textual;
