@@ -115,7 +115,7 @@ impl PrfKeyGenOp {
         _sess: &S,
         plc: &HostPlacement,
     ) -> crate::error::Result<HostPrfKey> {
-        let raw_key = RawPrfKey(AesRng::generate_random_key());
+        let raw_key = RawPrfKey(AesRng::generate_random_seed());
         Ok(HostPrfKey(raw_key, plc.clone()))
     }
 }

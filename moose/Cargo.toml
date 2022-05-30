@@ -19,7 +19,7 @@ async_execute = []
 
 [dependencies]
 aes = "~0.8"
-aes-prng = { path = "../../aes-prng" }
+aes-prng = "~0.2"
 anyhow = "~1.0"
 async_cell = "~0.2"
 async-trait = "~0.1"
