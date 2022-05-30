@@ -284,6 +284,49 @@ impl GrpcRuntime {
         GrpcRuntime { runtime }
     }
 
+    fn evaluate_computation(
+        &mut self,
+        py: Python,
+        computation: Vec<u8>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let logical_computation = create_computation_graph_from_py_bytes(computation);
+
+        let physical_computation = compile(logical_computation, None)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+        let typed_arguments = arguments
+            .iter()
+            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
+            .collect::<HashMap<String, Value>>();
+
+        {
+            let rt = tokio::Runtime::new().unwrap();
+            let _guard = rt.enter();
+
+        }
+
+        let typed_outputs =
+            self.runtime
+                .run_computation(physical_computation, typed_arguments)
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+        let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
+        for (output_name, value) in typed_outputs {
+            match value {
+                Value::HostUnit(_) => None,
+                // TODO: not sure what to support, should eventually standardize output types of computations
+                Value::HostString(s) => Some(PyString::new(py, &s.0).to_object(py)),
+                Value::Float64(f) => Some(PyFloat::new(py, *f).to_object(py)),
+                // assume it's a tensor
+                _ => outputs_py_val
+                    .insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
+            };
+        }
+
+        Ok(Some(outputs_py_val))
+    }
+
     fn evaluate_compiled_computation(
         &mut self,
         py: Python,
