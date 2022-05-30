@@ -14,6 +14,7 @@ use pyo3::wrap_pymodule;
 use pyo3::{exceptions::PyTypeError, prelude::*, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use moose_modules::execution::grpc::GrpcMooseRuntime;
 
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
     let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
@@ -267,7 +268,7 @@ impl LocalRuntime {
 
 #[pyclass(subclass)]
 pub struct GrpcRuntime {
-    runtime: AsyncTestRuntime,
+    runtime: GrpcMooseRuntime,
 }
 
 #[pymethods]
@@ -279,7 +280,7 @@ impl GrpcRuntime {
             .map(|(role, identity)| (Role::from(role), Identity::from(identity)))
             .collect::<HashMap<Role, Identity>>();
 
-        let runtime = GrpcMooseRuntime::new(typed_role_assignment);
+        let runtime = GrpcMooseRuntime::new(typed_role_assignment, None).unwrap();
         GrpcRuntime { runtime }
     }
 
@@ -289,12 +290,13 @@ impl GrpcRuntime {
         computation: PyObject,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
-        let computation = MooseComputation::from_py(py, computation)?.try_borrow(py)?;
-        self.evaluate_compiled_computation(
-            py,
-            &computation.computation,
-            arguments,
-        )
+        // let computation = MooseComputation::from_py(py, computation)?.try_borrow(py)?;
+        // self.evaluate_compiled_computation(
+        //     py,
+        //     &computation.computation,
+        //     arguments,
+        // )
+        todo!()
     }
 }
 
