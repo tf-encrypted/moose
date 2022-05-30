@@ -4,9 +4,9 @@ version = "0.2.1-beta.1"
 license = "MIT"
 edition = "2018"
 authors = []
-default-run = "rudolph"
 
 [dependencies]
+clap = { version = "~3.1", features = ["derive"] }
 moose = { path = "../moose", default-features = false, features = ["async_execute"] }
 moose-modules = { path = "../modules" }
 opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
@@ -20,14 +20,24 @@ tracing-attributes = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-opentelemetry = "0.17"
 
+[lib]
+name = "reindeer"
 
 [[bin]]
-name = "rudolph"
-path = "src/rudolph.rs"
+name = "comet"
+path = "src/comet.rs"
+
+[[bin]]
+name = "cometctl"
+path = "src/cometctl.rs"
 
 [[bin]]
 name = "dasher"
 path = "src/dasher.rs"
+
+[[bin]]
+name = "rudolph"
+path = "src/rudolph.rs"
 
 [[bin]]
 name = "vixen"

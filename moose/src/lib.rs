@@ -241,6 +241,7 @@ macro_rules! derive_execute_kernel {
     };
 }
 
+#[cfg(feature = "compile")]
 macro_rules! derive_symbolic_kernel {
 
     /* Nullary */

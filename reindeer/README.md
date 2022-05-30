@@ -93,26 +93,37 @@ In particular, to use heaptrack run:
 heaptrack ./target/debug/rudolph
 ```
 
-## Rudolph with TLS support
+# TLS support
 
-In order to run `rudolph` with gRPC and TLS make sure to generate TLS certificates.
+In order to run the reindeer with gRPC and TLS make sure to generate TLS certificates.
 The certificates used for `test.session` example were generated using the following commands.
 
 ```
 cd examples
 certstrap --depot-path certs init --common-name ca --passphrase ""
+certstrap --depot-path certs request-cert --common-name choreographer --domain localhost --passphrase ""
 certstrap --depot-path certs request-cert --common-name localhost:50000 --domain localhost --passphrase ""
 certstrap --depot-path certs request-cert --common-name localhost:50001 --domain localhost --passphrase ""
 certstrap --depot-path certs request-cert --common-name localhost:50002 --domain localhost --passphrase ""
+certstrap --depot-path certs sign --CA ca choreographer
 certstrap --depot-path certs sign --CA ca localhost_50000
 certstrap --depot-path certs sign --CA ca localhost_50001
 certstrap --depot-path certs sign --CA ca localhost_50002
 ```
 
-To run `test.moose` together with `rudolph`, type the following 3 commands in the terminal, inside the `reindeer` folder:
+To run `test.moose` using `rudolph`, type the following commands in individual terminals inside the `reindeer` folder:
 
 ```
-rudolph --identity 'localhost:50000' --port 50000 --session ./examples --no-listen --certs examples/certs
-rudolph --identity 'localhost:50001' --port 50001 --session ./examples --no-listen --certs examples/certs
-rudolph --identity 'localhost:50002' --port 50002 --session ./examples --no-listen --certs examples/certs
+cargo run --bin rudolph -- --identity 'localhost:50000' --port 50000 --session ./examples --no-listen --certs examples/certs
+cargo run --bin rudolph -- --identity 'localhost:50001' --port 50001 --session ./examples --no-listen --certs examples/certs
+cargo run --bin rudolph -- --identity 'localhost:50002' --port 50002 --session ./examples --no-listen --certs examples/certs
+```
+
+To run `test.moose` using `comet`, type the following commands in individual terminals inside the `reindeer` folder:
+
+```
+cargo run --bin comet -- --identity localhost:50000 --port 50000 --certs examples/certs --choreographer choreographer
+cargo run --bin comet -- --identity localhost:50001 --port 50001 --certs examples/certs --choreographer choreographer
+cargo run --bin comet -- --identity localhost:50002 --port 50002 --certs examples/certs --choreographer choreographer
+cargo run --bin cometctl -- --identity choreographer --certs examples/certs run examples/test.session
 ```

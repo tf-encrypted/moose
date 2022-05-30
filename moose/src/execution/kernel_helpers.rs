@@ -1,11 +1,8 @@
-use crate::computation::{
-    Operator, PartiallySymbolicType, Placed, Placement, SymbolicType, SymbolicValue, Value,
-};
+use crate::computation::{Placement, Value};
 use crate::error::Result;
-use crate::execution::symbolic::{Symbolic, SymbolicSession};
 use crate::execution::{Operands, Session};
 use crate::kernels::Kernel;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 
 pub(crate) fn nullary<S, U, P, F>(kf: F) -> Result<Kernel<S, Value>>
 where
@@ -109,6 +106,11 @@ where
 #[cfg(feature = "compile")]
 pub(crate) mod symbolic {
     use super::*;
+    use crate::computation::{
+        Operator, PartiallySymbolicType, Placed, SymbolicType, SymbolicValue,
+    };
+    use crate::execution::symbolic::{Symbolic, SymbolicSession};
+    use std::convert::TryInto;
 
     pub(crate) mod runtime {
         use super::*;
