@@ -12,6 +12,7 @@ use crate::execution::ExecutionContext;
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use dashmap::DashMap;
+use dashmap::mapref::entry::Entry;
 use moose::computation::{SessionId, Value};
 use moose::execution::Identity;
 use std::collections::HashMap;
@@ -99,52 +100,62 @@ impl Choreography for GrpcChoreography {
             )
         })?;
 
-        let computation = bincode::deserialize(&request.computation).map_err(|_e| {
-            tonic::Status::new(
-                tonic::Code::Aborted,
-                "failed to parse computation".to_string(),
-            )
-        })?;
-
-        let role_assignments = bincode::deserialize(&request.role_assignment).map_err(|_e| {
-            tonic::Status::new(
-                tonic::Code::Aborted,
-                "failed to parse role assignment".to_string(),
-            )
-        })?;
-
-        let networking = (self.networking_strategy)(session_id.clone());
-        let storage = (self.storage_strategy)();
-        let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
-
-        let (_handle, outputs) = context
-            .execute_computation(session_id.clone(), &computation, role_assignments)
-            .await
-            .map_err(|_e| {
-                tonic::Status::new(
+        match self.result_stores.entry(session_id.clone()) {
+            Entry::Occupied(_) => {
+                Err(tonic::Status::new(
                     tonic::Code::Aborted,
-                    "failed launch computation".to_string(),
-                )
-            })?;
-
-        let result_stores = Arc::clone(&self.result_stores);
-        let results_cell = AsyncCell::shared();
-        result_stores.insert(session_id.clone(), results_cell);
-
-        tokio::spawn(async move {
-            let mut results = HashMap::with_capacity(outputs.len());
-            for (output_name, output_value) in outputs {
-                let value = output_value.await.unwrap();
-                results.insert(output_name, value);
+                    "session id exists already".to_string(),
+                ))
             }
-            tracing::info!("Results ready, {:?}", results.keys());
-            let result_cell = result_stores
-                .get(&session_id)
-                .expect("session disappeared unexpectedly");
-            result_cell.set(results);
-        });
+            Entry::Vacant(result_stores_entry) => {
+                let results_cell = AsyncCell::shared();
+                result_stores_entry.insert(results_cell);
 
-        Ok(tonic::Response::new(LaunchComputationResponse::default()))
+                let computation = bincode::deserialize(&request.computation).map_err(|_e| {
+                    tonic::Status::new(
+                        tonic::Code::Aborted,
+                        "failed to parse computation".to_string(),
+                    )
+                })?;
+
+                let role_assignments = bincode::deserialize(&request.role_assignment).map_err(|_e| {
+                    tonic::Status::new(
+                        tonic::Code::Aborted,
+                        "failed to parse role assignment".to_string(),
+                    )
+                })?;
+
+                let networking = (self.networking_strategy)(session_id.clone());
+                let storage = (self.storage_strategy)();
+                let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
+
+                let (_handle, outputs) = context
+                    .execute_computation(session_id.clone(), &computation, role_assignments)
+                    .await
+                    .map_err(|_e| {
+                        tonic::Status::new(
+                            tonic::Code::Aborted,
+                            "failed launch computation".to_string(),
+                        )
+                    })?;
+
+                let result_stores = Arc::clone(&self.result_stores);
+                tokio::spawn(async move {
+                    let mut results = HashMap::with_capacity(outputs.len());
+                    for (output_name, output_value) in outputs {
+                        let value = output_value.await.unwrap();
+                        results.insert(output_name, value);
+                    }
+                    tracing::info!("Results ready, {:?}", results.keys());
+                    let result_cell = result_stores
+                        .get(&session_id)
+                        .expect("session disappeared unexpectedly");
+                    result_cell.set(results);
+                });
+
+                Ok(tonic::Response::new(LaunchComputationResponse::default()))
+            }
+        }
     }
 
     async fn abort_computation(
