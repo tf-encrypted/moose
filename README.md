@@ -5,6 +5,7 @@ Moose is a framework for secure multi-party computation, written in Rust.
 Moose includes an API, a compiler, and a runtime. It’s designed to be secure, fast, scalable, and extensible. Moose is production ready and secure by default.
 
 ### Components
+
 - The `Moose eDSL` is an easy-to-use language for expressing programs of algebraic operations on `n`-dimensional arrays, which may contain inputs from one or more parties. Moose programs can be written in Python ([PyMoose](/pymoose)) or directly in Rust ([examples](/moose/examples)).
 - The `Moose Compiler` builds, type checks, and optimizes the operations into a distributed data flow graph. We call this encrypted data flow.
 - The `Moose Runtime` securely and efficiently executes the graph across a network of (potentially untrusted) compute clusters while protecting the secrecy of the inputs.
@@ -14,6 +15,7 @@ Moose contains the mathematical primitives to compose machine learning and deep 
 Moose is designed to support many different secure multi-party computation protocols. Initially, replicated secret sharing is supported. Contributions of additional protocols are welcome.
 
 ### Community
+
 Moose is a community driven, open source project. Moose was created at Cape.
 
 ## Installation
@@ -93,7 +95,6 @@ When doing local development we suggest using `make test` command. The
 `make-ci` command is used mostly for ci purposes and runs a smaller range of test cases. For
 a more extensive test suite we recommend using `make test-long` command.
 
-
 ### Documentation
 
 To generate documentation provided by rust using the source files use:
@@ -104,7 +105,6 @@ cargo doc --no-deps --open
 
 In order to fetch the latest documentation on the cryptographic protocols implemented in moose
 check our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper)!
-
 
 ### Releasing
 
@@ -137,6 +137,7 @@ Once your PR has been merged to `main`:
 If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
 
 ### Rust Development
+
 You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project.
 
 We compile and test against the stable toolchain so make sure to either set the stable toolchain as the default using `rustup default stable`.
