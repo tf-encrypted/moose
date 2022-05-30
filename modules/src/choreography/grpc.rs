@@ -138,7 +138,10 @@ impl Choreography for GrpcChoreography {
                 results.insert(output_name, value);
             }
             tracing::info!("Results ready, {:?}", results.keys());
-            result_stores.get(&session_id).unwrap().set(results); // TODO error handling
+            let result_cell = result_stores
+                .get(&session_id)
+                .expect("session disappeared unexpectedly");
+            result_cell.set(results);
         });
 
         Ok(tonic::Response::new(LaunchComputationResponse::default()))
@@ -172,7 +175,7 @@ impl Choreography for GrpcChoreography {
             )),
             Some(results) => {
                 let results = results.value().get().await;
-                let values = bincode::serialize(&results).unwrap(); // TODO error handling
+                let values = bincode::serialize(&results).expect("failed to serialize results");
                 Ok(tonic::Response::new(RetrieveResultsResponse { values }))
             }
         }
