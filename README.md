@@ -94,6 +94,18 @@ When doing local development we suggest using `make test` command. The
 a more extensive test suite we recommend using `make test-long` command.
 
 
+### Documentation
+
+To generate documentation provided by rust using the source files use:
+
+```
+cargo doc --no-deps --open
+```
+
+In order to fetch the latest documentation on the cryptographic protocols implemented in moose
+check our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper)!
+
+
 ### Releasing
 
 Follow these steps to release a new version:
