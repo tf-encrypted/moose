@@ -11,8 +11,8 @@ use super::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
-use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
+use dashmap::DashMap;
 use moose::computation::{SessionId, Value};
 use moose::execution::Identity;
 use std::collections::HashMap;
@@ -101,12 +101,10 @@ impl Choreography for GrpcChoreography {
         })?;
 
         match self.result_stores.entry(session_id.clone()) {
-            Entry::Occupied(_) => {
-                Err(tonic::Status::new(
-                    tonic::Code::Aborted,
-                    "session id exists already".to_string(),
-                ))
-            }
+            Entry::Occupied(_) => Err(tonic::Status::new(
+                tonic::Code::Aborted,
+                "session id exists already".to_string(),
+            )),
             Entry::Vacant(result_stores_entry) => {
                 let results_cell = AsyncCell::shared();
                 result_stores_entry.insert(results_cell);
@@ -118,12 +116,13 @@ impl Choreography for GrpcChoreography {
                     )
                 })?;
 
-                let role_assignments = bincode::deserialize(&request.role_assignment).map_err(|_e| {
-                    tonic::Status::new(
-                        tonic::Code::Aborted,
-                        "failed to parse role assignment".to_string(),
-                    )
-                })?;
+                let role_assignments =
+                    bincode::deserialize(&request.role_assignment).map_err(|_e| {
+                        tonic::Status::new(
+                            tonic::Code::Aborted,
+                            "failed to parse role assignment".to_string(),
+                        )
+                    })?;
 
                 let networking = (self.networking_strategy)(session_id.clone());
                 let storage = (self.storage_strategy)();
