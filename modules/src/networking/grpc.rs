@@ -1,10 +1,9 @@
 mod gen {
-    tonic::include_proto!("moose");
+    tonic::include_proto!("moose_networking");
 }
 
 use self::gen::networking_client::NetworkingClient;
-use self::gen::networking_server::Networking;
-use self::gen::networking_server::NetworkingServer;
+use self::gen::networking_server::{Networking, NetworkingServer};
 use self::gen::{SendValueRequest, SendValueResponse};
 use crate::networking::constants;
 use async_cell::sync::AsyncCell;
@@ -12,20 +11,17 @@ use async_trait::async_trait;
 use backoff::future::retry;
 use backoff::ExponentialBackoff;
 use dashmap::DashMap;
-use moose::error::Error;
 use moose::networking::AsyncNetworking;
 use moose::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tonic::transport::{Channel, ClientTlsConfig, Server, ServerTlsConfig, Uri};
-use x509_parser::prelude::*;
+use tonic::transport::{Channel, ClientTlsConfig, Uri};
 
 #[derive(Default, Clone)]
 pub struct GrpcNetworkingManager {
     stores: Arc<SessionStores>,
     channels: Arc<Channels>,
     tls_client_config: Option<ClientTlsConfig>,
-    tls_server_config: Option<ServerTlsConfig>,
 }
 
 impl GrpcNetworkingManager {
@@ -40,16 +36,14 @@ impl GrpcNetworkingManager {
             stores: Default::default(),
             channels: Default::default(),
             tls_client_config: None,
-            tls_server_config: None,
         }
     }
 
-    pub fn from_tls_config(client: ClientTlsConfig, server: ServerTlsConfig) -> Self {
+    pub fn from_tls_config(client: ClientTlsConfig) -> Self {
         GrpcNetworkingManager {
             stores: Default::default(),
             channels: Default::default(),
             tls_client_config: Some(client),
-            tls_server_config: Some(server),
         }
     }
 
@@ -60,29 +54,6 @@ impl GrpcNetworkingManager {
             channels: Arc::clone(&self.channels),
             tls_config: self.tls_client_config.clone(),
         })
-    }
-
-    pub fn start_server(&self, port: u16) -> moose::Result<tokio::task::JoinHandle<()>> {
-        let addr = format!("0.0.0.0:{}", port)
-            .parse()
-            .map_err(|e| Error::Networking(format!("failed to parse port and address: {}", e)))?;
-        let manager = self.clone();
-
-        let mut server = Server::builder();
-        if let Some(ref tls_config) = self.tls_server_config {
-            server = server.tls_config(tls_config.clone()).map_err(|e| {
-                moose::Error::Networking(format!("failed to TLS config {:?}", e.to_string()))
-            })?;
-        }
-        let router = server.add_service(manager.new_server());
-
-        let handle = tokio::spawn(async move {
-            let res = router.serve(addr).await;
-            if let Err(e) = res {
-                tracing::error!("gRPC error: {}", e);
-            }
-        });
-        Ok(handle)
     }
 }
 
@@ -234,8 +205,9 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-        let sender =
-            extract_sender(&request).map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?;
+        let sender = crate::extract_sender(&request)
+            .map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?
+            .map(Identity::from);
 
         let request = request.into_inner();
         let tagged_value =
@@ -251,37 +223,6 @@ impl Networking for NetworkingImpl {
         cell.set((sender, tagged_value.value));
 
         Ok(tonic::Response::new(SendValueResponse::default()))
-    }
-}
-
-fn extract_sender(request: &tonic::Request<SendValueRequest>) -> Result<Option<Identity>, String> {
-    match request.peer_certs() {
-        None => Ok(None),
-        Some(certs) => {
-            if certs.len() != 1 {
-                return Err(format!(
-                    "cannot extract identity from certificate chain of length {:?}",
-                    certs.len()
-                ));
-            }
-
-            let (_rem, cert) = parse_x509_certificate(certs[0].as_ref()).map_err(|err| {
-                format!("failed to parse X509 certificate: {:?}", err.to_string())
-            })?;
-
-            let cns: Vec<_> = cert
-                .subject()
-                .iter_common_name()
-                .map(|attr| attr.as_str().map_err(|err| err.to_string()))
-                .collect::<Result<_, _>>()?;
-
-            if let Some(cn) = cns.first() {
-                let sender = Identity::from(*cn);
-                Ok(Some(sender))
-            } else {
-                Err("certificate common name was empty".to_string())
-            }
-        }
     }
 }
 

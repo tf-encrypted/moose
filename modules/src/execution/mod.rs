@@ -1,3 +1,5 @@
+pub mod grpc;
+
 use moose::computation::IndexedComputation;
 use moose::computation::Operator;
 use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package moose;
+package moose_networking;
 
 service Networking {
     rpc SendValue(SendValueRequest) returns(SendValueResponse) {}
