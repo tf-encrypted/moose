@@ -1,11 +1,12 @@
 use crate::computation::PyComputation;
 use moose::compilation::compile;
 use moose::compilation::toposort;
-use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
-use moose::execution::Identity;
-use moose::host::{FromRaw, HostBitTensor, HostPlacement, HostString, HostTensor};
+use moose::host::HostTensor;
+use moose::prelude::*;
 use moose::textual::{parallel_parse_computation, ToTextual};
+use moose::tokio;
+use moose_modules::execution::grpc::GrpcMooseRuntime;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;
@@ -14,7 +15,6 @@ use pyo3::wrap_pymodule;
 use pyo3::{exceptions::PyTypeError, prelude::*, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
-use moose_modules::execution::grpc::GrpcMooseRuntime;
 
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
     let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
@@ -268,20 +268,25 @@ impl LocalRuntime {
 
 #[pyclass(subclass)]
 pub struct GrpcRuntime {
-    runtime: GrpcMooseRuntime,
+    tokio_runtime: tokio::runtime::Runtime,
+    grpc_runtime: GrpcMooseRuntime,
 }
 
 #[pymethods]
 impl GrpcRuntime {
     #[new]
-    fn new(py: Python, role_assignment: HashMap<String, String>) -> Self {
+    fn new(role_assignment: HashMap<String, String>) -> Self {
         let typed_role_assignment = role_assignment
             .into_iter()
             .map(|(role, identity)| (Role::from(role), Identity::from(identity)))
             .collect::<HashMap<Role, Identity>>();
 
-        let runtime = GrpcMooseRuntime::new(typed_role_assignment, None).unwrap();
-        GrpcRuntime { runtime }
+        let grpc_runtime = GrpcMooseRuntime::new(typed_role_assignment, None).unwrap();
+        let tokio_runtime = tokio::runtime::Runtime::new().expect("failed to create Tokio runtime");
+        GrpcRuntime {
+            grpc_runtime,
+            tokio_runtime,
+        }
     }
 
     fn evaluate_computation(
@@ -292,7 +297,7 @@ impl GrpcRuntime {
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let logical_computation = create_computation_graph_from_py_bytes(computation);
 
-        let physical_computation = compile(logical_computation, None)
+        let physical_computation = compile::<moose::compilation::Pass>(logical_computation, None)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
         let typed_arguments = arguments
@@ -300,16 +305,16 @@ impl GrpcRuntime {
             .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
             .collect::<HashMap<String, Value>>();
 
-        {
-            let rt = tokio::Runtime::new().unwrap();
-            let _guard = rt.enter();
+        let session_id = SessionId::random();
 
-        }
-
-        let typed_outputs =
-            self.runtime
-                .run_computation(physical_computation, typed_arguments)
-                .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        // TODO(Morten) run_computation should accept arguments!
+        let typed_outputs = self
+            .tokio_runtime
+            .block_on(
+                self.grpc_runtime
+                    .run_computation(&session_id, &physical_computation),
+            )
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
         let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
         for (output_name, value) in typed_outputs {
@@ -319,27 +324,11 @@ impl GrpcRuntime {
                 Value::HostString(s) => Some(PyString::new(py, &s.0).to_object(py)),
                 Value::Float64(f) => Some(PyFloat::new(py, *f).to_object(py)),
                 // assume it's a tensor
-                _ => outputs_py_val
-                    .insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
+                _ => outputs_py_val.insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
             };
         }
 
         Ok(Some(outputs_py_val))
-    }
-
-    fn evaluate_compiled_computation(
-        &mut self,
-        py: Python,
-        computation: PyObject,
-        arguments: HashMap<String, PyObject>,
-    ) -> PyResult<Option<HashMap<String, PyObject>>> {
-        // let computation = MooseComputation::from_py(py, computation)?.try_borrow(py)?;
-        // self.evaluate_compiled_computation(
-        //     py,
-        //     &computation.computation,
-        //     arguments,
-        // )
-        todo!()
     }
 }
 
