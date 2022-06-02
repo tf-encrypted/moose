@@ -55,7 +55,7 @@ class AddNExample(parameterized.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
         result = runtime.evaluate_computation(
-            comp_bin=my_comp,
+            computation=my_comp,
             role_assignment={
                 "player0": "player0",
                 "player1": "player1",
