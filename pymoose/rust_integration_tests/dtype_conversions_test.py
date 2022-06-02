@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
 
 
@@ -87,16 +88,9 @@ class DTypeConversionTest(parameterized.TestCase):
         x_npy = np.array(x_array, dtype=from_dtype.numpy_dtype)
         expected_npy = x_npy.astype(to_dtype.numpy_dtype)
         cast_comp = self._setup_comp(x_npy, from_dtype, to_dtype)
-        traced_comp = pm.trace(cast_comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=traced_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=cast_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "x")

@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
 
 
@@ -39,14 +40,9 @@ class HostExample(parameterized.TestCase):
         dtype = pm.float64
         x_arg = np.array(x, dtype=np.float64)
         ones_comp = self._setup_ones_comp(dtype, x_arg, ones_op)
-        traced_ones_comp = pm.trace(ones_comp)
-        storage = {
-            "bob": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["bob"])
         _ = runtime.evaluate_computation(
-            computation=traced_ones_comp,
-            role_assignment={"bob": "bob"},
+            computation=ones_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("bob", "ones")

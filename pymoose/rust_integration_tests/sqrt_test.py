@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
 
 
@@ -39,16 +40,9 @@ class ReplicatedExample(parameterized.TestCase):
     def test_sqrt_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         sqrt_comp = self._setup_sqrt_comp(x_arg)
-        traced_sqrt_comp = pm.trace(sqrt_comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=traced_sqrt_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=sqrt_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
