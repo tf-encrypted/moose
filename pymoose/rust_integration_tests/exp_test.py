@@ -89,7 +89,7 @@ class ReplicatedExample(parameterized.TestCase):
             "bob": {},
             "carole": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
             computation=traced_exp_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
