@@ -1,4 +1,6 @@
 from pymoose.computation import utils
+from pymoose.edsl.base import AbstractComputation
+from pymoose.edsl.tracer import trace
 from pymoose.rust import moose_runtime
 
 
@@ -54,7 +56,11 @@ class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
         computation,
         arguments=None,
     ):
+        if isinstance(computation, AbstractComputation):
+            computation = trace(computation)
+
         if arguments is None:
             arguments = {}
+
         comp_bin = utils.serialize_computation(computation)
         return super().evaluate_computation(comp_bin, arguments)

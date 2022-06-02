@@ -1,12 +1,8 @@
 import argparse
 import logging
-
 import numpy as np
-
 import pymoose as pm
-from pymoose.computation import utils
 from pymoose.logger import get_logger
-from pymoose.testing import GrpcMooseRuntime
 
 @pm.computation
 def my_computation():
@@ -18,7 +14,7 @@ def my_computation():
         x = pm.constant(np.array([1., 2.], dtype=np.float64))
     
     with bob:
-        y = pm.constant(np.array([1., 2.], dtype=np.float64))
+        y = pm.constant(np.array([3., 4.], dtype=np.float64))
 
     with carole:
         z = pm.add(x, y)
@@ -33,12 +29,11 @@ if __name__ == "__main__":
     if args.verbose:
         get_logger().setLevel(level=logging.DEBUG)
 
-    runtime = GrpcMooseRuntime({ 
+    runtime = pm.GrpcMooseRuntime({ 
         "alice": "localhost:50000",
         "bob": "localhost:50001",
         "carole": "localhost:50002"
-     })
+    })
 
-    comp = pm.trace(my_computation)
-    results = runtime.evaluate_computation(comp)
+    results = runtime.evaluate_computation(my_computation)
     print(results)
