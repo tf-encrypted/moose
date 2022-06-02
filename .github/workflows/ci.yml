@@ -8,7 +8,7 @@ on:
 jobs:
   ubuntu-ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     strategy:
       matrix:
         python-version: [3.8.5]
