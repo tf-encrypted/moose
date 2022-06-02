@@ -282,7 +282,7 @@ impl GrpcRuntime {
             .collect::<HashMap<Role, Identity>>();
 
         let tokio_runtime = tokio::runtime::Runtime::new().expect("failed to create Tokio runtime");
-        
+
         let grpc_runtime = {
             let _guard = tokio_runtime.enter();
             GrpcMooseRuntime::new(typed_role_assignment, None).unwrap()
