@@ -8,7 +8,6 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class BooleanLogicExample(parameterized.TestCase):
@@ -79,7 +78,7 @@ class BooleanLogicExample(parameterized.TestCase):
             "bob": {"x_arg": x, "y_arg": y},
         }
 
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
             computation=traced_less_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},

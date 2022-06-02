@@ -8,7 +8,6 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import utils
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 player0 = pm.host_placement("player0")
 player1 = pm.host_placement("player1")
@@ -52,7 +51,7 @@ class ConcatExample(parameterized.TestCase):
             "player1": {},
             "player2": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=executors_storage)
         concrete_comp = pm.trace(my_comp)
 
         comp_bin = utils.serialize_computation(concrete_comp)

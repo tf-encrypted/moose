@@ -8,7 +8,6 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class SoftmaxExample(parameterized.TestCase):
@@ -89,7 +88,7 @@ class SoftmaxExample(parameterized.TestCase):
             "bob": {"x_arg": x_arg},
         }
 
-        runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
+        runtime_rep = pm.LocalMooseRuntime(storage_mapping=storage_rep)
         _ = runtime_rep.evaluate_computation(
             computation=traced_softmax_rep_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
@@ -107,7 +106,7 @@ class SoftmaxExample(parameterized.TestCase):
             "bob": {"x_arg": x_arg},
         }
 
-        runtime_host = LocalMooseRuntime(storage_mapping=storage_host)
+        runtime_host = pm.LocalMooseRuntime(storage_mapping=storage_host)
         _ = runtime_host.evaluate_computation(
             computation=traced_softmax_host_comp,
             role_assignment={"bob": "bob"},
