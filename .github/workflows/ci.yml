@@ -7,7 +7,7 @@ on:
 
 jobs:
   ubuntu-ci:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 35
     strategy:
       matrix:
