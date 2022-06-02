@@ -305,14 +305,14 @@ impl GrpcRuntime {
         let physical_computation = compile::<moose::compilation::Pass>(logical_computation, None)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
-        let typed_arguments = arguments
+        // TODO(Morten) run_computation should accept arguments!
+        let _typed_arguments = arguments
             .iter()
             .map(|(name, value)| (name.clone(), pyobj_to_value(py, value).unwrap()))
             .collect::<HashMap<String, Value>>();
 
         let session_id = SessionId::random();
 
-        // TODO(Morten) run_computation should accept arguments!
         let typed_outputs = self
             .tokio_runtime
             .block_on(
