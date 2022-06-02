@@ -94,42 +94,58 @@ class RunComputation(parameterized.TestCase):
             "output_owner": "output_owner",
         }
 
+    def _inner_prepare_runtime(self, comp, storage_dict):
+        logical_comp = pm.trace(comp)
+        runtime = moose_runtime.LocalRuntime(storage_mapping=storage_dict)
+        comp_bin = utils.serialize_computation(logical_comp)
+        return comp_bin, runtime
+
     def test_full_storage(self):
-        runtime = moose_runtime.LocalRuntime(storage_mapping=self.storage_dict)
+        comp_bin, runtime = self._inner_prepare_runtime(
+            add_full_storage, self.storage_dict
+        )
         outputs = runtime.evaluate_computation(
-            add_full_storage, self.role_assignment, self.storage_args
+            comp_bin, self.role_assignment, self.storage_args
         )
         assert len(outputs) == 0
         result = runtime.read_value_from_storage("output_owner", "output")
         np.testing.assert_array_equal(result, np.array([3.0]))
 
     def test_input_storage(self):
-        runtime = moose_runtime.LocalRuntime(storage_mapping=self.storage_dict)
+        comp_bin, runtime = self._inner_prepare_runtime(
+            add_input_storage, self.storage_dict
+        )
         result = runtime.evaluate_computation(
-            add_input_storage, self.role_assignment, self.storage_args
+            comp_bin, self.role_assignment, self.storage_args
         )
         np.testing.assert_array_equal(list(result.values())[0], np.array([3.0]))
 
     def test_output_storage(self):
-        runtime = moose_runtime.LocalRuntime(storage_mapping=self.empty_storage)
+        comp_bin, runtime = self._inner_prepare_runtime(
+            add_output_storage, self.empty_storage
+        )
         outputs = runtime.evaluate_computation(
-            add_output_storage, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args
         )
         assert len(outputs) == 0
         result = runtime.read_value_from_storage("output_owner", "output")
         np.testing.assert_array_equal(result, np.array([3.0]))
 
     def test_no_storage(self):
-        runtime = moose_runtime.LocalRuntime(storage_mapping=self.storage_dict)
+        comp_bin, runtime = self._inner_prepare_runtime(
+            add_no_storage, self.storage_dict
+        )
         result = runtime.evaluate_computation(
-            add_no_storage, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args
         )
         np.testing.assert_array_equal(list(result.values())[0], np.array([3.0]))
 
     def test_multioutput(self):
-        runtime = moose_runtime.LocalRuntime(storage_mapping=self.storage_dict)
+        comp_bin, runtime = self._inner_prepare_runtime(
+            add_multioutput, self.storage_dict
+        )
         result = runtime.evaluate_computation(
-            add_multioutput, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args
         )
         result = sorted(result.values())
         expected = [np.array([1.0]), np.array([2.0]), np.array([3.0])]
