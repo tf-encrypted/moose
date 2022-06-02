@@ -69,6 +69,10 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
         return predictor
 
+    def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+        y = self.linear_predictor_fn(x, fixedpoint_dtype)
+        return self.post_transform(y)
+
 
 class LinearRegressor(LinearPredictor):
     def post_transform(self, y):

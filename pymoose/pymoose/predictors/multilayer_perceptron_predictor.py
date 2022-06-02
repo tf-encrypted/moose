@@ -136,6 +136,10 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
         return predictor
 
+    def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+        y = self.neural_predictor_fn(x, fixedpoint_dtype)
+        return self.post_transform(y, fixedpoint_dtype)
+
 
 class MLPRegressor(MLPPredictor):
     def post_transform(self, y, fixedpoint_dtype):

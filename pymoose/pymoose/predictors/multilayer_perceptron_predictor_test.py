@@ -94,10 +94,7 @@ class MLPPredictorTest(parameterized.TestCase):
             with predictor.alice:
                 x_fixed = pm.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
             with predictor.replicated:
-                y = predictor.neural_predictor_fn(
-                    x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
-                )
-                y = predictor.post_transform(y, predictor_utils.DEFAULT_FIXED_DTYPE)
+                y = predictor(x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE)
             return predictor.handle_output(y, prediction_handler=predictor.bob)
 
         return predictor, predictor_no_aes
@@ -232,7 +229,7 @@ class MLPPredictorTest(parameterized.TestCase):
     )
     def test_serde(self, model_name, predictor_cls):
         regressor = self._build_MLP_predictor(model_name, predictor_cls)
-        predictor = regressor.predictor_factory()
+        predictor = regressor.aes_predictor_factory()
         traced_predictor = pm.trace(predictor)
         serialized = comp_utils.serialize_computation(traced_predictor)
         logical_comp_rustref = pm.elk_compiler.compile_computation(serialized, [])

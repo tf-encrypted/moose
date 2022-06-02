@@ -114,6 +114,10 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
 
         return predictor
 
+    def __call__(self, x, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
+        tree_scores = self.forest_fn(x, fixedpoint_dtype=fixedpoint_dtype)
+        return self.post_transform(tree_scores, fixedpoint_dtype=fixedpoint_dtype)
+
 
 class TreeEnsembleClassifier(TreeEnsemble):
     def __init__(
