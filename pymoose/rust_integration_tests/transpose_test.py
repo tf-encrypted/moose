@@ -7,7 +7,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class TransposeExample(parameterized.TestCase):
@@ -110,7 +109,7 @@ class TransposeExample(parameterized.TestCase):
             "carole": {},
         }
 
-        runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
+        runtime_rep = pm.LocalMooseRuntime(storage_mapping=storage_rep)
         _ = runtime_rep.evaluate_computation(
             computation=traced_squeeze_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
@@ -150,7 +149,7 @@ class TransposeExample(parameterized.TestCase):
             "carole": {},
         }
 
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
             computation=traced_maximum_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
