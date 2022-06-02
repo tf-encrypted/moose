@@ -188,7 +188,7 @@ class TreeEnsembleTest(parameterized.TestCase):
     )
     def test_serde(self, model_name, predictor_cls):
         forest = self._build_forest_from_onnx(model_name, predictor_cls)
-        predictor = forest.predictor_factory()
+        predictor = forest.aes_predictor_factory()
         traced = pm.trace(predictor)
         serialized = comp_utils.serialize_computation(traced)
         logical_rustref = pm.elk_compiler.compile_computation(serialized, [])

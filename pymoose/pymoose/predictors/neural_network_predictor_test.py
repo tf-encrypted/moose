@@ -89,7 +89,7 @@ class NNPredictorTest(parameterized.TestCase):
     )
     def test_serde(self, model_name, predictor_cls):
         regressor = self._build_NN_predictor(model_name, predictor_cls)
-        predictor = regressor.predictor_factory()
+        predictor = regressor.aes_predictor_factory()
         traced_predictor = pm.trace(predictor)
         serialized = comp_utils.serialize_computation(traced_predictor)
         logical_comp_rustref = pm.elk_compiler.compile_computation(serialized, [])

@@ -42,7 +42,7 @@ class AesPredictor(metaclass=abc.ABCMeta):
         return self.alice, self.bob, self.carole
 
     @abc.abstractmethod
-    def predictor_factory(self, *args, **kwargs):
+    def aes_predictor_factory(self, *args, **kwargs):
         pass
 
     def _standard_replicated_placements(self):

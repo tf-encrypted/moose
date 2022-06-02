@@ -53,7 +53,7 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         y = pm.dot(x, w)
         return y
 
-    def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+    def aes_predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
         @pm.computation
         def predictor(
             aes_data: pm.Argument(

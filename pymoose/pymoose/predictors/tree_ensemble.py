@@ -23,7 +23,7 @@ class DecisionTreeRegressor(aes_predictor.AesPredictor):
         split_indices = tree_json["split_indices"]
         return cls(weights, (left, right), split_conditions, split_indices)
 
-    def predictor_factory(self):
+    def aes_predictor_factory(self):
         raise NotImplementedError(
             f"{self.__class__.__name__} is not meant to be used directly as an "
             "AesPredictor model. Consider expressing your decision tree as a tree "
@@ -96,7 +96,7 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         # it's a bit ugly, but it works for now.
         return list(map(pm.identity, forest_scores))
 
-    def predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
+    def aes_predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
         # TODO[jason] make it more ergonomic for pm.computation to bind args during
         #   tracing w/ pm.trace
         @pm.computation
