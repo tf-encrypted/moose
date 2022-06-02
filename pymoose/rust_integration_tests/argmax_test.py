@@ -67,7 +67,6 @@ class ArgmaxExample(parameterized.TestCase):
     )
     def test_example_execute(self, x, axis, axis_idx_max):
         comp = self._setup_comp(axis, axis_idx_max)
-        traced_less_comp = pm.trace(comp)
 
         x_arg = np.array(x, dtype=np.float64)
 
@@ -79,7 +78,7 @@ class ArgmaxExample(parameterized.TestCase):
 
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg"},
         )

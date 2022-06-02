@@ -40,10 +40,10 @@ class RerunExample(parameterized.TestCase):
 
     def test_example_execute(self):
         comp = self._setup_comp()
-        traced_less_comp = pm.trace(comp)
+
         runtime = LocalMooseRuntime(identities=["alice", "bob", "carole"])
         result_dict = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
@@ -56,14 +56,14 @@ class RerunExample(parameterized.TestCase):
 
         # You should be able to rerun the computaiton as-is. You'll get a fresh session.
         result_dict = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
 
         # You can also remap the roles among the original identities
         result_dict = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=comp,
             role_assignment={"alice": "bob", "bob": "carole", "carole": "alice"},
             arguments={},
         )
@@ -71,7 +71,7 @@ class RerunExample(parameterized.TestCase):
         # But if you want to have different identities, you would need a new instance
         runtime = LocalMooseRuntime(identities=["newalice", "newbob", "newcarole"])
         result_dict = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=comp,
             role_assignment={
                 "alice": "newalice",
                 "bob": "newbob",

@@ -163,12 +163,11 @@ class TreeEnsembleTest(parameterized.TestCase):
             model_name, "onnx", predictor_cls
         )
 
-        traced_model_comp = pm.trace(predictor_logic)
         storage = {plc.name: {} for plc in predictor.host_placements}
         runtime = LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in predictor.host_placements}
         result_dict = runtime.evaluate_computation(
-            computation=traced_model_comp,
+            computation=predictor_logic,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )

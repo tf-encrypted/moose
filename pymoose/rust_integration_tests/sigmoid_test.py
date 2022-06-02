@@ -60,7 +60,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_sigmoid_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         sigmoid_comp = self._setup_rep_sigmoid_comp(x_arg)
-        traced_sigmoid_comp = pm.trace(sigmoid_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -68,7 +67,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_sigmoid_comp,
+            computation=sigmoid_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
@@ -88,7 +87,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_float_sigmoid_execute(self, x, dtype):
         x_arg = np.array(x, dtype=dtype.numpy_dtype)
         sigmoid_comp = self._setup_float_sigmoid_comp(x_arg, dtype)
-        traced_sigmoid_comp = pm.trace(sigmoid_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -96,7 +94,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_sigmoid_comp,
+            computation=sigmoid_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

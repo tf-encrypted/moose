@@ -116,7 +116,6 @@ class MaximumExample(parameterized.TestCase):
     )
     def test_maximum_fixed(self, x, y, z, run_rep):
         comp = self._setup_max_comp(replicated=run_rep)
-        traced_maximum_comp = pm.trace(comp)
 
         x_arg = np.array(x, dtype=np.float64)
         y_arg = np.array(y, dtype=np.float64)
@@ -130,7 +129,7 @@ class MaximumExample(parameterized.TestCase):
 
         runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
         _ = runtime_rep.evaluate_computation(
-            computation=traced_maximum_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg", "y_uri": "y_arg", "z_uri": "z_arg"},
         )
@@ -159,7 +158,6 @@ class MaximumExample(parameterized.TestCase):
         z_arg = np.array(z, dtype=edsl_dtype.numpy_dtype)
 
         comp = self._setup_float_max_comp(edsl_dtype)
-        traced_maximum_comp = pm.trace(comp)
         storage = {
             "alice": {"x_arg": x_arg},
             "bob": {"y_arg": y_arg},
@@ -168,7 +166,7 @@ class MaximumExample(parameterized.TestCase):
 
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_maximum_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg", "y_uri": "y_arg", "z_uri": "z_arg"},
         )

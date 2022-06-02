@@ -40,13 +40,12 @@ class HostExample(parameterized.TestCase):
         dtype = pm.float64
         x_arg = np.array(x, dtype=np.float64)
         ones_comp = self._setup_ones_comp(dtype, x_arg, ones_op)
-        traced_ones_comp = pm.trace(ones_comp)
         storage = {
             "bob": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_ones_comp,
+            computation=ones_comp,
             role_assignment={"bob": "bob"},
             arguments={},
         )
