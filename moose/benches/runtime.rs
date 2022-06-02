@@ -4,8 +4,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use maplit::hashmap;
 use moose::{
     compilation::{compile, Pass},
-    computation::{Computation, Role, Value},
-    execution::{AsyncTestRuntime, Identity},
+    computation::{Computation, Value},
+    execution::AsyncTestRuntime,
 };
 
 fn runtime_simple_computation(c: &mut Criterion) {
@@ -20,17 +20,15 @@ fn runtime_simple_computation(c: &mut Criterion) {
     let arguments: HashMap<String, Value> = hashmap!("x".to_string() => x, "y".to_string()=> y);
     let storage_mapping: HashMap<String, HashMap<String, Value>> =
         hashmap!("alice".to_string() => hashmap!());
-    let role_assignments: HashMap<Role, Identity> = hashmap!("alice".into() => "alice".into());
 
     c.bench_function("runtime_simple_computation", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
-            let role_assignments = role_assignments.clone();
             let arguments = arguments.clone();
 
             let mut executor = AsyncTestRuntime::new(storage_mapping);
             let _outputs = executor
-                .evaluate_computation(&computation, role_assignments, arguments)
+                .evaluate_computation(&computation, arguments)
                 .unwrap();
         })
     });
@@ -49,18 +47,15 @@ fn runtime_two_hosts(c: &mut Criterion) {
     let arguments: HashMap<String, Value> = hashmap!();
     let storage_mapping: HashMap<String, HashMap<String, Value>> =
         hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
-    let role_assignments: HashMap<Role, Identity> =
-        hashmap!("alice".into() => "alice".into(), "bob".into() => "bob".into());
 
     c.bench_function("runtime_two_hosts_dot", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
-            let role_assignments = role_assignments.clone();
             let arguments = arguments.clone();
 
             let mut executor = AsyncTestRuntime::new(storage_mapping);
             let _outputs = executor
-                .evaluate_computation(&computation, role_assignments, arguments)
+                .evaluate_computation(&computation, arguments)
                 .unwrap();
         })
     });
@@ -76,22 +71,17 @@ fn runtime_rep_computation(c: &mut Criterion) {
             "alice".to_string() => hashmap!(),
             "bob".to_string()=>hashmap!(),
             "carole".to_string()=>hashmap!());
-    let role_assignments: HashMap<Role, Identity> = hashmap!(
-            "alice".into() => "alice".into(),
-            "bob".into() => "bob".into(),
-            "carole".into() => "carole".into());
 
     let mut group = c.benchmark_group("Slow Tests");
     group.measurement_time(Duration::new(10, 0));
     group.bench_function("runtime_replicated_computation", |b| {
         b.iter(|| {
             let storage_mapping = storage_mapping.clone();
-            let role_assignments = role_assignments.clone();
             let arguments = arguments.clone();
 
             let mut executor = AsyncTestRuntime::new(storage_mapping);
             let _outputs = executor
-                .evaluate_computation(&computation, role_assignments, arguments)
+                .evaluate_computation(&computation, arguments)
                 .unwrap();
         })
     });

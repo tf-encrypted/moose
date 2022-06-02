@@ -163,31 +163,24 @@ impl LocalRuntime {
         &mut self,
         py: Python,
         computation: Vec<u8>,
-        role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
         compiler_passes: Option<Vec<String>>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let computation = create_computation_graph_from_py_bytes(computation);
         let computation = compile(computation, compiler_passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-        self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
+        self.evaluate_compiled_computation(py, &computation, arguments)
     }
 
     fn evaluate_compiled(
         &mut self,
         py: Python,
         computation: PyObject,
-        role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let moose = MooseComputation::from_py(py, computation)?;
         let computation = moose.try_borrow(py)?;
-        self.evaluate_compiled_computation(
-            py,
-            &computation.computation,
-            role_assignments,
-            arguments,
-        )
+        self.evaluate_compiled_computation(py, &computation.computation, arguments)
     }
 
     fn write_value_to_storage(
@@ -227,7 +220,6 @@ impl LocalRuntime {
         &mut self,
         py: Python,
         computation: &Computation,
-        role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let arguments = arguments
@@ -235,14 +227,7 @@ impl LocalRuntime {
             .map(|(name, value)| (name.clone(), pyobj_to_value(py, value).unwrap()))
             .collect::<HashMap<String, Value>>();
 
-        let valid_role_assignments = role_assignments
-            .into_iter()
-            .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
-            .collect::<HashMap<Role, Identity>>();
-
-        let outputs =
-            self.runtime
-                .evaluate_computation(computation, valid_role_assignments, arguments);
+        let outputs = self.runtime.evaluate_computation(computation, arguments);
 
         let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
         match outputs {
