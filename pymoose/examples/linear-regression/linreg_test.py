@@ -133,9 +133,8 @@ class LinearRegressionExample(parameterized.TestCase):
             "model-owner": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
-        traced = pm.trace(linear_comp)
         _ = runtime.evaluate_computation(
-            computation=traced,
+            computation=linear_comp,
             role_assignment={
                 "x-owner": "x-owner",
                 "y-owner": "y-owner",

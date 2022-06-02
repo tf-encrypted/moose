@@ -102,7 +102,6 @@ class TransposeExample(parameterized.TestCase):
     )
     def test_transpose_fixed(self, x, run_rep):
         comp = self._setup_transpose_comp(replicated=run_rep)
-        traced_squeeze_comp = pm.trace(comp)
 
         storage_rep = {
             "alice": {"x_arg": x},
@@ -112,7 +111,7 @@ class TransposeExample(parameterized.TestCase):
 
         runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
         _ = runtime_rep.evaluate_computation(
-            computation=traced_squeeze_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg"},
         )
@@ -143,7 +142,6 @@ class TransposeExample(parameterized.TestCase):
         x_arg = np.array(x, dtype=edsl_dtype.numpy_dtype)
 
         comp = self._setup_float_transpose_comp(edsl_dtype)
-        traced_maximum_comp = pm.trace(comp)
         storage = {
             "alice": {"x_arg": x_arg},
             "bob": {},
@@ -152,7 +150,7 @@ class TransposeExample(parameterized.TestCase):
 
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_maximum_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg"},
         )

@@ -81,7 +81,6 @@ class LinearPredictorTest(parameterized.TestCase):
             model_name, linear_predictor.LinearRegressor
         )
 
-        traced_predictor = pm.trace(regressor_logic)
         storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
@@ -90,7 +89,7 @@ class LinearPredictorTest(parameterized.TestCase):
             [[1.0, 1.0, 1.0, 1.0], [-0.9, 1.3, 0.6, -0.4]], dtype=np.float64
         )
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
+            computation=regressor_logic,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )
@@ -104,14 +103,13 @@ class LinearPredictorTest(parameterized.TestCase):
             model_name, linear_predictor.LinearClassifier
         )
 
-        traced_predictor = pm.trace(classifier_logic)
         storage = {plc.name: {} for plc in classifier.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in classifier.host_placements}
 
         input_x = np.array([[-0.9, 1.3, 0.6, -0.4]], dtype=np.float64)
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
+            computation=classifier_logic,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )

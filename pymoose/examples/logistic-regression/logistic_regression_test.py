@@ -55,7 +55,6 @@ class ReplicatedExample(parameterized.TestCase):
         input_x = np.array([2.0, 1.0], dtype=np.float64)
         input_weights = np.array([0.5, 0.1], dtype=np.float64)
         model_comp = self._setup_model_comp()
-        traced_model_comp = pm.trace(model_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -63,7 +62,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_model_comp,
+            computation=model_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x": input_x, "w": input_weights},
         )

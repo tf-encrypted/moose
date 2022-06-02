@@ -79,7 +79,6 @@ class SoftmaxExample(parameterized.TestCase):
     )
     def test_example_execute(self, x, axis, axis_idx_max):
         comp_rep = self._setup_comp(axis, axis_idx_max, replicated=True)
-        traced_softmax_rep_comp = pm.trace(comp_rep)
 
         x_arg = np.array(x, dtype=np.float64)
 
@@ -91,7 +90,7 @@ class SoftmaxExample(parameterized.TestCase):
 
         runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
         _ = runtime_rep.evaluate_computation(
-            computation=traced_softmax_rep_comp,
+            computation=comp_rep,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg"},
         )
@@ -99,7 +98,6 @@ class SoftmaxExample(parameterized.TestCase):
         softmax_runtime_rep = runtime_rep.read_value_from_storage("bob", "softmax")
 
         comp_host = self._setup_comp(axis, axis_idx_max, replicated=False)
-        traced_softmax_host_comp = pm.trace(comp_host)
 
         x_arg = np.array(x, dtype=np.float64)
 
@@ -109,7 +107,7 @@ class SoftmaxExample(parameterized.TestCase):
 
         runtime_host = LocalMooseRuntime(storage_mapping=storage_host)
         _ = runtime_host.evaluate_computation(
-            computation=traced_softmax_host_comp,
+            computation=comp_host,
             role_assignment={"bob": "bob"},
             arguments={"x_uri": "x_arg"},
         )

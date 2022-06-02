@@ -1,4 +1,6 @@
 from pymoose.computation import utils
+from pymoose.edsl.base import AbstractComputation
+from pymoose.edsl.tracer import trace
 from pymoose.rust import moose_runtime
 
 
@@ -24,6 +26,8 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
         arguments=None,
         compiler_passes=None,
     ):
+        if isinstance(computation, AbstractComputation):
+            computation = trace(computation)
         if arguments is None:
             arguments = {}
         comp_bin = utils.serialize_computation(computation)

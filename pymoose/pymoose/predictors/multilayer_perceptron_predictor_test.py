@@ -108,7 +108,6 @@ class MLPPredictorTest(parameterized.TestCase):
             model_name, multilayer_perceptron_predictor.MLPRegressor
         )
 
-        traced_predictor = pm.trace(regressor_logic)
         storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
@@ -163,7 +162,7 @@ class MLPPredictorTest(parameterized.TestCase):
             dtype=np.float64,
         )
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
+            computation=regressor_logic,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )
@@ -177,7 +176,6 @@ class MLPPredictorTest(parameterized.TestCase):
             model_name, multilayer_perceptron_predictor.MLPClassifier
         )
 
-        traced_predictor = pm.trace(classifier_logic)
         storage = {plc.name: {} for plc in classifier.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in classifier.host_placements}
@@ -210,7 +208,7 @@ class MLPPredictorTest(parameterized.TestCase):
             dtype=np.float64,
         )
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
+            computation=classifier_logic,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )
