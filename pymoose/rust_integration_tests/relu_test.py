@@ -7,7 +7,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
@@ -49,7 +48,7 @@ class ReplicatedExample(parameterized.TestCase):
             "bob": {},
             "carole": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
             computation=relu_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},

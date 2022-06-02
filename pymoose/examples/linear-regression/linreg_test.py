@@ -8,7 +8,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 FIXED = pm.fixed(8, 27)
 # Rust compiler currently supports only limited set of alternative precisions:
@@ -131,7 +130,7 @@ class LinearRegressionExample(parameterized.TestCase):
             "y-owner": {"y_data": y_data},
             "model-owner": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=executors_storage)
         _ = runtime.evaluate_computation(
             computation=linear_comp,
             role_assignment={

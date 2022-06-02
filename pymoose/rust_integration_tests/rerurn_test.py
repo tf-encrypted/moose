@@ -7,7 +7,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class RerunExample(parameterized.TestCase):
@@ -41,7 +40,7 @@ class RerunExample(parameterized.TestCase):
     def test_example_execute(self):
         comp = self._setup_comp()
 
-        runtime = LocalMooseRuntime(identities=["alice", "bob", "carole"])
+        runtime = pm.LocalMooseRuntime(identities=["alice", "bob", "carole"])
         result_dict = runtime.evaluate_computation(
             computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
@@ -69,7 +68,7 @@ class RerunExample(parameterized.TestCase):
         )
 
         # But if you want to have different identities, you would need a new instance
-        runtime = LocalMooseRuntime(identities=["newalice", "newbob", "newcarole"])
+        runtime = pm.LocalMooseRuntime(identities=["newalice", "newbob", "newcarole"])
         result_dict = runtime.evaluate_computation(
             computation=comp,
             role_assignment={

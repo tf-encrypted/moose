@@ -7,7 +7,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 alice = pm.host_placement(name="alice")
 bob = pm.host_placement(name="bob")
@@ -64,7 +63,7 @@ class ReshapeExample(parameterized.TestCase):
             "bob": {},
         }
 
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         runtime.evaluate_computation(
             computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},

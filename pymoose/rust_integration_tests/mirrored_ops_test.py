@@ -7,7 +7,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class MirroredOpsExample(parameterized.TestCase):
@@ -36,7 +35,7 @@ class MirroredOpsExample(parameterized.TestCase):
             "bob": {},
             "carole": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         result_dict = runtime.evaluate_computation(
             computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},

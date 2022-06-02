@@ -6,7 +6,6 @@ import numpy as np
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 FIXED = pm.fixed(14, 23)
 
@@ -46,7 +45,7 @@ class ReplicatedExample(unittest.TestCase):
             "carole": {},
             "dave": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=executors_storage)
 
         runtime.evaluate_computation(
             computation=my_comp,

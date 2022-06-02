@@ -7,7 +7,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 player0 = pm.host_placement("player0")
 player1 = pm.host_placement("player1")
@@ -51,7 +50,7 @@ class AddNExample(parameterized.TestCase):
             "player1": {},
             "player2": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=executors_storage)
         result = runtime.evaluate_computation(
             computation=my_comp,
             role_assignment={

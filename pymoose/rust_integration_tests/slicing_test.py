@@ -8,7 +8,6 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 def compile_and_run(slice_comp, x_arg):
@@ -18,7 +17,7 @@ def compile_and_run(slice_comp, x_arg):
         "bob": {"x_arg": x_arg},
     }
 
-    runtime = LocalMooseRuntime(storage_mapping=storage)
+    runtime = pm.LocalMooseRuntime(storage_mapping=storage)
     _ = runtime.evaluate_computation(
         computation=slice_comp,
         role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
@@ -160,7 +159,7 @@ class SliceExample(parameterized.TestCase):
             return res
 
         x_arg = np.ones([4, 3, 5], dtype=np.float64)
-        runtime = LocalMooseRuntime(storage_mapping={"alice": {}})
+        runtime = pm.LocalMooseRuntime(storage_mapping={"alice": {}})
         _ = runtime.evaluate_computation(
             computation=my_comp,
             role_assignment={"alice": "alice"},

@@ -301,6 +301,7 @@ fn extract_dtype(npy_filename: &str) -> Result<Ty> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use moose::tokio;
     use ndarray::array;
     use std::io::Write;
     use tempfile::NamedTempFile;

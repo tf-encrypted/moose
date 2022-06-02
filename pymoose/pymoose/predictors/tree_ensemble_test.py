@@ -13,7 +13,6 @@ import pymoose as pm
 from pymoose.logger import get_logger
 from pymoose.predictors import predictor_utils
 from pymoose.predictors import tree_ensemble
-from pymoose.testing import LocalMooseRuntime
 
 _XGB_REGRESSOR_MODELS = [("xgboost_regressor", [14.121551, 14.121551, 113.279236])]
 _SK_REGRESSOR_MODELS = [
@@ -163,7 +162,7 @@ class TreeEnsembleTest(parameterized.TestCase):
         )
 
         storage = {plc.name: {} for plc in predictor.host_placements}
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in predictor.host_placements}
         result_dict = runtime.evaluate_computation(
             computation=predictor_logic,

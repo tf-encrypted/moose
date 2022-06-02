@@ -81,6 +81,7 @@ pub fn parse_columns(query: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use moose::tokio;
     use moose::types::HostFloat64Tensor;
     use ndarray::array;
     use std::convert::TryFrom;

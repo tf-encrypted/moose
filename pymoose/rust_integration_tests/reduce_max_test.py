@@ -8,7 +8,6 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class ReducemaxLogicExample(parameterized.TestCase):
@@ -53,7 +52,7 @@ class ReducemaxLogicExample(parameterized.TestCase):
             "bob": {"x_arg": x_arg},
         }
 
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
             computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},

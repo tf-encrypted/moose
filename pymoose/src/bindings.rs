@@ -1,11 +1,12 @@
 use crate::computation::PyComputation;
 use moose::compilation::compile;
 use moose::compilation::toposort;
-use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
-use moose::execution::Identity;
-use moose::host::{FromRaw, HostBitTensor, HostPlacement, HostString, HostTensor};
+use moose::host::HostTensor;
+use moose::prelude::*;
 use moose::textual::{parallel_parse_computation, ToTextual};
+use moose::tokio;
+use moose_modules::execution::grpc::GrpcMooseRuntime;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;
@@ -22,7 +23,7 @@ fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
     toposort::toposort(rust_comp).unwrap()
 }
 
-fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
+fn pyobj_to_value(py: Python, obj: &PyObject) -> PyResult<Value> {
     let obj_ref = obj.as_ref(py);
     if obj_ref.is_instance_of::<PyString>()? {
         let string_value: String = obj.extract(py)?;
@@ -37,7 +38,7 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
         // NOTE: this passes for any inner dtype, since python's isinstance will
         // only do a shallow typecheck. inside the pyobj_tensor_to_value we do further
         // introspection on the array & its dtype to map to the correct kind of Value
-        let value = pyobj_tensor_to_value(py, &obj).unwrap();
+        let value = pyobj_tensor_to_value(py, obj).unwrap();
         Ok(value)
     } else {
         Err(PyTypeError::new_err(
@@ -197,7 +198,7 @@ impl LocalRuntime {
         value: PyObject,
     ) -> PyResult<()> {
         let identity = Identity::from(identity);
-        let value_to_store = pyobj_to_value(py, value)?;
+        let value_to_store = pyobj_to_value(py, &value)?;
         let _result = self
             .runtime
             .write_value_to_storage(identity, key, value_to_store)
@@ -231,7 +232,7 @@ impl LocalRuntime {
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let arguments = arguments
             .iter()
-            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
+            .map(|(name, value)| (name.clone(), pyobj_to_value(py, value).unwrap()))
             .collect::<HashMap<String, Value>>();
 
         let valid_role_assignments = role_assignments
@@ -259,6 +260,77 @@ impl LocalRuntime {
                 }
             }
             Err(e) => return Err(PyRuntimeError::new_err(e.to_string())),
+        }
+
+        Ok(Some(outputs_py_val))
+    }
+}
+
+#[pyclass(subclass)]
+pub struct GrpcRuntime {
+    tokio_runtime: tokio::runtime::Runtime,
+    grpc_runtime: GrpcMooseRuntime,
+}
+
+#[pymethods]
+impl GrpcRuntime {
+    #[new]
+    fn new(role_assignment: HashMap<String, String>) -> Self {
+        let typed_role_assignment = role_assignment
+            .into_iter()
+            .map(|(role, identity)| (Role::from(role), Identity::from(identity)))
+            .collect::<HashMap<Role, Identity>>();
+
+        let tokio_runtime = tokio::runtime::Runtime::new().expect("failed to create Tokio runtime");
+
+        let grpc_runtime = {
+            let _guard = tokio_runtime.enter();
+            GrpcMooseRuntime::new(typed_role_assignment, None).unwrap()
+        };
+
+        GrpcRuntime {
+            grpc_runtime,
+            tokio_runtime,
+        }
+    }
+
+    fn evaluate_computation(
+        &mut self,
+        py: Python,
+        computation: Vec<u8>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let logical_computation = create_computation_graph_from_py_bytes(computation);
+
+        let physical_computation = compile::<moose::compilation::Pass>(logical_computation, None)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+        // TODO(Morten) run_computation should accept arguments!
+        let _typed_arguments = arguments
+            .iter()
+            .map(|(name, value)| (name.clone(), pyobj_to_value(py, value).unwrap()))
+            .collect::<HashMap<String, Value>>();
+
+        let session_id = SessionId::random();
+
+        let typed_outputs = self
+            .tokio_runtime
+            .block_on(
+                self.grpc_runtime
+                    .run_computation(&session_id, &physical_computation),
+            )
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+        let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
+        for (output_name, value) in typed_outputs {
+            match value {
+                Value::HostUnit(_) => None,
+                // TODO: not sure what to support, should eventually standardize output types of computations
+                Value::HostString(s) => Some(PyString::new(py, &s.0).to_object(py)),
+                Value::Float64(f) => Some(PyFloat::new(py, *f).to_object(py)),
+                // assume it's a tensor
+                _ => outputs_py_val.insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
+            };
         }
 
         Ok(Some(outputs_py_val))
@@ -357,6 +429,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 #[pymodule]
 fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LocalRuntime>()?;
+    m.add_class::<GrpcRuntime>()?;
     m.add_class::<MooseComputation>()?;
     Ok(())
 }
