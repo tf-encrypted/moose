@@ -6,7 +6,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 
 
@@ -64,33 +63,6 @@ class TensorIdentityExample(parameterized.TestCase):
 
     @parameterized.parameters(
         ("alice-0", "alice-1", True),
-        ("alice-0", "replicated-0", True),
-        ("replicated-0", "replicated-1", True),
-        ("replicated-0", "alice-0", True),
-    )
-    def test_identity_example_serde(self, f, t, e):
-        identity_comp = self._setup_identity_comp(f, t, e)
-        traced_identity_comp = pm.trace(identity_comp)
-        comp_bin = utils.serialize_computation(traced_identity_comp)
-        # Compile in Rust
-        # If this does not error, rust was able to deserialize the pycomputation
-        pm.elk_compiler.compile_computation(comp_bin, [])
-
-    @parameterized.parameters(
-        ("alice-0", "alice-1", True),
-        ("alice-0", "alice-1", False),
-        ("alice-0", "replicated-0", True),
-        ("replicated-0", "replicated-1", True),
-        ("replicated-0", "alice-0", True),
-    )
-    def test_identity_example_compile(self, f, t, e):
-        identity_comp = self._setup_identity_comp(f, t, e)
-        traced_identity_comp = pm.trace(identity_comp)
-        comp_bin = utils.serialize_computation(traced_identity_comp)
-        _ = pm.elk_compiler.compile_computation(comp_bin)
-
-    @parameterized.parameters(
-        ("alice-0", "alice-1", True),
         ("alice-0", "alice-1", False),
         ("alice-0", "replicated-0", True),
         ("replicated-0", "replicated-1", True),
@@ -98,7 +70,6 @@ class TensorIdentityExample(parameterized.TestCase):
     )
     def test_identity_example_execute(self, f, t, e):
         identity_comp = self._setup_identity_comp(f, t, e)
-        traced_identity_comp = pm.trace(identity_comp)
         storage = {
             "alice-0": {},
             "bob-0": {},
@@ -109,7 +80,7 @@ class TensorIdentityExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         result_dict = runtime.evaluate_computation(
-            computation=traced_identity_comp,
+            computation=identity_comp,
             role_assignment={
                 "alice-0": "alice-0",
                 "bob-0": "bob-0",

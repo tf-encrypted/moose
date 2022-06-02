@@ -30,7 +30,6 @@ class MirroredOpsExample(parameterized.TestCase):
 
     def test_example_execute(self):
         comp = self._setup_comp()
-        traced_less_comp = pm.trace(comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -38,7 +37,7 @@ class MirroredOpsExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         result_dict = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

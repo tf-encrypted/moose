@@ -107,7 +107,6 @@ class SqueezeExample(parameterized.TestCase):
     )
     def test_squeeze_fixed(self, x, axis, run_rep):
         comp = self._setup_squeeze_comp(axis, replicated=run_rep)
-        traced_squeeze_comp = pm.trace(comp)
 
         storage_rep = {
             "alice": {"x_arg": x},
@@ -117,7 +116,7 @@ class SqueezeExample(parameterized.TestCase):
 
         runtime_rep = pm.LocalMooseRuntime(storage_mapping=storage_rep)
         _ = runtime_rep.evaluate_computation(
-            computation=traced_squeeze_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg"},
         )
@@ -147,7 +146,6 @@ class SqueezeExample(parameterized.TestCase):
         x_arg = np.array(x, dtype=edsl_dtype.numpy_dtype)
 
         comp = self._setup_float_squeeze_comp(axis, edsl_dtype)
-        traced_maximum_comp = pm.trace(comp)
         storage = {
             "alice": {"x_arg": x_arg},
             "bob": {},
@@ -156,7 +154,7 @@ class SqueezeExample(parameterized.TestCase):
 
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_maximum_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg"},
         )

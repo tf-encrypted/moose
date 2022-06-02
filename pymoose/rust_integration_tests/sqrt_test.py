@@ -39,7 +39,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_sqrt_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         sqrt_comp = self._setup_sqrt_comp(x_arg)
-        traced_sqrt_comp = pm.trace(sqrt_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -47,7 +46,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_sqrt_comp,
+            computation=sqrt_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

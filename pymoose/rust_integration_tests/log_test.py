@@ -46,7 +46,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_log_example_execute(self, x, log_op, np_log):
         x_arg = np.array(x, dtype=np.float64)
         exp_comp = self._setup_log_comp(x_arg, log_op)
-        traced_exp_comp = pm.trace(exp_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -54,7 +53,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
+            computation=exp_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

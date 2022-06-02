@@ -6,8 +6,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose import elk_compiler
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 
 player0 = pm.host_placement("player0")
@@ -53,13 +51,8 @@ class AddNExample(parameterized.TestCase):
             "player2": {},
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=executors_storage)
-        concrete_comp = pm.trace(my_comp)
-
-        comp_bin = utils.serialize_computation(concrete_comp)
-        rust_compiled = elk_compiler.compile_computation(comp_bin)
-
-        result = runtime.evaluate_compiled(
-            comp_bin=rust_compiled,
+        result = runtime.evaluate_computation(
+            computation=my_comp,
             role_assignment={
                 "player0": "player0",
                 "player1": "player1",

@@ -41,7 +41,6 @@ class ShapeExample(parameterized.TestCase):
     )
     def test_example_execute(self, dtype, shape_placement):
         comp = self._setup_comp(dtype, alice, shape_placement)
-        traced_comp = pm.trace(comp)
 
         storage = {
             "alice": {},
@@ -51,7 +50,7 @@ class ShapeExample(parameterized.TestCase):
 
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         results = runtime.evaluate_computation(
-            computation=traced_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

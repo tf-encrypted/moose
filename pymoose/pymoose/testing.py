@@ -26,6 +26,8 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
         arguments=None,
         compiler_passes=None,
     ):
+        if isinstance(computation, AbstractComputation):
+            computation = trace(computation)
         if arguments is None:
             arguments = {}
         comp_bin = utils.serialize_computation(computation)

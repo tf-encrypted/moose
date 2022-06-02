@@ -57,8 +57,6 @@ class ReshapeExample(parameterized.TestCase):
         elif reshape_placement == rep:
             comp = self._setup_rep_comp()
 
-        traced_comp = pm.trace(comp)
-
         storage = {
             "alice": {},
             "carole": {},
@@ -67,7 +65,7 @@ class ReshapeExample(parameterized.TestCase):
 
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         runtime.evaluate_computation(
-            computation=traced_comp,
+            computation=comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

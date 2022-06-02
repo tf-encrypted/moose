@@ -59,7 +59,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_exp_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         exp_comp = self._setup_fixed_exp_comp(x_arg)
-        traced_exp_comp = pm.trace(exp_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -67,7 +66,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
+            computation=exp_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
@@ -83,7 +82,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_float_exp_execute(self, x, moose_dtype):
         x_arg = np.array(x, dtype=moose_dtype.numpy_dtype)
         exp_comp = self._setup_float_exp_comp(x_arg, moose_dtype)
-        traced_exp_comp = pm.trace(exp_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -91,7 +89,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
+            computation=exp_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

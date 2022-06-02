@@ -62,7 +62,6 @@ class BooleanLogicExample(parameterized.TestCase):
     )
     def test_bool_example_execute(self, x, y):
         less_comp = self._setup_comp()
-        traced_less_comp = pm.trace(less_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -80,7 +79,7 @@ class BooleanLogicExample(parameterized.TestCase):
 
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_less_comp,
+            computation=less_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg", "y_uri": "y_arg", "ya_uri": "ya_arg"},
         )

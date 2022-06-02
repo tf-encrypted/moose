@@ -1,4 +1,3 @@
-import itertools
 import pathlib
 
 import numpy as np
@@ -7,7 +6,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose import testing
-from pymoose.computation import utils as comp_utils
 from pymoose.predictors import linear_predictor
 from pymoose.predictors import predictor_utils
 
@@ -81,7 +79,6 @@ class LinearPredictorTest(parameterized.TestCase):
             model_name, linear_predictor.LinearRegressor
         )
 
-        traced_predictor = pm.trace(regressor_logic)
         storage = {plc.name: {} for plc in regressor.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
@@ -90,7 +87,7 @@ class LinearPredictorTest(parameterized.TestCase):
             [[1.0, 1.0, 1.0, 1.0], [-0.9, 1.3, 0.6, -0.4]], dtype=np.float64
         )
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
+            computation=regressor_logic,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )
@@ -104,14 +101,13 @@ class LinearPredictorTest(parameterized.TestCase):
             model_name, linear_predictor.LinearClassifier
         )
 
-        traced_predictor = pm.trace(classifier_logic)
         storage = {plc.name: {} for plc in classifier.host_placements}
         runtime = testing.LocalMooseRuntime(storage_mapping=storage)
         role_assignment = {plc.name: plc.name for plc in classifier.host_placements}
 
         input_x = np.array([[-0.9, 1.3, 0.6, -0.4]], dtype=np.float64)
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
+            computation=classifier_logic,
             role_assignment=role_assignment,
             arguments={"x": input_x},
         )
@@ -120,25 +116,3 @@ class LinearPredictorTest(parameterized.TestCase):
         # TODO multiple divisions seems to lose significant amount of precision
         # (hence decimal=2 here)
         np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
-
-    @parameterized.parameters(
-        *zip(
-            map(lambda x: x[0], _SK_REGRESSION_MODELS),
-            itertools.repeat(linear_predictor.LinearRegressor),
-        ),
-        *zip(
-            map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
-            itertools.repeat(linear_predictor.LinearClassifier),
-        ),
-    )
-    def test_serde(self, model_name, predictor_cls):
-        regressor = self._build_linear_predictor(model_name, predictor_cls)
-        predictor = regressor.predictor_factory()
-        traced_predictor = pm.trace(predictor)
-        serialized = comp_utils.serialize_computation(traced_predictor)
-        logical_comp_rustref = pm.elk_compiler.compile_computation(serialized, [])
-        logical_comp_rustbytes = logical_comp_rustref.to_bytes()
-        pm.MooseComputation.from_bytes(logical_comp_rustbytes)
-        # NOTE: could also dump to disk as follows (but we don't in the test)
-        # logical_comp_rustref.to_disk(path)
-        # pm.MooseComputation.from_disk(path)

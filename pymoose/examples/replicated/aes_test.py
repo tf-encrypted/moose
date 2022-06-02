@@ -7,7 +7,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 
 
@@ -36,26 +35,9 @@ class ReplicatedExample(parameterized.TestCase):
         return my_aes_comp
 
     @parameterized.parameters(True, False)
-    def test_aes_example_serde(self, host_decrypt):
-        aes_comp = self._setup_aes_comp(host_decrypt)
-        traced_aes_comp = pm.trace(aes_comp)
-        comp_bin = utils.serialize_computation(traced_aes_comp)
-        # Compile in Rust
-        # If this does not error, rust was able to deserialize the pycomputation
-        pm.elk_compiler.compile_computation(comp_bin, [])
-
-    @parameterized.parameters(True, False)
-    def test_aes_example_compile(self, host_decrypt):
-        aes_comp = self._setup_aes_comp(host_decrypt)
-        traced_aes_comp = pm.trace(aes_comp)
-        comp_bin = utils.serialize_computation(traced_aes_comp)
-        _ = pm.elk_compiler.compile_computation(comp_bin)
-
-    @parameterized.parameters(True, False)
     @pytest.mark.slow
     def test_aes_example_execute(self, host_decrypt):
         aes_comp = self._setup_aes_comp(host_decrypt)
-        traced_aes_comp = pm.trace(aes_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -63,7 +45,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_aes_comp,
+            computation=aes_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={
                 "key/alice/share0": np.array([0] * 128, dtype=np.bool_),

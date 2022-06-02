@@ -10,7 +10,7 @@ from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 
 
-def compile_and_run(traced_slice_comp, x_arg):
+def compile_and_run(slice_comp, x_arg):
     storage = {
         "alice": {},
         "carole": {},
@@ -19,7 +19,7 @@ def compile_and_run(traced_slice_comp, x_arg):
 
     runtime = pm.LocalMooseRuntime(storage_mapping=storage)
     _ = runtime.evaluate_computation(
-        computation=traced_slice_comp,
+        computation=slice_comp,
         role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
         arguments={"x_uri": "x_arg"},
     )
@@ -63,10 +63,9 @@ class SliceExample(parameterized.TestCase):
     )
     def test_slice_types_execute(self, x, to_dtype, slice_spec):
         comp = self._setup_comp(slice_spec, to_dtype)
-        traced_slice_comp = pm.trace(comp)
 
         x_arg = np.array(x, dtype=to_dtype.numpy_dtype)
-        x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
+        x_from_runtime = compile_and_run(comp, x_arg)
 
         expected_npy = x_arg[slice_spec]
         np.testing.assert_equal(x_from_runtime, expected_npy)
@@ -87,11 +86,10 @@ class SliceExample(parameterized.TestCase):
             return my_comp
 
         comp = setup_basic_comp()
-        traced_slice_comp = pm.trace(comp)
         x_arg = np.array(
             [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
         )
-        x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
+        x_from_runtime = compile_and_run(comp, x_arg)
         np.testing.assert_equal(x_from_runtime, x_arg[1:, 1:2])
 
     def test_basic_colons(self):
@@ -110,11 +108,10 @@ class SliceExample(parameterized.TestCase):
             return my_comp
 
         comp = setup_basic_comp()
-        traced_slice_comp = pm.trace(comp)
         x_arg = np.array(
             [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
         )
-        x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
+        x_from_runtime = compile_and_run(comp, x_arg)
         np.testing.assert_equal(x_from_runtime, x_arg[:, 2:4])
 
     def test_rep_basic(self):
@@ -143,11 +140,10 @@ class SliceExample(parameterized.TestCase):
             return my_comp
 
         comp = setup_basic_comp()
-        traced_slice_comp = pm.trace(comp)
         x_arg = np.array(
             [[1, 23.0, 321, 30.321, 321], [32.0, 321, 5, 3.0, 32.0]], dtype=np.float64
         )
-        x_from_runtime = compile_and_run(traced_slice_comp, x_arg)
+        x_from_runtime = compile_and_run(comp, x_arg)
         np.testing.assert_equal(x_from_runtime, x_arg[1:, 1:2])
 
     def test_shape_slice(self):
@@ -162,11 +158,10 @@ class SliceExample(parameterized.TestCase):
                 res = pm.save("ones", ones_res)
             return res
 
-        traced_slice_comp = pm.trace(my_comp)
         x_arg = np.ones([4, 3, 5], dtype=np.float64)
         runtime = pm.LocalMooseRuntime(storage_mapping={"alice": {}})
         _ = runtime.evaluate_computation(
-            computation=traced_slice_comp,
+            computation=my_comp,
             role_assignment={"alice": "alice"},
             arguments={"x": x_arg},
         )

@@ -39,13 +39,12 @@ class HostExample(parameterized.TestCase):
         dtype = pm.float64
         x_arg = np.array(x, dtype=np.float64)
         zeros_comp = self._setup_zeros_comp(dtype, x_arg, zeros_op)
-        traced_zeros_comp = pm.trace(zeros_comp)
         storage = {
             "bob": {},
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_zeros_comp,
+            computation=zeros_comp,
             role_assignment={"bob": "bob"},
             arguments={},
         )

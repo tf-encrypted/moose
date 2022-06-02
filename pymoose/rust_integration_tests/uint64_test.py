@@ -33,7 +33,6 @@ class ReplicatedExample(parameterized.TestCase):
     def test_int_example_execute(self, x):
         x_arg = np.array(x, dtype=np.uint64)
         int_comp = self._setup_int64_comp(x_arg)
-        traced_exp_comp = pm.trace(int_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -41,7 +40,7 @@ class ReplicatedExample(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
+            computation=int_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )

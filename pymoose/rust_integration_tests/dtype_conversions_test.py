@@ -87,7 +87,6 @@ class DTypeConversionTest(parameterized.TestCase):
         x_npy = np.array(x_array, dtype=from_dtype.numpy_dtype)
         expected_npy = x_npy.astype(to_dtype.numpy_dtype)
         cast_comp = self._setup_comp(x_npy, from_dtype, to_dtype)
-        traced_comp = pm.trace(cast_comp)
         storage = {
             "alice": {},
             "bob": {},
@@ -95,7 +94,7 @@ class DTypeConversionTest(parameterized.TestCase):
         }
         runtime = pm.LocalMooseRuntime(storage_mapping=storage)
         _ = runtime.evaluate_computation(
-            computation=traced_comp,
+            computation=cast_comp,
             role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
