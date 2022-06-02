@@ -12,6 +12,7 @@ on:
 jobs:
   cargo-audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v1
       - uses: actions-rs/audit-check@v1
