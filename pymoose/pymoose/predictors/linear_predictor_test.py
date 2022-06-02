@@ -1,4 +1,3 @@
-import itertools
 import pathlib
 
 import numpy as np
@@ -7,7 +6,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose import testing
-from pymoose.computation import utils as comp_utils
 from pymoose.predictors import linear_predictor
 from pymoose.predictors import predictor_utils
 

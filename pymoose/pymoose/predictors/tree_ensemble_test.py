@@ -10,7 +10,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose.computation import utils as comp_utils
 from pymoose.logger import get_logger
 from pymoose.predictors import predictor_utils
 from pymoose.predictors import tree_ensemble
