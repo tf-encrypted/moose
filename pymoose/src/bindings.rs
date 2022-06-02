@@ -23,7 +23,7 @@ fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
     toposort::toposort(rust_comp).unwrap()
 }
 
-fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
+fn pyobj_to_value(py: Python, obj: &PyObject) -> PyResult<Value> {
     let obj_ref = obj.as_ref(py);
     if obj_ref.is_instance_of::<PyString>()? {
         let string_value: String = obj.extract(py)?;
@@ -38,7 +38,7 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
         // NOTE: this passes for any inner dtype, since python's isinstance will
         // only do a shallow typecheck. inside the pyobj_tensor_to_value we do further
         // introspection on the array & its dtype to map to the correct kind of Value
-        let value = pyobj_tensor_to_value(py, &obj).unwrap();
+        let value = pyobj_tensor_to_value(py, obj).unwrap();
         Ok(value)
     } else {
         Err(PyTypeError::new_err(
@@ -198,7 +198,7 @@ impl LocalRuntime {
         value: PyObject,
     ) -> PyResult<()> {
         let identity = Identity::from(identity);
-        let value_to_store = pyobj_to_value(py, value)?;
+        let value_to_store = pyobj_to_value(py, &value)?;
         let _result = self
             .runtime
             .write_value_to_storage(identity, key, value_to_store)
@@ -232,7 +232,7 @@ impl LocalRuntime {
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let arguments = arguments
             .iter()
-            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
+            .map(|(name, value)| (name.clone(), pyobj_to_value(py, value).unwrap()))
             .collect::<HashMap<String, Value>>();
 
         let valid_role_assignments = role_assignments
@@ -302,7 +302,7 @@ impl GrpcRuntime {
 
         let typed_arguments = arguments
             .iter()
-            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
+            .map(|(name, value)| (name.clone(), pyobj_to_value(py, value).unwrap()))
             .collect::<HashMap<String, Value>>();
 
         let session_id = SessionId::random();
