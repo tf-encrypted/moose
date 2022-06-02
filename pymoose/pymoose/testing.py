@@ -47,9 +47,7 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
 
 class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
     def __new__(cls, role_assignment):
-        return moose_runtime.GrpcRuntime.__new__(
-            GrpcMooseRuntime, role_assignment
-        )
+        return moose_runtime.GrpcRuntime.__new__(GrpcMooseRuntime, role_assignment)
 
     def evaluate_computation(
         self,
