@@ -160,12 +160,6 @@ class LinearRegressionExample(parameterized.TestCase):
     def test_linear_regression_mape(self):
         self._linear_regression_eval("mape")
 
-    def test_linear_regression_serde(self):
-        comp, _ = self._build_linear_regression_example()
-        compiled_comp = pm.trace(comp)
-        serialized = utils.serialize_computation(compiled_comp)
-        pm.elk_compiler.compile_computation(serialized, [])
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run example")

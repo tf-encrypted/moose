@@ -54,13 +54,8 @@ class AddNExample(parameterized.TestCase):
             "player2": {},
         }
         runtime = LocalMooseRuntime(storage_mapping=executors_storage)
-        concrete_comp = pm.trace(my_comp)
-
-        comp_bin = utils.serialize_computation(concrete_comp)
-        rust_compiled = elk_compiler.compile_computation(comp_bin)
-
-        result = runtime.evaluate_compiled(
-            comp_bin=rust_compiled,
+        result = runtime.evaluate_computation(
+            comp_bin=my_comp,
             role_assignment={
                 "player0": "player0",
                 "player1": "player1",

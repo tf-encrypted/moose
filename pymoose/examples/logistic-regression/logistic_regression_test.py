@@ -37,20 +37,6 @@ class ReplicatedExample(parameterized.TestCase):
 
         return my_model_comp
 
-    def test_logistic_regression_example_serde(self):
-        model_comp = self._setup_model_comp()
-        traced_model_comp = pm.trace(model_comp)
-        comp_bin = utils.serialize_computation(traced_model_comp)
-        # Compile in Rust
-        # If this does not error, rust was able to deserialize the pycomputation
-        pm.elk_compiler.compile_computation(comp_bin, [])
-
-    def test_logistic_regression_example_compile(self):
-        model_comp = self._setup_model_comp()
-        traced_model_comp = pm.trace(model_comp)
-        comp_bin = utils.serialize_computation(traced_model_comp)
-        _ = pm.elk_compiler.compile_computation(comp_bin)
-
     def test_logistic_regression_example_execute(self):
         input_x = np.array([2.0, 1.0], dtype=np.float64)
         input_weights = np.array([0.5, 0.1], dtype=np.float64)

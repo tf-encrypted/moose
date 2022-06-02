@@ -118,25 +118,3 @@ class LinearPredictorTest(parameterized.TestCase):
         # TODO multiple divisions seems to lose significant amount of precision
         # (hence decimal=2 here)
         np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
-
-    @parameterized.parameters(
-        *zip(
-            map(lambda x: x[0], _SK_REGRESSION_MODELS),
-            itertools.repeat(linear_predictor.LinearRegressor),
-        ),
-        *zip(
-            map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
-            itertools.repeat(linear_predictor.LinearClassifier),
-        ),
-    )
-    def test_serde(self, model_name, predictor_cls):
-        regressor = self._build_linear_predictor(model_name, predictor_cls)
-        predictor = regressor.predictor_factory()
-        traced_predictor = pm.trace(predictor)
-        serialized = comp_utils.serialize_computation(traced_predictor)
-        logical_comp_rustref = pm.elk_compiler.compile_computation(serialized, [])
-        logical_comp_rustbytes = logical_comp_rustref.to_bytes()
-        pm.MooseComputation.from_bytes(logical_comp_rustbytes)
-        # NOTE: could also dump to disk as follows (but we don't in the test)
-        # logical_comp_rustref.to_disk(path)
-        # pm.MooseComputation.from_disk(path)
