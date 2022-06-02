@@ -281,8 +281,13 @@ impl GrpcRuntime {
             .map(|(role, identity)| (Role::from(role), Identity::from(identity)))
             .collect::<HashMap<Role, Identity>>();
 
-        let grpc_runtime = GrpcMooseRuntime::new(typed_role_assignment, None).unwrap();
         let tokio_runtime = tokio::runtime::Runtime::new().expect("failed to create Tokio runtime");
+        
+        let grpc_runtime = {
+            let _guard = tokio_runtime.enter();
+            GrpcMooseRuntime::new(typed_role_assignment, None).unwrap()
+        };
+
         GrpcRuntime {
             grpc_runtime,
             tokio_runtime,
@@ -424,6 +429,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 #[pymodule]
 fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LocalRuntime>()?;
+    m.add_class::<GrpcRuntime>()?;
     m.add_class::<MooseComputation>()?;
     Ok(())
 }

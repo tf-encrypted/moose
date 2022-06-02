@@ -41,3 +41,20 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
 
     def write_value_to_storage(self, identity, key, value):
         return super().write_value_to_storage(identity, key, value)
+
+
+class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
+    def __new__(cls, role_assignment):
+        return moose_runtime.GrpcRuntime.__new__(
+            GrpcMooseRuntime, role_assignment
+        )
+
+    def evaluate_computation(
+        self,
+        computation,
+        arguments=None,
+    ):
+        if arguments is None:
+            arguments = {}
+        comp_bin = utils.serialize_computation(computation)
+        return super().evaluate_computation(comp_bin, arguments)
