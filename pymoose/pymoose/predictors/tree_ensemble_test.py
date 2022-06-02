@@ -11,7 +11,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose import runtime as rt
-from pymoose.computation import utils as comp_utils
 from pymoose.logger import get_logger
 from pymoose.predictors import predictor_utils
 from pymoose.predictors import tree_ensemble
@@ -171,25 +170,6 @@ class TreeEnsembleTest(parameterized.TestCase):
         actual_result = list(result_dict.values())[0]
         expected_result = np.array(expected, dtype=np.float64)
         np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
-
-    @parameterized.parameters(
-        *zip(
-            map(lambda x: x[0], _REGRESSOR_MODELS),
-            itertools.repeat(tree_ensemble.TreeEnsembleRegressor),
-        ),
-        *zip(
-            map(lambda x: x[0], _CLASSIFIER_MODELS),
-            itertools.repeat(tree_ensemble.TreeEnsembleClassifier),
-        ),
-    )
-    def test_serde(self, model_name, predictor_cls):
-        forest = self._build_forest_from_onnx(model_name, predictor_cls)
-        predictor = forest.predictor_factory()
-        traced = pm.trace(predictor)
-        serialized = comp_utils.serialize_computation(traced)
-        logical_rustref = pm.elk_compiler.compile_computation(serialized, [])
-        logical_rustbytes = logical_rustref.to_bytes()
-        pm.MooseComputation.from_bytes(logical_rustbytes)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 
 
@@ -34,22 +33,6 @@ class ReplicatedExample(parameterized.TestCase):
             return res
 
         return my_aes_comp
-
-    @parameterized.parameters(True, False)
-    def test_aes_example_serde(self, host_decrypt):
-        aes_comp = self._setup_aes_comp(host_decrypt)
-        traced_aes_comp = pm.trace(aes_comp)
-        comp_bin = utils.serialize_computation(traced_aes_comp)
-        # Compile in Rust
-        # If this does not error, rust was able to deserialize the pycomputation
-        pm.elk_compiler.compile_computation(comp_bin, [])
-
-    @parameterized.parameters(True, False)
-    def test_aes_example_compile(self, host_decrypt):
-        aes_comp = self._setup_aes_comp(host_decrypt)
-        traced_aes_comp = pm.trace(aes_comp)
-        comp_bin = utils.serialize_computation(traced_aes_comp)
-        _ = pm.elk_compiler.compile_computation(comp_bin)
 
     @parameterized.parameters(True, False)
     @pytest.mark.slow

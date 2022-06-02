@@ -11,14 +11,14 @@ from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 
 
-def compile_and_run(traced_slice_comp, x_arg):
+def compile_and_run(slice_comp, x_arg):
     storage = {
         "bob": {"x_arg": x_arg},
     }
 
     runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"], storage)
     _ = runtime.evaluate_computation(
-        computation=traced_slice_comp,
+        computation=slice_comp,
         arguments={"x_uri": "x_arg"},
     )
 

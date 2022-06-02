@@ -7,7 +7,6 @@ from absl.testing import parameterized
 
 import pymoose as pm
 from pymoose import runtime as rt
-from pymoose.computation import utils
 from pymoose.logger import get_logger
 
 player0 = pm.host_placement("player0")
