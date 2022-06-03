@@ -123,6 +123,8 @@ impl AsyncNetworking for GrpcNetworking {
                 };
                 let channel = self.channel(receiver)?;
                 let mut client = NetworkingClient::new(channel);
+                #[cfg(debug_assertions)]
+                tracing::debug!("Sending '{}' to {}", rendezvous_key, receiver);
                 let _response = client
                     .send_value(request)
                     .await
@@ -154,10 +156,16 @@ impl AsyncNetworking for GrpcNetworking {
                         sender, actual_sender
                     )))
                 } else {
+                    #[cfg(debug_assertions)]
+                    tracing::debug!("Received '{}' from {}", rendezvous_key, sender);
                     Ok(value)
                 }
             }
-            None => Ok(value),
+            None => {
+                #[cfg(debug_assertions)]
+                tracing::debug!("Received '{}' from {}", rendezvous_key, sender);
+                Ok(value)
+            }
         }
     }
 }
