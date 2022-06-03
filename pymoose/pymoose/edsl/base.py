@@ -1055,6 +1055,7 @@ class AbstractComputation:
         runtime = get_current_runtime()
         if not runtime:
             raise RuntimeError("No default runtime found")
+
         return runtime.evaluate_computation(self, arguments)
 
 
