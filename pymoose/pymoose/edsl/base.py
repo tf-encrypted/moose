@@ -1046,26 +1046,32 @@ class AbstractComputation:
         # add values from `args`
         for arg_i, arg_val in enumerate(args):
             if arg_i >= len(arg_names):
-                raise ValueError("too many arguments")
+                raise ValueError(f"Too many arguments for `{self.func.__name__}`")
             arg_name = arg_names[arg_i]
             arguments[arg_name] = arg_val
 
         # add values from `kwargs`
         for arg_name, arg_val in kwargs.items():
             if arg_name in arguments:
-                raise ValueError(f"Argument `{arg_name}` given more than once")
+                raise ValueError(
+                    f"Argument `{arg_name}` given more than once to `{self.func.__name__}`"
+                )
             arguments[arg_name] = arg_val
 
         # check that all arguments were given
         for arg_name in arg_names:
             if arg_name not in arguments:
-                raise ValueError(f"Missing argument `{arg_name}`")
+                raise ValueError(
+                    f"Missing argument `{arg_name}` in call to `{self.func.__name__}`"
+                )
 
         # check that no extra arguments were given
         # NOTE we could potentially leave out this check
         for arg_name in arguments.keys():
             if arg_name not in arg_names:
-                raise ValueError(f"Argument `{arg_name}` is not used")
+                raise ValueError(
+                    f"Argument `{arg_name}` is not used by `{self.func.__name__}`"
+                )
 
         runtime = get_current_runtime()
         if not runtime:
