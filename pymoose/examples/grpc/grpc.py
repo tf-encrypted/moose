@@ -6,13 +6,15 @@ import numpy as np
 import pymoose as pm
 from pymoose.logger import get_logger
 
+alice = pm.host_placement("alice")
+bob = pm.host_placement("bob")
+carole = pm.host_placement("carole")
+
 
 @pm.computation
-def my_computation():
-    alice = pm.host_placement("alice")
-    bob = pm.host_placement("bob")
-    carole = pm.host_placement("carole")
-
+def my_computation(
+    c: pm.Argument(placement=alice, vtype=pm.TensorType(pm.float64)),
+):
     with alice:
         x = pm.constant(np.array([1.0, 2.0], dtype=np.float64))
 
@@ -21,6 +23,7 @@ def my_computation():
 
     with carole:
         z = pm.add(x, y)
+        z = pm.add(z, c)
 
     return z
 
@@ -41,5 +44,6 @@ if __name__ == "__main__":
         }
     )
 
-    results = runtime.evaluate_computation(my_computation)
+    arguments = {"c": np.array([5.0, 6.0], dtype=np.float64)}
+    results = runtime.evaluate_computation(my_computation, arguments)
     print(results)

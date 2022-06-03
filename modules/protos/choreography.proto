@@ -11,7 +11,8 @@ service Choreography {
 message LaunchComputationRequest {
     bytes session_id = 1;
     bytes computation = 2;
-    bytes role_assignment = 3;
+    bytes arguments = 3;
+    bytes role_assignment = 4;
 }
 
 message LaunchComputationResponse {}

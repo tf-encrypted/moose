@@ -305,8 +305,7 @@ impl GrpcRuntime {
         let physical_computation = compile::<moose::compilation::Pass>(logical_computation, None)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
-        // TODO(Morten) run_computation should accept arguments!
-        let _typed_arguments = arguments
+        let typed_arguments = arguments
             .iter()
             .map(|(name, value)| (name.clone(), pyobj_to_value(py, value).unwrap()))
             .collect::<HashMap<String, Value>>();
@@ -315,10 +314,11 @@ impl GrpcRuntime {
 
         let typed_outputs = self
             .tokio_runtime
-            .block_on(
-                self.grpc_runtime
-                    .run_computation(&session_id, &physical_computation),
-            )
+            .block_on(self.grpc_runtime.run_computation(
+                &session_id,
+                &physical_computation,
+                typed_arguments,
+            ))
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
         let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();

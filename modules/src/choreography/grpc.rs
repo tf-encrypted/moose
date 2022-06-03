@@ -117,6 +117,13 @@ impl Choreography for GrpcChoreography {
                     )
                 })?;
 
+                let arguments = bincode::deserialize(&request.arguments).map_err(|_e| {
+                    tonic::Status::new(
+                        tonic::Code::Aborted,
+                        "failed to parse arguments".to_string(),
+                    )
+                })?;
+
                 let role_assignments =
                     bincode::deserialize(&request.role_assignment).map_err(|_e| {
                         tonic::Status::new(
@@ -130,7 +137,12 @@ impl Choreography for GrpcChoreography {
                 let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
                 let (_handle, outputs) = context
-                    .execute_computation(session_id.clone(), &computation, role_assignments)
+                    .execute_computation(
+                        session_id.clone(),
+                        &computation,
+                        arguments,
+                        role_assignments,
+                    )
                     .await
                     .map_err(|_e| {
                         tonic::Status::new(
