@@ -100,7 +100,6 @@ mod tests {
     fn _run_computation_test(
         computation: Computation,
         storage_mapping: HashMap<String, HashMap<String, Value>>,
-        role_assignments: HashMap<String, String>,
         arguments: HashMap<String, Value>,
         run_async: bool,
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
@@ -117,16 +116,8 @@ mod tests {
                 Ok(outputs)
             }
             true => {
-                let valid_role_assignments = role_assignments
-                    .into_iter()
-                    .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-                    .collect::<HashMap<Role, Identity>>();
                 let mut executor = AsyncTestRuntime::new(storage_mapping);
-                let outputs = executor.evaluate_computation(
-                    &computation,
-                    valid_role_assignments,
-                    arguments,
-                )?;
+                let outputs = executor.evaluate_computation(&computation, arguments)?;
                 Ok(outputs)
             }
         }
@@ -157,12 +148,9 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
             definition.try_into()?,
             storage_mapping,
-            role_assignments,
             arguments,
             run_async,
         )?;
@@ -183,15 +171,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
         if run_async {
@@ -225,15 +206,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let output: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(output.0, RawShape(vec![2, 2]));
@@ -254,15 +228,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!("x".to_string() => x, "y".to_string()=> y);
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let z: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         let expected: Value = "HostInt64Tensor([15]) @Host(alice)".try_into()?;
@@ -303,18 +270,8 @@ mod tests {
         let saved_data = match run_async {
             true => {
                 let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!("alice".to_string() => hashmap!("input_data".to_string() => input_data.clone()));
-                let role_assignments: HashMap<String, String> =
-                    hashmap!("alice".to_string() => "alice".to_string());
-                let valid_role_assignments = role_assignments
-                    .into_iter()
-                    .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-                    .collect::<HashMap<Role, Identity>>();
                 let mut executor = AsyncTestRuntime::new(storage_mapping);
-                let _outputs = executor.evaluate_computation(
-                    &source.try_into()?,
-                    valid_role_assignments,
-                    arguments,
-                )?;
+                let _outputs = executor.evaluate_computation(&source.try_into()?, arguments)?;
 
                 executor.read_value_from_storage(
                     Identity::from("alice".to_string()),
@@ -381,15 +338,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let concatenated: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, concatenated.into());
@@ -422,27 +372,14 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
-        let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
 
         let outputs = match run_async {
             true => {
                 let computation =
                     compile(computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
-                _run_computation_test(
-                    computation,
-                    storage_mapping,
-                    role_assignments,
-                    arguments,
-                    run_async,
-                )?
+                _run_computation_test(computation, storage_mapping, arguments, run_async)?
             }
-            false => _run_computation_test(
-                computation,
-                storage_mapping,
-                role_assignments,
-                arguments,
-                run_async,
-            )?,
+            false => _run_computation_test(computation, storage_mapping, arguments, run_async)?,
         };
 
         let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
@@ -465,27 +402,14 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
-        let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
 
         let outputs = match run_async {
             true => {
                 let computation =
                     compile(computation, Some(vec![Pass::Networking, Pass::Toposort]))?;
-                _run_computation_test(
-                    computation,
-                    storage_mapping,
-                    role_assignments,
-                    arguments,
-                    run_async,
-                )?
+                _run_computation_test(computation, storage_mapping, arguments, run_async)?
             }
-            false => _run_computation_test(
-                computation,
-                storage_mapping,
-                role_assignments,
-                arguments,
-                run_async,
-            )?,
+            false => _run_computation_test(computation, storage_mapping, arguments, run_async)?,
         };
 
         let expected_output: Value = HostTensor::<f32>(
@@ -509,15 +433,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let expected_output = HostTensor::<f32>(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
@@ -550,15 +467,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         match dtype.as_str() {
             "HostFloat32Tensor" => {
@@ -609,15 +519,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let actual_shape: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
         let actual_raw_shape = actual_shape.0;
@@ -637,15 +540,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
         let res: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
         let actual_shape = res.0;
         let expected_shape = RawShape(vec![3, 4]);
@@ -667,15 +563,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         let actual_shape = res.shape().0;
@@ -766,15 +655,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let comp_result = outputs
             .get("output")
@@ -813,15 +695,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let comp_result: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
@@ -849,15 +724,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let comp_result: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
@@ -888,15 +756,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let comp_result: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
@@ -964,15 +825,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         match type_str.as_str() {
             "HostRing64Tensor" => {
@@ -1041,15 +895,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         match type_str.as_str() {
             "Ring64" => {
@@ -1086,15 +933,8 @@ mod tests {
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+        let outputs =
+            _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         match type_str.as_str() {
             "HostRing64Tensor" => {

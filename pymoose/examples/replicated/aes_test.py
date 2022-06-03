@@ -38,15 +38,9 @@ class ReplicatedExample(parameterized.TestCase):
     @pytest.mark.slow
     def test_aes_example_execute(self, host_decrypt):
         aes_comp = self._setup_aes_comp(host_decrypt)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
             computation=aes_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={
                 "key/alice/share0": np.array([0] * 128, dtype=np.bool_),
                 "key/alice/share1": np.array([0] * 128, dtype=np.bool_),

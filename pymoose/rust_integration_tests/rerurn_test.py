@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
 
 
@@ -39,11 +40,9 @@ class RerunExample(parameterized.TestCase):
 
     def test_example_execute(self):
         comp = self._setup_comp()
-
-        runtime = pm.LocalMooseRuntime(identities=["alice", "bob", "carole"])
+        runtime = rt.LocalMooseRuntime(identities=["alice", "bob", "carole"])
         result_dict = runtime.evaluate_computation(
             computation=comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={},
         )
 
@@ -56,26 +55,6 @@ class RerunExample(parameterized.TestCase):
         # You should be able to rerun the computaiton as-is. You'll get a fresh session.
         result_dict = runtime.evaluate_computation(
             computation=comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
-            arguments={},
-        )
-
-        # You can also remap the roles among the original identities
-        result_dict = runtime.evaluate_computation(
-            computation=comp,
-            role_assignment={"alice": "bob", "bob": "carole", "carole": "alice"},
-            arguments={},
-        )
-
-        # But if you want to have different identities, you would need a new instance
-        runtime = pm.LocalMooseRuntime(identities=["newalice", "newbob", "newcarole"])
-        result_dict = runtime.evaluate_computation(
-            computation=comp,
-            role_assignment={
-                "alice": "newalice",
-                "bob": "newbob",
-                "carole": "newcarole",
-            },
             arguments={},
         )
 

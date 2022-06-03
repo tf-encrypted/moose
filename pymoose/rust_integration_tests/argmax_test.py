@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 
@@ -66,19 +67,15 @@ class ArgmaxExample(parameterized.TestCase):
     )
     def test_example_execute(self, x, axis, axis_idx_max):
         comp = self._setup_comp(axis, axis_idx_max)
-
         x_arg = np.array(x, dtype=np.float64)
-
         storage = {
-            "alice": {},
-            "carole": {},
             "bob": {"x_arg": x_arg},
         }
-
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(
+            ["alice", "bob", "carole"], storage_mapping=storage
+        )
         _ = runtime.evaluate_computation(
             computation=comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg"},
         )
 

@@ -70,25 +70,17 @@ class TensorIdentityExample(parameterized.TestCase):
     )
     def test_identity_example_execute(self, f, t, e):
         identity_comp = self._setup_identity_comp(f, t, e)
-        storage = {
-            "alice-0": {},
-            "bob-0": {},
-            "carole-0": {},
-            "alice-1": {},
-            "bob-1": {},
-            "carole-1": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        identities = [
+            "alice-0",
+            "bob-0",
+            "carole-0",
+            "alice-1",
+            "bob-1",
+            "carole-1",
+        ]
+        runtime = pm.LocalMooseRuntime(identities)
         result_dict = runtime.evaluate_computation(
             computation=identity_comp,
-            role_assignment={
-                "alice-0": "alice-0",
-                "bob-0": "bob-0",
-                "carole-0": "carole-0",
-                "alice-1": "alice-1",
-                "bob-1": "bob-1",
-                "carole-01": "carole-1",
-            },
             arguments={},
         )
         actual_result = list(result_dict.values())[0]

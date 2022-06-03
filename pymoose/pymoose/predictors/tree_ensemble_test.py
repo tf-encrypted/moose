@@ -10,6 +10,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
 from pymoose.predictors import predictor_utils
 from pymoose.predictors import tree_ensemble
@@ -160,13 +161,10 @@ class TreeEnsembleTest(parameterized.TestCase):
         predictor, predictor_logic = self._build_prediction_logic(
             model_name, "onnx", predictor_cls
         )
-
-        storage = {plc.name: {} for plc in predictor.host_placements}
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in predictor.host_placements}
+        identities = [plc.name for plc in predictor.host_placements]
+        runtime = rt.LocalMooseRuntime(identities)
         result_dict = runtime.evaluate_computation(
             computation=predictor_logic,
-            role_assignment=role_assignment,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]

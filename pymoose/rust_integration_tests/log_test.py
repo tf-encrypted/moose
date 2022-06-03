@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
 
 
@@ -45,16 +46,10 @@ class ReplicatedExample(parameterized.TestCase):
     )
     def test_log_example_execute(self, x, log_op, np_log):
         x_arg = np.array(x, dtype=np.float64)
-        exp_comp = self._setup_log_comp(x_arg, log_op)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        log_comp = self._setup_log_comp(x_arg, log_op)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=exp_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=log_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
