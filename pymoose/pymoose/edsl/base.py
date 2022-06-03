@@ -121,6 +121,7 @@ class Expression:
     def __hash__(self):
         return id(self)
 
+    # slicing sugar
     def __getitem__(self, slice_spec):
         # TODO explicitly construe placement from
         # global placement context and/or self.placement?
@@ -165,6 +166,86 @@ class Expression:
             return sliced(self, begin, end)
         else:
             raise IndexError(f"Expression of vtype {self.vtype} is not slice-able.")
+
+    # arithmetic sugar
+    def __neg__(self):
+        _check_arithmetickable(self, "negate")
+        if isinstance(self.vtype, ty.TensorType):
+            if not self.vtype.dtype.is_signed:
+                raise TypeError(
+                    f"Cannot negate Tensor of unsigned DType {self.vtype.dtype}."
+                )
+        negative_one = constant(-1, vtype=self.vtype)
+        return self.__rmul__(negative_one)
+
+    def __abs__(self):
+        _check_arithmetickable(self, "abs")
+        if isinstance(self.vtype, ty.TensorType):
+            if not self.vtype.dtype.is_signed:
+                return self
+        return abs(self)
+
+    def __add__(self, other):
+        return _binary_dunder_method(self, other, add, "add")
+
+    def __radd__(self, other):
+        return _binary_dunder_method(other, self, add, "add")
+
+    def __iadd__(self, other):
+        return _binary_dunder_method(self, other, add, "add")
+
+    def __sub__(self, other):
+        return _binary_dunder_method(self, other, sub, "subtract")
+
+    def __rsub__(self, other):
+        return _binary_dunder_method(other, self, sub, "subtract")
+
+    def __isub__(self, other):
+        return _binary_dunder_method(self, other, sub, "subtract")
+
+    def __mul__(self, other):
+        return _binary_dunder_method(self, other, mul, "multiply")
+
+    def __rmul__(self, other):
+        return _binary_dunder_method(other, self, mul, "multiply")
+
+    def __imul__(self, other):
+        return _binary_dunder_method(self, other, mul, "multiply")
+
+    def __truediv__(self, other):
+        return _binary_dunder_method(self, other, div, "divide")
+
+    def __rtruediv__(self, other):
+        return _binary_dunder_method(other, self, div, "divide")
+
+    def __itruediv__(self, other):
+        return _binary_dunder_method(self, other, div, "divide")
+
+    def __matmul__(self, other):
+        return _binary_dunder_method(self, other, dot, "dot-product")
+
+    def __rmatmul__(self, other):
+        return _binary_dunder_method(other, self, dot, "dot-product")
+
+    def __imatmul__(self, other):
+        return _binary_dunder_method(self, other, dot, "dot-product")
+
+    def __gt__(self, other):
+        return _binary_dunder_method(self, other, greater, "greater-than")
+
+    def __lt__(self, other):
+        return _binary_dunder_method(self, other, less, "less-than")
+
+
+def _binary_dunder_method(x, y, fn, fn_desc):
+    _check_arithmetickable(x, fn_desc)
+    _check_arithmetickable(y, fn_desc)
+    return fn(x, y)
+
+
+def _check_arithmetickable(expr, fn_name):
+    if not isinstance(expr.vtype, (ty.TensorType, ty.FloatType, ty.IntType)):
+        raise TypeError(f"Value of vtype {expr.vtype} is not {fn_name}-able.")
 
 
 @dataclass

@@ -28,7 +28,139 @@ _NUMPY_DTYPES = [
 ]
 
 
+def _iadd(x, y):
+    x += y
+    return x
+
+
+def _isub(x, y):
+    x -= y
+    return x
+
+
+def _imul(x, y):
+    x *= y
+    return x
+
+
+def _idiv(x, y):
+    x /= y
+    return x
+
+
+def _imatmul(x, y):
+    x @= y
+    return x
+
+
+_DUNDER_METHODS = {
+    "__add__": lambda x, y: x + y,
+    "__sub__": lambda x, y: x - y,
+    "__mul__": lambda x, y: x * y,
+    "__truediv__": lambda x, y: x / y,
+    "__matmul__": lambda x, y: x @ y,
+    "__iadd__": _iadd,
+    "__isub__": _isub,
+    "__imul__": _imul,
+    "__itruediv__": _idiv,
+    "__imatmul__": _imatmul,
+    "__gt__": lambda x, y: x > y,
+    "__lt__": lambda x, y: x < y,
+}
+
+
 class EdslTest(parameterized.TestCase):
+    @parameterized.parameters(
+        ("__add__", ops.AddOperation, "add"),
+        ("__sub__", ops.SubOperation, "sub"),
+        ("__mul__", ops.MulOperation, "mul"),
+        ("__truediv__", ops.DivOperation, "div"),
+        ("__matmul__", ops.DotOperation, "dot"),
+        ("__iadd__", ops.AddOperation, "add"),
+        ("__isub__", ops.SubOperation, "sub"),
+        ("__imul__", ops.MulOperation, "mul"),
+        ("__itruediv__", ops.DivOperation, "div"),
+        ("__imatmul__", ops.DotOperation, "dot"),
+        ("__gt__", ops.GreaterOperation, "greater"),
+        ("__lt__", ops.LessOperation, "less"),
+    )
+    def test_binary_dunder_methods(self, dunder_name, op_cls, op_name):
+        alice = edsl.host_placement("alice")
+        if op_name in ["greater", "less"]:
+            expected_output_dtype = dtypes.bool_
+        else:
+            expected_output_dtype = dtypes.float64
+
+        @edsl.computation
+        def dunder_comp():
+            with alice:
+                x = edsl.constant(np.array([1.0, 2.0, 3.0], dtype=np.float64))
+                y = _DUNDER_METHODS[dunder_name](x, x)
+            return y
+
+        traced_comp = trace(dunder_comp)
+        binary_op = traced_comp.operation(f"{op_name}_0")
+        assert binary_op == op_cls(
+            placement_name="alice",
+            name=f"{op_name}_0",
+            inputs={"lhs": "constant_0", "rhs": "constant_0"},
+            signature=ops.OpSignature(
+                {
+                    "lhs": ty.TensorType(dtypes.float64),
+                    "rhs": ty.TensorType(dtypes.float64),
+                },
+                ty.TensorType(expected_output_dtype),
+            ),
+        )
+
+    def test_dunder_abs(self):
+        alice = edsl.host_placement("alice")
+
+        @edsl.computation
+        def dunder_comp():
+            with alice:
+                x = edsl.constant(np.array([1.0, -2.0, 3.0], dtype=np.float64))
+                y = abs(x)
+            return y
+
+        traced_comp = trace(dunder_comp)
+        abs_op = traced_comp.operation("abs_0")
+        assert abs_op == ops.AbsOperation(
+            placement_name="alice",
+            name="abs_0",
+            inputs={"x": "constant_0"},
+            signature=ops.OpSignature(
+                {"x": ty.TensorType(dtypes.float64)},
+                ty.TensorType(dtypes.float64),
+            ),
+        )
+
+    def test_dunder_neg(self):
+        alice = edsl.host_placement("alice")
+
+        @edsl.computation
+        def dunder_comp():
+            with alice:
+                x = edsl.constant(np.array([1.0, -2.0, 3.0], dtype=np.float64))
+                y = -x
+            return y
+
+        traced_comp = trace(dunder_comp)
+        neg_mul_op = traced_comp.operation("mul_0")
+        assert neg_mul_op == ops.MulOperation(
+            placement_name="alice",
+            name="mul_0",
+            # "constant_0" is the implicit -1 constant, and "constant_1" is the x array
+            inputs={"lhs": "constant_0", "rhs": "constant_1"},
+            signature=ops.OpSignature(
+                {
+                    "lhs": ty.TensorType(dtypes.float64),
+                    "rhs": ty.TensorType(dtypes.float64),
+                },
+                ty.TensorType(dtypes.float64),
+            ),
+        )
+
     def test_identity(self):
         alice = edsl.host_placement("alice")
         bob = edsl.host_placement("bob")
