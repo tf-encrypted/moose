@@ -1043,12 +1043,12 @@ class AbstractComputation:
                 raise ValueError(f"Argument `{arg_name}` given more than once")
             arguments[arg_name] = arg_val
 
-        # check that all arguments are given
+        # check that all arguments were given
         for arg_name in arg_names:
             if arg_name not in arguments:
                 raise ValueError(f"Missing argument `{arg_name}`")
 
-        # check that no extra arguments where given
+        # check that no extra arguments were given
         # NOTE we could potentially leave out this check
         for arg_name in arguments.keys():
             if arg_name not in arg_names:
