@@ -38,11 +38,12 @@ impl ExecutionContext {
         &self,
         session_id: SessionId,
         computation: &Computation,
+        arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
     ) -> Result<(AsyncSessionHandle, Environment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
             session_id,
-            HashMap::new(),
+            arguments,
             role_assignments.clone(),
             Arc::clone(&self.networking),
             Arc::clone(&self.storage),
@@ -98,11 +99,12 @@ impl ExecutionContext {
         &self,
         session_id: SessionId,
         computation: &Computation,
+        arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
     ) -> Result<(AsyncSessionHandle, IndexedOutputEnvironment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
             session_id,
-            HashMap::new(),
+            arguments,
             role_assignments.clone(),
             Arc::clone(&self.networking),
             Arc::clone(&self.storage),
