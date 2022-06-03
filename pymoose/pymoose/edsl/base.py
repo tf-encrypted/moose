@@ -729,7 +729,7 @@ def less(lhs, rhs, placement=None):
 def greater(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return BinaryOpExpression(
         op_name="greater",
         placement=placement,
@@ -855,7 +855,7 @@ def exp(x, placement=None):
 
 def sqrt(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return SqrtExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
@@ -867,7 +867,7 @@ def sigmoid(x, placement=None):
 
 def relu(x, placement=None):
     assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
+    placement = _materialize_placement_arg(placement)
     return ReluExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
@@ -1194,7 +1194,8 @@ def _check_tensor_type_arg_consistency(dtype, vtype):
 
 def _materialize_placement_arg(plc):
     plc = plc or get_current_placement()
-    assert isinstance(plc, PlacementExpression)
+    if not isinstance(plc, PlacementExpression):
+        raise TypeError(f"Expected value of type Placement, found {type(plc)}.")
     return plc
 
 
