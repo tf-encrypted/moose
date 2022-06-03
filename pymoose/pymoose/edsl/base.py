@@ -1054,7 +1054,8 @@ class AbstractComputation:
         for arg_name, arg_val in kwargs.items():
             if arg_name in arguments:
                 raise ValueError(
-                    f"Argument `{arg_name}` given more than once to `{self.func.__name__}`"
+                    f"Argument `{arg_name}` given more than once to "
+                    f"`{self.func.__name__}`"
                 )
             arguments[arg_name] = arg_val
 
