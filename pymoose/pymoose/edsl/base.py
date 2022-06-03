@@ -17,6 +17,7 @@ except ImportError:
     EllipsisType = type(...)
 
 CURRENT_PLACEMENT: List = []
+
 _NUMPY_DTYPES_MAP = {
     np.uint32: dtypes.uint32,
     np.dtype("uint32"): dtypes.uint32,
@@ -33,6 +34,18 @@ _NUMPY_DTYPES_MAP = {
     np.bool_: dtypes.bool_,
     np.dtype("bool_"): dtypes.bool_,
 }
+
+_CURRENT_RUNTIME = None
+
+
+def get_current_runtime():
+    global _CURRENT_RUNTIME
+    return _CURRENT_RUNTIME
+
+
+def set_current_runtime(runtime):
+    global _CURRENT_RUNTIME
+    _CURRENT_RUNTIME = runtime
 
 
 @dataclass
@@ -1053,8 +1066,6 @@ class AbstractComputation:
         for arg_name in arguments.keys():
             if arg_name not in arg_names:
                 raise ValueError(f"Argument `{arg_name}` is not used")
-
-        from pymoose.testing import get_current_runtime
 
         runtime = get_current_runtime()
         if not runtime:

@@ -6,19 +6,8 @@ from pymoose.computation import computation as comp
 from pymoose.computation import utils
 from pymoose.edsl import base as edsl
 from pymoose.edsl import tracer
+from pymoose.edsl.base import set_current_runtime
 from pymoose.rust import moose_runtime
-
-_CURRENT_RUNTIME = None
-
-
-def get_current_runtime():
-    global _CURRENT_RUNTIME
-    return _CURRENT_RUNTIME
-
-
-def set_current_runtime(runtime):
-    global _CURRENT_RUNTIME
-    _CURRENT_RUNTIME = runtime
 
 
 class LocalMooseRuntime(moose_runtime.LocalRuntime):
