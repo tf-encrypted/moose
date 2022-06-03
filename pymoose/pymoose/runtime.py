@@ -6,6 +6,7 @@ from pymoose.computation import computation as comp
 from pymoose.computation import utils
 from pymoose.edsl import base as edsl
 from pymoose.edsl import tracer
+from pymoose.edsl.base import set_current_runtime
 from pymoose.rust import moose_runtime
 
 
@@ -50,6 +51,9 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
             LocalMooseRuntime, storage_mapping=storage_mapping
         )
 
+    def set_default(self):
+        set_current_runtime(self)
+
     def evaluate_computation(
         self,
         computation,
@@ -83,6 +87,9 @@ class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
                 host addresses.
         """
         return moose_runtime.GrpcRuntime.__new__(GrpcMooseRuntime, identities)
+
+    def set_default(self):
+        set_current_runtime(self)
 
     def evaluate_computation(
         self,

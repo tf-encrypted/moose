@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
@@ -16,6 +17,7 @@ except ImportError:
     EllipsisType = type(...)
 
 CURRENT_PLACEMENT: List = []
+
 _NUMPY_DTYPES_MAP = {
     np.uint32: dtypes.uint32,
     np.dtype("uint32"): dtypes.uint32,
@@ -32,6 +34,18 @@ _NUMPY_DTYPES_MAP = {
     np.bool_: dtypes.bool_,
     np.dtype("bool_"): dtypes.bool_,
 }
+
+_CURRENT_RUNTIME = None
+
+
+def get_current_runtime():
+    global _CURRENT_RUNTIME
+    return _CURRENT_RUNTIME
+
+
+def set_current_runtime(runtime):
+    global _CURRENT_RUNTIME
+    _CURRENT_RUNTIME = runtime
 
 
 @dataclass
@@ -1022,6 +1036,48 @@ def computation(func):
 class AbstractComputation:
     def __init__(self, func):
         self.func = func
+
+    def __call__(self, *args, **kwargs):
+        func_signature = inspect.signature(self.func)
+        arg_names = [arg_name for arg_name, _ in func_signature.parameters.items()]
+
+        arguments = {}
+
+        # add values from `args`
+        for arg_i, arg_val in enumerate(args):
+            if arg_i >= len(arg_names):
+                raise ValueError(f"Too many arguments for `{self.func.__name__}`")
+            arg_name = arg_names[arg_i]
+            arguments[arg_name] = arg_val
+
+        # add values from `kwargs`
+        for arg_name, arg_val in kwargs.items():
+            if arg_name in arguments:
+                raise ValueError(
+                    f"Argument `{arg_name}` given more than once to `{self.func.__name__}`"
+                )
+            arguments[arg_name] = arg_val
+
+        # check that all arguments were given
+        for arg_name in arg_names:
+            if arg_name not in arguments:
+                raise ValueError(
+                    f"Missing argument `{arg_name}` in call to `{self.func.__name__}`"
+                )
+
+        # check that no extra arguments were given
+        # NOTE we could potentially leave out this check
+        for arg_name in arguments.keys():
+            if arg_name not in arg_names:
+                raise ValueError(
+                    f"Argument `{arg_name}` is not used by `{self.func.__name__}`"
+                )
+
+        runtime = get_current_runtime()
+        if not runtime:
+            raise RuntimeError("No default runtime found")
+
+        return runtime.evaluate_computation(self, arguments)
 
 
 def _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name):

@@ -13,7 +13,7 @@ carole = pm.host_placement("carole")
 
 @pm.computation
 def my_computation(
-    c: pm.Argument(placement=alice, vtype=pm.TensorType(pm.float64)),
+    v: pm.Argument(placement=alice, vtype=pm.TensorType(pm.float64)),
 ):
     with alice:
         x = pm.constant(np.array([1.0, 2.0], dtype=np.float64))
@@ -23,9 +23,9 @@ def my_computation(
 
     with carole:
         z = pm.add(x, y)
-        z = pm.add(z, c)
+        w = pm.add(z, v)
 
-    return z
+    return w
 
 
 if __name__ == "__main__":
@@ -43,7 +43,7 @@ if __name__ == "__main__":
             "carole": "localhost:50002",
         }
     )
+    runtime.set_default()
 
-    arguments = {"c": np.array([5.0, 6.0], dtype=np.float64)}
-    results = runtime.evaluate_computation(my_computation, arguments)
+    results = my_computation(np.array([5.0, 6.0], dtype=np.float64))
     print(results)
