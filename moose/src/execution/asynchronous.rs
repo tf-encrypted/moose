@@ -670,7 +670,6 @@ impl AsyncTestRuntime {
     pub fn evaluate_computation(
         &mut self,
         computation: &Computation,
-        role_assignments: HashMap<Role, Identity>,
         arguments: HashMap<String, Value>,
     ) -> Result<HashMap<String, Value>> {
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
@@ -678,35 +677,25 @@ impl AsyncTestRuntime {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
 
-        let (valid_role_assignments, missing_role_assignments): (
-            HashMap<Role, Identity>,
-            HashMap<Role, Identity>,
-        ) = role_assignments
+        // since executors are virtual, just enforce roles = identities
+        let role_assignments: HashMap<Role, Identity> = self
+            .identities
+            .clone()
             .into_iter()
-            .partition(|kv| self.identities.contains(&kv.1));
-        if !missing_role_assignments.is_empty() {
-            let missing_roles: Vec<&Role> = missing_role_assignments.keys().collect();
-            let missing_identities: Vec<&Identity> = missing_role_assignments.values().collect();
-            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.",
-                missing_identities, missing_roles)));
-        }
+            .map(|e| (Role::from(&e.0), e))
+            .collect();
 
         let session_id = SessionId::random();
         for (own_identity, executor) in self.executors.iter_mut() {
             let moose_session = AsyncSession::new(
                 session_id.clone(),
                 arguments.clone(),
-                valid_role_assignments.clone(),
+                role_assignments.clone(),
                 Arc::clone(&self.networking),
                 Arc::clone(&self.runtime_storage[own_identity]),
             );
             let outputs = executor
-                .run_computation(
-                    computation,
-                    &valid_role_assignments,
-                    own_identity,
-                    &moose_session,
-                )
+                .run_computation(computation, &role_assignments, own_identity, &moose_session)
                 .unwrap();
 
             for (output_name, output_future) in outputs {

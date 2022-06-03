@@ -6,6 +6,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
 
@@ -62,25 +63,20 @@ class BooleanLogicExample(parameterized.TestCase):
     )
     def test_bool_example_execute(self, x, y):
         less_comp = self._setup_comp()
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
         x = np.array(x)
         y = np.array(y)
         z = x < y
 
         storage = {
             "alice": {"ya_arg": y},
-            "carole": {},
             "bob": {"x_arg": x, "y_arg": y},
         }
 
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(
+            ["alice", "bob", "carole"], storage_mapping=storage
+        )
         _ = runtime.evaluate_computation(
             computation=less_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x_uri": "x_arg", "y_uri": "y_arg", "ya_uri": "ya_arg"},
         )
 

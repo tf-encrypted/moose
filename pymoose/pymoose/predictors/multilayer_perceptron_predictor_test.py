@@ -5,7 +5,7 @@ import onnx
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose import testing
+from pymoose import runtime as rt
 from pymoose.predictors import multilayer_perceptron_predictor
 from pymoose.predictors import predictor_utils
 
@@ -105,11 +105,8 @@ class MLPPredictorTest(parameterized.TestCase):
         regressor, regressor_logic = self._build_prediction_logic(
             model_name, multilayer_perceptron_predictor.MLPRegressor
         )
-
-        storage = {plc.name: {} for plc in regressor.host_placements}
-        runtime = testing.LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
-
+        identities = [plc.name for plc in regressor.host_placements]
+        runtime = rt.LocalMooseRuntime(identities)
         input_x = np.array(
             [
                 [
@@ -161,7 +158,6 @@ class MLPPredictorTest(parameterized.TestCase):
         )
         result_dict = runtime.evaluate_computation(
             computation=regressor_logic,
-            role_assignment=role_assignment,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]
@@ -173,11 +169,8 @@ class MLPPredictorTest(parameterized.TestCase):
         classifier, classifier_logic = self._build_prediction_logic(
             model_name, multilayer_perceptron_predictor.MLPClassifier
         )
-
-        storage = {plc.name: {} for plc in classifier.host_placements}
-        runtime = testing.LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in classifier.host_placements}
-
+        identities = [plc.name for plc in classifier.host_placements]
+        runtime = rt.LocalMooseRuntime(identities)
         input_x = np.array(
             [
                 [
@@ -207,7 +200,6 @@ class MLPPredictorTest(parameterized.TestCase):
         )
         result_dict = runtime.evaluate_computation(
             computation=classifier_logic,
-            role_assignment=role_assignment,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]

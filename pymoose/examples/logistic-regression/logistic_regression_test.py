@@ -9,7 +9,7 @@ import pymoose as pm
 from pymoose.logger import get_logger
 
 
-class ReplicatedExample(parameterized.TestCase):
+class LogRegPredictionExample(parameterized.TestCase):
     def _setup_model_comp(self):
         alice = pm.host_placement(name="alice")
         bob = pm.host_placement(name="bob")
@@ -39,15 +39,9 @@ class ReplicatedExample(parameterized.TestCase):
         input_x = np.array([2.0, 1.0], dtype=np.float64)
         input_weights = np.array([0.5, 0.1], dtype=np.float64)
         model_comp = self._setup_model_comp()
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=storage)
+        runtime = pm.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
             computation=model_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
             arguments={"x": input_x, "w": input_weights},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")

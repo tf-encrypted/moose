@@ -39,22 +39,10 @@ class ReplicatedExample(unittest.TestCase):
 
             return res_dave
 
-        executors_storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-            "dave": {},
-        }
-        runtime = pm.LocalMooseRuntime(storage_mapping=executors_storage)
+        runtime = pm.LocalMooseRuntime(["alice", "bob", "carole", "dave"])
 
         runtime.evaluate_computation(
             computation=my_comp,
-            role_assignment={
-                "alice": "alice",
-                "bob": "bob",
-                "carole": "carole",
-                "dave": "dave",
-            },
             arguments={},
         )
 

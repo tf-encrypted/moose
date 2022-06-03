@@ -5,7 +5,7 @@ import onnx
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose import testing
+from pymoose import runtime as rt
 from pymoose.predictors import neural_network_predictor
 from pymoose.predictors import predictor_utils
 
@@ -19,7 +19,7 @@ _MODELS = [
 
 
 class NNPredictorTest(parameterized.TestCase):
-    def _build_NN_predictor(self, onnx_fixture, predictor_cls):
+    def _build_nn_predictor(self, onnx_fixture, predictor_cls):
         root_path = pathlib.Path(__file__).parent.absolute()
         fixture_path = root_path / "fixtures" / f"{onnx_fixture}.onnx"
         with open(fixture_path, "rb") as model_fixture:
@@ -28,7 +28,7 @@ class NNPredictorTest(parameterized.TestCase):
         return model
 
     def _build_prediction_logic(self, model_name, predictor_cls):
-        predictor = self._build_NN_predictor(model_name, predictor_cls)
+        predictor = self._build_nn_predictor(model_name, predictor_cls)
 
         @pm.computation
         def predictor_no_aes(x: pm.Argument(predictor.alice, dtype=pm.float64)):
@@ -47,11 +47,8 @@ class NNPredictorTest(parameterized.TestCase):
         regressor, regressor_logic = self._build_prediction_logic(
             model_name, neural_network_predictor.NeuralNetwork
         )
-
-        storage = {plc.name: {} for plc in regressor.host_placements}
-        runtime = testing.LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
-
+        identities = [plc.name for plc in regressor.host_placements]
+        runtime = rt.LocalMooseRuntime(identities)
         input_x = np.array(
             [
                 [
@@ -71,7 +68,6 @@ class NNPredictorTest(parameterized.TestCase):
         )
         result_dict = runtime.evaluate_computation(
             computation=regressor_logic,
-            role_assignment=role_assignment,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]

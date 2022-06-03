@@ -1,3 +1,4 @@
+"""Example of linear regression training with label-split data."""
 import argparse
 import logging
 import unittest
@@ -128,16 +129,13 @@ class LinearRegressionExample(parameterized.TestCase):
         executors_storage = {
             "x-owner": {"x_data": x_data},
             "y-owner": {"y_data": y_data},
-            "model-owner": {},
         }
-        runtime = pm.LocalMooseRuntime(storage_mapping=executors_storage)
+        runtime = pm.LocalMooseRuntime(
+            ["x-owner", "y-owner", "model-owner"],
+            storage_mapping=executors_storage,
+        )
         _ = runtime.evaluate_computation(
             computation=linear_comp,
-            role_assignment={
-                "x-owner": "x-owner",
-                "y-owner": "y-owner",
-                "model-owner": "model-owner",
-            },
             arguments={
                 "x_uri": "x_data",
                 "y_uri": "y_data",
