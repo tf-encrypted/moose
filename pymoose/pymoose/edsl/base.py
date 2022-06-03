@@ -1030,21 +1030,25 @@ class AbstractComputation:
 
         arguments = {}
 
+        # add values from `args`
         for arg_i, arg_val in enumerate(args):
             if arg_i >= len(arg_names):
                 raise ValueError("too many arguments")
             arg_name = arg_names[arg_i]
             arguments[arg_name] = arg_val
 
+        # add values from `kwargs`
         for arg_name, arg_val in kwargs.items():
             if arg_name in arguments:
                 raise ValueError(f"Argument `{arg_name}` given more than once")
             arguments[arg_name] = arg_val
 
+        # check that all arguments are given
         for arg_name in arg_names:
             if arg_name not in arguments:
                 raise ValueError(f"Missing argument `{arg_name}`")
 
+        # check that no extra arguments where given
         # NOTE we could potentially leave out this check
         for arg_name in arguments.keys():
             if arg_name not in arg_names:
