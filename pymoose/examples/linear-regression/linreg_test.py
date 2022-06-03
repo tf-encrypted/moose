@@ -1,3 +1,4 @@
+"""Example of linear regression training with label-split data."""
 import argparse
 import logging
 import unittest

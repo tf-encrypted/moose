@@ -6,7 +6,6 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose import runtime as rt
 from pymoose.logger import get_logger
 
 
@@ -79,7 +78,7 @@ class TensorIdentityExample(parameterized.TestCase):
             "bob-1",
             "carole-1",
         ]
-        runtime = rt.LocalMooseRuntime(identities)
+        runtime = pm.LocalMooseRuntime(identities)
         result_dict = runtime.evaluate_computation(
             computation=identity_comp,
             arguments={},

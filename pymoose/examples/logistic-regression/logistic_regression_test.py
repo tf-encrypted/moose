@@ -9,7 +9,7 @@ import pymoose as pm
 from pymoose.logger import get_logger
 
 
-class ReplicatedExample(parameterized.TestCase):
+class LogRegPredictionExample(parameterized.TestCase):
     def _setup_model_comp(self):
         alice = pm.host_placement(name="alice")
         bob = pm.host_placement(name="bob")
