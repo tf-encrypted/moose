@@ -11,6 +11,11 @@ def get_current_runtime():
     return _CURRENT_RUNTIME
 
 
+def set_current_runtime(runtime):
+    global _CURRENT_RUNTIME
+    _CURRENT_RUNTIME = runtime
+
+
 class LocalMooseRuntime(moose_runtime.LocalRuntime):
     def __new__(cls, *, identities=None, storage_mapping=None):
         if identities is None and storage_mapping is None:
@@ -27,8 +32,7 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
         )
 
     def set_default(self):
-        global _CURRENT_RUNTIME
-        _CURRENT_RUNTIME = self
+        set_current_runtime(self)
 
     def evaluate_computation(
         self,
@@ -63,8 +67,7 @@ class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
         return moose_runtime.GrpcRuntime.__new__(GrpcMooseRuntime, role_assignment)
 
     def set_default(self):
-        global _CURRENT_RUNTIME
-        _CURRENT_RUNTIME = self
+        set_current_runtime(self)
 
     def evaluate_computation(
         self,
