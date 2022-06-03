@@ -3,6 +3,13 @@ from pymoose.edsl.base import AbstractComputation
 from pymoose.edsl.tracer import trace
 from pymoose.rust import moose_runtime
 
+CURRENT_RUNTIME = None
+
+
+def get_current_runtime():
+    global CURRENT_RUNTIME
+    return CURRENT_RUNTIME
+
 
 class LocalMooseRuntime(moose_runtime.LocalRuntime):
     def __new__(cls, *, identities=None, storage_mapping=None):
@@ -18,6 +25,10 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
         return moose_runtime.LocalRuntime.__new__(
             LocalMooseRuntime, storage_mapping=storage_mapping
         )
+
+    def set_default(self):
+        global CURRENT_RUNTIME
+        CURRENT_RUNTIME = self
 
     def evaluate_computation(
         self,
@@ -50,6 +61,10 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
 class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
     def __new__(cls, role_assignment):
         return moose_runtime.GrpcRuntime.__new__(GrpcMooseRuntime, role_assignment)
+
+    def set_default(self):
+        global CURRENT_RUNTIME
+        CURRENT_RUNTIME = self
 
     def evaluate_computation(
         self,

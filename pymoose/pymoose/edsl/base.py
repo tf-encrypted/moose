@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
@@ -1022,6 +1023,38 @@ def computation(func):
 class AbstractComputation:
     def __init__(self, func):
         self.func = func
+
+    def __call__(self, *args, **kwargs):
+        func_signature = inspect.signature(self.func)
+        arg_names = [arg_name for arg_name, _ in func_signature.parameters.items()]
+
+        arguments = {}
+        for arg_i, arg_val in enumerate(args):
+            if arg_i >= len(arg_names):
+                raise ValueError("too many arguments")
+            arg_name = arg_names[arg_i]
+            arguments[arg_name] = arg_val
+
+        for arg_name, arg_val in kwargs.items():
+            if arg_name in arguments:
+                raise ValueError(f"Argument `{arg_name}` given more than once")
+            arguments[arg_name] = arg_val
+
+        for arg_name in arg_names:
+            if arg_name not in arguments:
+                raise ValueError(f"Missing argument `{arg_name}`")
+
+        # NOTE we could potentially leave out this check
+        for arg_name in arguments.keys():
+            if arg_name not in arg_names:
+                raise ValueError(f"Argument `{arg_name}` is not used")
+
+        from pymoose.testing import get_current_runtime
+
+        runtime = get_current_runtime()
+        if not runtime:
+            raise RuntimeError("No default runtime found")
+        return runtime.evaluate_computation(self, arguments)
 
 
 def _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name):

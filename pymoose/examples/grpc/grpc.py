@@ -43,7 +43,7 @@ if __name__ == "__main__":
             "carole": "localhost:50002",
         }
     )
+    runtime.set_default()
 
-    arguments = {"c": np.array([5.0, 6.0], dtype=np.float64)}
-    results = runtime.evaluate_computation(my_computation, arguments)
+    results = my_computation(np.array([5.0, 6.0], dtype=np.float64))
     print(results)
