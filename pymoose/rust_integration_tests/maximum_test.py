@@ -6,8 +6,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class MaximumExample(parameterized.TestCase):
@@ -115,28 +115,27 @@ class MaximumExample(parameterized.TestCase):
         ),
     )
     def test_maximum_fixed(self, x, y, z, run_rep):
-        comp = self._setup_max_comp(replicated=run_rep)
-        traced_maximum_comp = pm.trace(comp)
+        max_comp = self._setup_max_comp(replicated=run_rep)
 
         x_arg = np.array(x, dtype=np.float64)
         y_arg = np.array(y, dtype=np.float64)
         z_arg = np.array(z, dtype=np.float64)
 
-        storage_rep = {
+        storage = {
             "alice": {"x_arg": x_arg},
             "bob": {"y_arg": y_arg},
             "carole": {"z_arg": z_arg},
         }
-
-        runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
-        _ = runtime_rep.evaluate_computation(
-            computation=traced_maximum_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+        runtime = rt.LocalMooseRuntime(
+            identities=["alice", "bob", "carole"],
+            storage_mapping=storage,
+        )
+        _ = runtime.evaluate_computation(
+            computation=max_comp,
             arguments={"x_uri": "x_arg", "y_uri": "y_arg", "z_uri": "z_arg"},
         )
 
-        result = runtime_rep.read_value_from_storage("bob", "maximum")
-
+        result = runtime.read_value_from_storage("bob", "maximum")
         np.testing.assert_equal(result, np.maximum(x_arg, np.maximum(y_arg, z_arg)))
 
     @parameterized.parameters(
@@ -158,18 +157,18 @@ class MaximumExample(parameterized.TestCase):
         y_arg = np.array(y, dtype=edsl_dtype.numpy_dtype)
         z_arg = np.array(z, dtype=edsl_dtype.numpy_dtype)
 
-        comp = self._setup_float_max_comp(edsl_dtype)
-        traced_maximum_comp = pm.trace(comp)
+        max_comp = self._setup_float_max_comp(edsl_dtype)
         storage = {
             "alice": {"x_arg": x_arg},
             "bob": {"y_arg": y_arg},
             "carole": {"z_arg": z_arg},
         }
-
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(
+            identities=["alice", "bob", "carole"],
+            storage_mapping=storage,
+        )
         _ = runtime.evaluate_computation(
-            computation=traced_maximum_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=max_comp,
             arguments={"x_uri": "x_arg", "y_uri": "y_arg", "z_uri": "z_arg"},
         )
 

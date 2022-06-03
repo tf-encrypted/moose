@@ -6,9 +6,9 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.computation import types as ty
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class SoftmaxExample(parameterized.TestCase):
@@ -78,43 +78,28 @@ class SoftmaxExample(parameterized.TestCase):
         ),
     )
     def test_example_execute(self, x, axis, axis_idx_max):
-        comp_rep = self._setup_comp(axis, axis_idx_max, replicated=True)
-        traced_softmax_rep_comp = pm.trace(comp_rep)
-
+        softmax_rep_comp = self._setup_comp(axis, axis_idx_max, replicated=True)
         x_arg = np.array(x, dtype=np.float64)
-
-        storage_rep = {
-            "alice": {},
-            "carole": {},
+        storage = {
             "bob": {"x_arg": x_arg},
         }
-
-        runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
-        _ = runtime_rep.evaluate_computation(
-            computation=traced_softmax_rep_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+        runtime = rt.LocalMooseRuntime(
+            ["alice", "bob", "carole"], storage_mapping=storage
+        )
+        _ = runtime.evaluate_computation(
+            computation=softmax_rep_comp,
             arguments={"x_uri": "x_arg"},
         )
 
-        softmax_runtime_rep = runtime_rep.read_value_from_storage("bob", "softmax")
+        softmax_runtime_rep = runtime.read_value_from_storage("bob", "softmax")
 
-        comp_host = self._setup_comp(axis, axis_idx_max, replicated=False)
-        traced_softmax_host_comp = pm.trace(comp_host)
-
-        x_arg = np.array(x, dtype=np.float64)
-
-        storage_host = {
-            "bob": {"x_arg": x_arg},
-        }
-
-        runtime_host = LocalMooseRuntime(storage_mapping=storage_host)
-        _ = runtime_host.evaluate_computation(
-            computation=traced_softmax_host_comp,
-            role_assignment={"bob": "bob"},
+        softmax_host_comp = self._setup_comp(axis, axis_idx_max, replicated=False)
+        _ = runtime.evaluate_computation(
+            computation=softmax_host_comp,
             arguments={"x_uri": "x_arg"},
         )
 
-        softmax_runtime_host = runtime_host.read_value_from_storage("bob", "softmax")
+        softmax_runtime_host = runtime.read_value_from_storage("bob", "softmax")
 
         ex = np.exp(x_arg - x_arg.max(axis=axis, keepdims=True))
         softmax_numpy = ex / np.sum(ex, axis=axis, keepdims=True)

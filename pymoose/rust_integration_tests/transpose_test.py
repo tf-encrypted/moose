@@ -6,8 +6,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class TransposeExample(parameterized.TestCase):
@@ -101,24 +101,19 @@ class TransposeExample(parameterized.TestCase):
         ),
     )
     def test_transpose_fixed(self, x, run_rep):
-        comp = self._setup_transpose_comp(replicated=run_rep)
-        traced_squeeze_comp = pm.trace(comp)
-
-        storage_rep = {
+        transpose_comp = self._setup_transpose_comp(replicated=run_rep)
+        storage = {
             "alice": {"x_arg": x},
-            "bob": {},
-            "carole": {},
         }
-
-        runtime_rep = LocalMooseRuntime(storage_mapping=storage_rep)
-        _ = runtime_rep.evaluate_computation(
-            computation=traced_squeeze_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+        runtime = rt.LocalMooseRuntime(
+            ["alice", "bob", "carole"], storage_mapping=storage
+        )
+        _ = runtime.evaluate_computation(
+            computation=transpose_comp,
             arguments={"x_uri": "x_arg"},
         )
 
-        result = runtime_rep.read_value_from_storage("bob", "transpose")
-
+        result = runtime.read_value_from_storage("bob", "transpose")
         np.testing.assert_equal(result, np.transpose(x))
 
     @parameterized.parameters(
@@ -142,18 +137,15 @@ class TransposeExample(parameterized.TestCase):
     def test_float_transpose_execute(self, x, edsl_dtype):
         x_arg = np.array(x, dtype=edsl_dtype.numpy_dtype)
 
-        comp = self._setup_float_transpose_comp(edsl_dtype)
-        traced_maximum_comp = pm.trace(comp)
+        transpose_comp = self._setup_float_transpose_comp(edsl_dtype)
         storage = {
             "alice": {"x_arg": x_arg},
-            "bob": {},
-            "carole": {},
         }
-
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(
+            ["alice", "bob", "carole"], storage_mapping=storage
+        )
         _ = runtime.evaluate_computation(
-            computation=traced_maximum_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=transpose_comp,
             arguments={"x_uri": "x_arg"},
         )
 

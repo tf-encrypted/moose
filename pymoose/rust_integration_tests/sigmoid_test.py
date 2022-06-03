@@ -6,8 +6,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
@@ -60,16 +60,9 @@ class ReplicatedExample(parameterized.TestCase):
     def test_sigmoid_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         sigmoid_comp = self._setup_rep_sigmoid_comp(x_arg)
-        traced_sigmoid_comp = pm.trace(sigmoid_comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=traced_sigmoid_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=sigmoid_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
@@ -88,16 +81,9 @@ class ReplicatedExample(parameterized.TestCase):
     def test_float_sigmoid_execute(self, x, dtype):
         x_arg = np.array(x, dtype=dtype.numpy_dtype)
         sigmoid_comp = self._setup_float_sigmoid_comp(x_arg, dtype)
-        traced_sigmoid_comp = pm.trace(sigmoid_comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=traced_sigmoid_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=sigmoid_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")

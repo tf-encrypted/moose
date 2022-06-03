@@ -6,8 +6,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 alice = pm.host_placement(name="alice")
 bob = pm.host_placement(name="bob")
@@ -42,18 +42,9 @@ class ShapeExample(parameterized.TestCase):
     )
     def test_example_execute(self, dtype, shape_placement):
         comp = self._setup_comp(dtype, alice, shape_placement)
-        traced_comp = pm.trace(comp)
-
-        storage = {
-            "alice": {},
-            "carole": {},
-            "bob": {},
-        }
-
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         results = runtime.evaluate_computation(
-            computation=traced_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=comp,
             arguments={},
         )
         res_array = list(results.values())[0]

@@ -2,7 +2,9 @@ use super::parse_session_config_file_with_computation;
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
 use moose::prelude::*;
+use moose::tokio;
 use notify::{DebouncedEvent, Watcher};
+use std::collections::HashMap;
 use std::path::Path;
 
 pub struct FilesystemChoreography {
@@ -111,9 +113,19 @@ impl FilesystemChoreography {
 
         let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
 
+        // TODO(Morten) for now we don't support arguments in this type of choreography;
+        // we could be eg allowing them to be specified in the .session file (perhaps as
+        // names of .npy files)
+        let arguments = HashMap::new();
+
         tracing::debug!("Scheduling computation");
         let (handle, outputs) = context
-            .execute_indexed_computation(session_id.clone(), &computation, role_assignments)
+            .execute_indexed_computation(
+                session_id.clone(),
+                &computation,
+                arguments,
+                role_assignments,
+            )
             .await?;
 
         tracing::debug!("Ready for outputs");

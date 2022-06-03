@@ -6,8 +6,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class MirroredOpsExample(parameterized.TestCase):
@@ -30,20 +30,12 @@ class MirroredOpsExample(parameterized.TestCase):
         return my_comp
 
     def test_example_execute(self):
-        comp = self._setup_comp()
-        traced_less_comp = pm.trace(comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        mirr_comp = self._setup_comp()
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         result_dict = runtime.evaluate_computation(
-            computation=traced_less_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=mirr_comp,
             arguments={},
         )
-
         actual_result = list(result_dict.values())[0]
 
         np.testing.assert_almost_equal(actual_result[0], 1.5)

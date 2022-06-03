@@ -62,6 +62,8 @@ from pymoose.edsl.base import transpose
 from pymoose.edsl.base import zeros
 from pymoose.edsl.tracer import trace
 from pymoose.edsl.tracer import trace_and_compile
+from pymoose.runtime import GrpcMooseRuntime
+from pymoose.runtime import LocalMooseRuntime
 from pymoose.rust import elk_compiler
 from pymoose.rust import moose_runtime as _moose_runtime
 
@@ -93,6 +95,7 @@ __all__ = [
     FloatType,
     host_placement,
     greater,
+    GrpcMooseRuntime,
     identity,
     index_axis,
     int32,
@@ -101,6 +104,7 @@ __all__ = [
     IntType,
     less,
     load,
+    LocalMooseRuntime,
     log,
     log2,
     logical_or,

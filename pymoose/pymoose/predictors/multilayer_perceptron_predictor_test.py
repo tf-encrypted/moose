@@ -1,4 +1,3 @@
-import itertools
 import pathlib
 
 import numpy as np
@@ -6,8 +5,7 @@ import onnx
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose import testing
-from pymoose.computation import utils as comp_utils
+from pymoose import runtime as rt
 from pymoose.predictors import multilayer_perceptron_predictor
 from pymoose.predictors import predictor_utils
 
@@ -104,12 +102,8 @@ class MLPPredictorTest(parameterized.TestCase):
         regressor, regressor_logic = self._build_prediction_logic(
             model_name, multilayer_perceptron_predictor.MLPRegressor
         )
-
-        traced_predictor = pm.trace(regressor_logic)
-        storage = {plc.name: {} for plc in regressor.host_placements}
-        runtime = testing.LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in regressor.host_placements}
-
+        identities = [plc.name for plc in regressor.host_placements]
+        runtime = rt.LocalMooseRuntime(identities)
         input_x = np.array(
             [
                 [
@@ -160,8 +154,7 @@ class MLPPredictorTest(parameterized.TestCase):
             dtype=np.float64,
         )
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
-            role_assignment=role_assignment,
+            computation=regressor_logic,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]
@@ -173,12 +166,8 @@ class MLPPredictorTest(parameterized.TestCase):
         classifier, classifier_logic = self._build_prediction_logic(
             model_name, multilayer_perceptron_predictor.MLPClassifier
         )
-
-        traced_predictor = pm.trace(classifier_logic)
-        storage = {plc.name: {} for plc in classifier.host_placements}
-        runtime = testing.LocalMooseRuntime(storage_mapping=storage)
-        role_assignment = {plc.name: plc.name for plc in classifier.host_placements}
-
+        identities = [plc.name for plc in classifier.host_placements]
+        runtime = rt.LocalMooseRuntime(identities)
         input_x = np.array(
             [
                 [
@@ -207,8 +196,7 @@ class MLPPredictorTest(parameterized.TestCase):
             dtype=np.float64,
         )
         result_dict = runtime.evaluate_computation(
-            computation=traced_predictor,
-            role_assignment=role_assignment,
+            computation=classifier_logic,
             arguments={"x": input_x},
         )
         actual_result = list(result_dict.values())[0]
@@ -216,25 +204,3 @@ class MLPPredictorTest(parameterized.TestCase):
         # TODO multiple divisions seems to lose significant amount of precision
         # (hence decimal=2 here)
         np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
-
-    @parameterized.parameters(
-        *zip(
-            map(lambda x: x[0], _SK_REGRESSION_MODELS),
-            itertools.repeat(multilayer_perceptron_predictor.MLPRegressor),
-        ),
-        *zip(
-            map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
-            itertools.repeat(multilayer_perceptron_predictor.MLPClassifier),
-        ),
-    )
-    def test_serde(self, model_name, predictor_cls):
-        regressor = self._build_MLP_predictor(model_name, predictor_cls)
-        predictor = regressor.aes_predictor_factory()
-        traced_predictor = pm.trace(predictor)
-        serialized = comp_utils.serialize_computation(traced_predictor)
-        logical_comp_rustref = pm.elk_compiler.compile_computation(serialized, [])
-        logical_comp_rustbytes = logical_comp_rustref.to_bytes()
-        pm.MooseComputation.from_bytes(logical_comp_rustbytes)
-        # NOTE: could also dump to disk as follows (but we don't in the test)
-        # logical_comp_rustref.to_disk(path)
-        # pm.MooseComputation.from_disk(path)

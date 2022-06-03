@@ -38,27 +38,34 @@ impl GrpcMooseRuntime {
     pub async fn run_computation(
         &self,
         session_id: &SessionId,
-        comp: &Computation,
+        computation: &Computation,
+        arguments: HashMap<String, Value>,
     ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
-        self.launch_computation(session_id, comp).await?;
+        self.launch_computation(session_id, computation, arguments)
+            .await?;
         self.retrieve_results(session_id).await
     }
 
     pub async fn launch_computation(
         &self,
         session_id: &SessionId,
-        comp: &Computation,
+        computation: &Computation,
+        arguments: HashMap<String, Value>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let session_id = bincode::serialize(&session_id)?;
-        let computation = bincode::serialize(&comp)?;
+        let session_id = bincode::serialize(session_id)?;
+        let computation = bincode::serialize(computation)?;
+        let arguments = bincode::serialize(&arguments)?;
         let role_assignment = bincode::serialize(&self.role_assignments)?;
 
         for channel in self.channels.values() {
             let mut client = ChoreographyClient::new(channel.clone());
 
+            // TODO(Morten) SECURITY: note that _all_ arguments are sent to _all_ workers;
+            // this may still be okay/needed if/when we send value references around
             let request = LaunchComputationRequest {
                 session_id: session_id.clone(),
                 computation: computation.clone(),
+                arguments: arguments.clone(),
                 role_assignment: role_assignment.clone(),
             };
 

@@ -6,8 +6,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
@@ -60,16 +60,9 @@ class ReplicatedExample(parameterized.TestCase):
     def test_exp_example_execute(self, x):
         x_arg = np.array(x, dtype=np.float64)
         exp_comp = self._setup_fixed_exp_comp(x_arg)
-        traced_exp_comp = pm.trace(exp_comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=exp_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")
@@ -84,16 +77,9 @@ class ReplicatedExample(parameterized.TestCase):
     def test_float_exp_execute(self, x, moose_dtype):
         x_arg = np.array(x, dtype=moose_dtype.numpy_dtype)
         exp_comp = self._setup_float_exp_comp(x_arg, moose_dtype)
-        traced_exp_comp = pm.trace(exp_comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=exp_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "y_uri")

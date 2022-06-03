@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
 use moose::computation::SessionId;
+use moose::tokio;
 use moose_modules::choreography::{
     parse_session_config_file_with_computation, parse_session_config_file_without_computation,
 };
 use moose_modules::execution::grpc::GrpcMooseRuntime;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
 
@@ -83,8 +85,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let session_id = session_id
                 .map(|session_id| SessionId::try_from(session_id.as_ref()))
                 .unwrap_or(Ok(default_session_id))?;
+            // TODO for now we don't support arguments
+            let arguments = HashMap::new();
             runtime
-                .launch_computation(&session_id, &computation)
+                .launch_computation(&session_id, &computation, arguments)
                 .await?;
         }
         Commands::Abort {
@@ -122,7 +126,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let session_id = session_id
                 .map(|session_id| SessionId::try_from(session_id.as_ref()))
                 .unwrap_or(Ok(default_session_id))?;
-            let results = runtime.run_computation(&session_id, &computation).await?;
+            // TODO for now we don't support arguments; see comment in FilesystemChoreography::launch_session
+            let arguments = HashMap::new();
+            let results = runtime
+                .run_computation(&session_id, &computation, arguments)
+                .await?;
             println!("Results: {:?}", results);
         }
     }

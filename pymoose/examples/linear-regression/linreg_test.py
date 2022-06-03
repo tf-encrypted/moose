@@ -1,3 +1,4 @@
+"""Example of linear regression training with label-split data."""
 import argparse
 import logging
 import unittest
@@ -7,9 +8,7 @@ import pytest
 from absl.testing import parameterized
 
 import pymoose as pm
-from pymoose.computation import utils
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 FIXED = pm.fixed(8, 27)
 # Rust compiler currently supports only limited set of alternative precisions:
@@ -130,17 +129,13 @@ class LinearRegressionExample(parameterized.TestCase):
         executors_storage = {
             "x-owner": {"x_data": x_data},
             "y-owner": {"y_data": y_data},
-            "model-owner": {},
         }
-        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
-        traced = pm.trace(linear_comp)
+        runtime = pm.LocalMooseRuntime(
+            ["x-owner", "y-owner", "model-owner"],
+            storage_mapping=executors_storage,
+        )
         _ = runtime.evaluate_computation(
-            computation=traced,
-            role_assignment={
-                "x-owner": "x-owner",
-                "y-owner": "y-owner",
-                "model-owner": "model-owner",
-            },
+            computation=linear_comp,
             arguments={
                 "x_uri": "x_data",
                 "y_uri": "y_data",
@@ -160,12 +155,6 @@ class LinearRegressionExample(parameterized.TestCase):
     @pytest.mark.slow
     def test_linear_regression_mape(self):
         self._linear_regression_eval("mape")
-
-    def test_linear_regression_serde(self):
-        comp, _ = self._build_linear_regression_example()
-        compiled_comp = pm.trace(comp)
-        serialized = utils.serialize_computation(compiled_comp)
-        pm.elk_compiler.compile_computation(serialized, [])
 
 
 if __name__ == "__main__":

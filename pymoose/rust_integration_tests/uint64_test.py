@@ -6,8 +6,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import runtime as rt
 from pymoose.logger import get_logger
-from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(parameterized.TestCase):
@@ -34,16 +34,9 @@ class ReplicatedExample(parameterized.TestCase):
     def test_int_example_execute(self, x):
         x_arg = np.array(x, dtype=np.uint64)
         int_comp = self._setup_int64_comp(x_arg)
-        traced_exp_comp = pm.trace(int_comp)
-        storage = {
-            "alice": {},
-            "bob": {},
-            "carole": {},
-        }
-        runtime = LocalMooseRuntime(storage_mapping=storage)
+        runtime = rt.LocalMooseRuntime(["alice", "bob", "carole"])
         _ = runtime.evaluate_computation(
-            computation=traced_exp_comp,
-            role_assignment={"alice": "alice", "bob": "bob", "carole": "carole"},
+            computation=int_comp,
             arguments={},
         )
         actual_result = runtime.read_value_from_storage("alice", "x_uri")
