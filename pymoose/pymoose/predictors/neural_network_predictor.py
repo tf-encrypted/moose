@@ -2,7 +2,6 @@ import struct
 from enum import Enum
 
 import numpy as np
-from sklearn import neural_network
 
 import pymoose as pm
 from pymoose.predictors import aes_predictor
