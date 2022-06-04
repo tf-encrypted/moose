@@ -120,7 +120,9 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
                 x = x
         return x
 
-    def aes_predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+    def aes_predictor_factory(
+        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
+    ):
         @pm.computation
         def predictor(
             aes_data: pm.Argument(
