@@ -35,6 +35,7 @@ pub struct ComputationConfig {
 pub enum Format {
     Binary,
     Textual,
+    Bincode,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,6 +60,10 @@ pub fn parse_session_config_file_with_computation(
             Format::Textual => {
                 let comp_raw = std::fs::read_to_string(comp_path)?;
                 moose::computation::Computation::from_textual(&comp_raw)?
+            }
+            Format::Bincode => {
+                let comp_raw = std::fs::read(comp_path)?;
+                moose::computation::Computation::from_bincode(&comp_raw)?
             }
         }
     };
