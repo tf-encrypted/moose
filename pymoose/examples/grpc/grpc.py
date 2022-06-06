@@ -36,14 +36,18 @@ if __name__ == "__main__":
     if args.verbose:
         get_logger().setLevel(level=logging.DEBUG)
 
-    runtime = pm.GrpcMooseRuntime(
-        {
-            "alice": "localhost:50000",
-            "bob": "localhost:50001",
-            "carole": "localhost:50002",
-        }
-    )
+    identity_map = {
+        alice.name: "localhost:50000",
+        bob.name: "localhost:50001",
+        carole.name: "localhost:50002",
+    }
+
+    runtime = pm.GrpcMooseRuntime(identity_map)
     runtime.set_default()
 
     results = my_computation(np.array([5.0, 6.0], dtype=np.float64))
-    print(results)
+
+    for (name, identity) in identity_map.items():
+        print(f"computation on {name} took {results[identity] * 0.001} milliseconds")
+
+    print("Outputs: ", results)

@@ -4,6 +4,7 @@ use crate::choreography::grpc::gen::{
 };
 use moose::prelude::{Computation, Identity, Role, SessionId, Value};
 use std::collections::HashMap;
+use std::time::Duration;
 use tonic::transport::{Channel, ClientTlsConfig, Uri};
 
 pub struct GrpcMooseRuntime {
@@ -44,6 +45,18 @@ impl GrpcMooseRuntime {
         self.launch_computation(session_id, computation, arguments)
             .await?;
         self.retrieve_results(session_id).await
+    }
+
+    pub async fn run_computation_with_stats(
+        &self,
+        session_id: &SessionId,
+        computation: &Computation,
+        arguments: HashMap<String, Value>,
+    ) -> Result<(HashMap<String, Value>, HashMap<String, Duration>), Box<dyn std::error::Error>>
+    {
+        self.launch_computation(session_id, computation, arguments)
+            .await?;
+        self.retrieve_results_with_stats(session_id).await
     }
 
     pub async fn launch_computation(
@@ -114,5 +127,35 @@ impl GrpcMooseRuntime {
         }
 
         Ok(combined_results)
+    }
+
+    pub async fn retrieve_results_with_stats(
+        &self,
+        session_id: &SessionId,
+    ) -> Result<(HashMap<String, Value>, HashMap<String, Duration>), Box<dyn std::error::Error>>
+    {
+        let session_id = bincode::serialize(&session_id)?;
+
+        let mut combined_outputs = HashMap::new();
+        let mut combined_stats = HashMap::new();
+
+        for channel in self.channels.values() {
+            let mut client = ChoreographyClient::new(channel.clone());
+
+            let request = RetrieveResultsRequest {
+                session_id: session_id.clone(),
+            };
+
+            let response = client.retrieve_results(request).await?;
+            let vals = bincode::deserialize::<HashMap<String, Value>>(&response.get_ref().values)?;
+            combined_outputs.extend(vals);
+
+            let metrics = bincode::deserialize::<HashMap<String, Duration>>(
+                &response.get_ref().metric_values,
+            )?;
+            combined_stats.extend(metrics);
+        }
+
+        Ok((combined_outputs, combined_stats))
     }
 }

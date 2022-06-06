@@ -297,9 +297,9 @@ impl GrpcRuntime {
 
         let session_id = SessionId::random();
 
-        let typed_outputs = self
+        let (typed_outputs, stats) = self
             .tokio_runtime
-            .block_on(self.grpc_runtime.run_computation(
+            .block_on(self.grpc_runtime.run_computation_with_stats(
                 &session_id,
                 &physical_computation,
                 typed_arguments,
@@ -316,6 +316,10 @@ impl GrpcRuntime {
                 // assume it's a tensor
                 _ => outputs_py_val.insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
             };
+        }
+
+        for (identity, duration) in stats {
+            outputs_py_val.insert(identity, duration.as_micros().into_py(py));
         }
 
         Ok(Some(outputs_py_val))
