@@ -53,7 +53,9 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         y = pm.dot(x, w)
         return y
 
-    def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+    def aes_predictor_factory(
+        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
+    ):
         @pm.computation
         def predictor(
             aes_data: pm.Argument(
@@ -68,6 +70,10 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             return self.handle_output(pred, prediction_handler=self.bob)
 
         return predictor
+
+    def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+        y = self.linear_predictor_fn(x, fixedpoint_dtype)
+        return self.post_transform(y)
 
 
 class LinearRegressor(LinearPredictor):

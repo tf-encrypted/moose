@@ -92,10 +92,7 @@ class MLPPredictorTest(parameterized.TestCase):
             with predictor.alice:
                 x_fixed = pm.cast(x, dtype=predictor_utils.DEFAULT_FIXED_DTYPE)
             with predictor.replicated:
-                y = predictor.neural_predictor_fn(
-                    x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE
-                )
-                y = predictor.post_transform(y, predictor_utils.DEFAULT_FIXED_DTYPE)
+                y = predictor(x_fixed, predictor_utils.DEFAULT_FIXED_DTYPE)
             return predictor.handle_output(y, prediction_handler=predictor.bob)
 
         return predictor, predictor_no_aes
