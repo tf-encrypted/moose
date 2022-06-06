@@ -4,7 +4,7 @@ from enum import Enum
 import numpy as np
 
 import pymoose as pm
-from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor
 from pymoose.predictors import predictor_utils
 
 
@@ -15,7 +15,7 @@ class Activation(Enum):
     RELU = 4
 
 
-class NeuralNetwork(aes_predictor.AesPredictor):
+class NeuralNetwork(predictor.Predictor):
     def __init__(self, weights, biases, activations):
         super().__init__()
         self.weights = weights

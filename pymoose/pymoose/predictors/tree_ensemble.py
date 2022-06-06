@@ -2,11 +2,11 @@ import abc
 import json
 
 import pymoose as pm
-from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor
 from pymoose.predictors import predictor_utils as utils
 
 
-class DecisionTreeRegressor(aes_predictor.AesPredictor):
+class DecisionTreeRegressor(predictor.Predictor):
     def __init__(self, weights, children, split_conditions, split_indices):
         super().__init__()
         self.weights = weights
@@ -62,7 +62,7 @@ class DecisionTreeRegressor(aes_predictor.AesPredictor):
             return self.fixedpoint_constant(leaf_weights[node], self.carole)
 
 
-class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
+class TreeEnsemble(predictor.Predictor, metaclass=abc.ABCMeta):
     def __init__(self, trees, n_features, base_score, learning_rate):
         super().__init__()
         self.n_features = n_features
