@@ -40,7 +40,7 @@ mod tests {
         x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         y = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
+        z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
         let comp = prune_graph(source.try_into()?)?;
         // Pruning should not introduce any changes to such a computation
@@ -56,7 +56,7 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
-            .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
         Ok(())
     }
 
@@ -68,7 +68,7 @@ mod tests {
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
+        z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
         let comp = prune_graph(source.try_into()?)?;
         // Pruning should remove `add` and `dot`
@@ -84,7 +84,7 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
-            .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
         Ok(())
     }
 
@@ -99,7 +99,7 @@ mod tests {
         recv_add = Receive {rendezvous_key=30303030303030303030303030303032, sender="bob"} : () -> HostFloat32Tensor () @Host(alice)
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_add) @Host(alice)
-        z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
+        z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#;
 
         let comp = prune_graph(source.try_into()?)?;
 
@@ -124,7 +124,7 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp
-            .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
         Ok(())
     }
 
@@ -136,8 +136,8 @@ mod tests {
         mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
         dot = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)
-        z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)
-        z2 = Output: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"#;
+        z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)
+        z2 = Output{tag = "z2"}: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"#;
 
         let comp = prune_graph(source.try_into()?)?;
         // Pruning should remove only  `dot`
@@ -153,12 +153,12 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
-            .contains("z = Output: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
         assert!(comp.contains(
             "add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
-            .contains("z2 = Output: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"));
+            .contains("z2 = Output{tag = \"z2\"}: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"));
         Ok(())
     }
 }

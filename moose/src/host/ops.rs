@@ -163,7 +163,12 @@ impl InputOp {
 }
 
 impl OutputOp {
-    pub(crate) fn kernel<S: RuntimeSession, O>(sess: &S, plc: &HostPlacement, x: O) -> Result<O>
+    pub(crate) fn kernel<S: RuntimeSession, O>(
+        sess: &S,
+        plc: &HostPlacement,
+        _tag: String,
+        x: O,
+    ) -> Result<O>
     where
         HostPlacement: PlacementPlace<S, O>,
     {
@@ -176,6 +181,7 @@ impl OutputOp {
     pub(crate) fn non_placing_kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
+        _tag: String,
         x: O,
     ) -> Result<O> {
         // Output is not doing anything now, it is just a marker on the graph.
