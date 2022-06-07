@@ -47,7 +47,7 @@ class InputOperation(Operation):
 
 @dataclass
 class OutputOperation(Operation):
-    pass
+    tag: str
 
 
 @dataclass

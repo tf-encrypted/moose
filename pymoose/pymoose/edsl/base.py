@@ -433,6 +433,14 @@ class MuxExpression(Expression):
         return id(self)
 
 
+@dataclass
+class OutputExpression(Expression):
+    tag: str
+
+    def __hash__(self):
+        return id(self)
+
+
 def add_n(arrays, placement=None):
     placement = _materialize_placement_arg(placement)
     if not isinstance(arrays, (tuple, list)):
@@ -1027,6 +1035,13 @@ def save(key, value, placement=None):
             "expected one of: string, ConstantExpression, or ArgumentExpression."
         )
     return SaveExpression(placement=placement, inputs=[key, value], vtype=None)
+
+
+def output(tag, value, placement=None):
+    assert isinstance(value, Expression)
+    assert isinstance(tag, str)
+    placement = _materialize_placement_arg(placement)
+    return OutputExpression(placement=placement, inputs=[value], vtype=value.vtype)
 
 
 def computation(func):

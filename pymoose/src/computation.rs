@@ -471,6 +471,7 @@ struct PyOutputOperation {
     inputs: Inputs,
     placement_name: String,
     signature: PyOpSignature,
+    tag: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1388,7 +1389,6 @@ impl TryFrom<PyComputation> for Computation {
                                 &op.placement_name,
                                 &[],
                             )?,
-
                             arg_name: op.name.clone(),
                         }
                         .into(),
@@ -1404,6 +1404,7 @@ impl TryFrom<PyComputation> for Computation {
                                 &op.placement_name,
                                 &["value"],
                             )?,
+                            tag: op.tag.clone(),
                         }
                         .into(),
                         name: op.name.clone(),
