@@ -35,7 +35,7 @@ class LinearPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
         reshaped_bias = pm.expand_dims(bias, 1, placement=plc)
         return pm.cast(reshaped_bias, dtype=dtype, placement=plc)
 
-    def linear_predictor_fn(self, x, fixedpoint_dtype):
+    def predictor_fn(self, x, fixedpoint_dtype):
         if self.intercepts is not None:
             w = self.fixedpoint_constant(
                 np.concatenate([self.intercepts.T, self.coeffs], axis=1).T,
@@ -54,7 +54,7 @@ class LinearPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
         return y
 
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        y = self.linear_predictor_fn(x, fixedpoint_dtype)
+        y = self.predictor_fn(x, fixedpoint_dtype)
         return self.post_transform(y)
 
 

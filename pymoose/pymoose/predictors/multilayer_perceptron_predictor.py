@@ -110,7 +110,7 @@ class MLPPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
             raise ValueError("Invalid or unsupported activation function")
         return activation_output
 
-    def neural_predictor_fn(self, x, fixedpoint_dtype):
+    def predictor_fn(self, x, fixedpoint_dtype):
         num_hidden_layers = len(self.weights) - 1  # infer number of layers
         for i in range(num_hidden_layers + 1):
             x = self.apply_layer(x, num_hidden_layers, i, fixedpoint_dtype)
@@ -121,7 +121,7 @@ class MLPPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
         return x
 
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        y = self.neural_predictor_fn(x, fixedpoint_dtype)
+        y = self.predictor_fn(x, fixedpoint_dtype)
         return self.post_transform(y, fixedpoint_dtype)
 
 

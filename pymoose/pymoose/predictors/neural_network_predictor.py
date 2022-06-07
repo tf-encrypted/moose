@@ -53,7 +53,7 @@ class NeuralNetwork(predictor.Predictor):
 
         return activation_output
 
-    def neural_predictor_fn(self, x, fixedpoint_dtype):
+    def predictor_fn(self, x, fixedpoint_dtype):
         num_layers = len(self.weights)
         for i in range(num_layers):
             x = self.apply_layer(x, i, fixedpoint_dtype)
@@ -62,7 +62,7 @@ class NeuralNetwork(predictor.Predictor):
         return x
 
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        return self.neural_predictor_fn(x, fixedpoint_dtype)
+        return self.predictor_fn(x, fixedpoint_dtype)
 
     @classmethod
     def from_onnx(cls, model_proto):

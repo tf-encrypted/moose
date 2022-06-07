@@ -39,3 +39,38 @@ class Predictor(metaclass=abc.ABCMeta):
         )
         mirrored = pm.mirrored_placement(name="mirrored", players=[alice, bob, carole])
         return (alice, bob, carole), mirrored, replicated
+
+
+def AesWrapper(inner_model_cls):
+    class AesPredictor(inner_model_cls):
+        def __call__(self, *args, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
+            return self.aes_predictor_factory(fixedpoint_dtype)
+
+        @classmethod
+        def handle_aes_input(cls, aes_key, aes_data, decryptor):
+            assert isinstance(aes_data.vtype, pm.AesTensorType)
+            assert aes_data.vtype.dtype.is_fixedpoint
+            assert isinstance(aes_key.vtype, pm.AesKeyType)
+
+            with decryptor:
+                aes_inputs = pm.decrypt(aes_key, aes_data)
+
+            return aes_inputs
+
+        def aes_predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
+            @pm.computation
+            def predictor(
+                aes_data: pm.Argument(
+                    self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
+                ),
+                aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
+            ):
+                x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
+                with self.replicated:
+                    # Rename to predictor_fn if move forward with Mixin
+                    pred = self.predictor_fn(x, fixedpoint_dtype)
+                return self.handle_output(pred, prediction_handler=self.bob)
+
+            return predictor
+
+    return AesPredictor
