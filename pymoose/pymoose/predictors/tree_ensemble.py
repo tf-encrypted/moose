@@ -23,13 +23,6 @@ class DecisionTreeRegressor(predictor.Predictor):
         split_indices = tree_json["split_indices"]
         return cls(weights, (left, right), split_conditions, split_indices)
 
-    def aes_predictor_factory(self):
-        raise NotImplementedError(
-            f"{self.__class__.__name__} is not meant to be used directly as an "
-            "AesPredictor model. Consider expressing your decision tree as a tree "
-            "ensemble with another AesPredictor implementation."
-        )
-
     def __call__(self, x, n_features, rescale_factor, fixedpoint_dtype):
         leaf_weights = {ix: rescale_factor * w for ix, w in self.weights.items()}
         features_vec = [pm.index_axis(x, axis=1, index=i) for i in range(n_features)]
@@ -95,24 +88,6 @@ class TreeEnsemble(predictor.Predictor, metaclass=abc.ABCMeta):
         # placements to replicated placement.
         # it's a bit ugly, but it works for now.
         return list(map(pm.identity, forest_scores))
-
-    def aes_predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
-        # TODO[jason] make it more ergonomic for pm.computation to bind args during
-        #   tracing w/ pm.trace
-        @pm.computation
-        def predictor(
-            aes_data: pm.Argument(
-                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
-            ),
-            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
-        ):
-            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            with self.replicated:
-                tree_scores = self.forest_fn(x, fixedpoint_dtype=fixedpoint_dtype)
-                y = self.post_transform(tree_scores, fixedpoint_dtype=fixedpoint_dtype)
-            return self.handle_output(y, prediction_handler=self.bob)
-
-        return predictor
 
     def __call__(self, x, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
         tree_scores = self.forest_fn(x, fixedpoint_dtype=fixedpoint_dtype)

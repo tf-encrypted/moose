@@ -120,24 +120,6 @@ class MLPPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
                 x = x
         return x
 
-    def aes_predictor_factory(
-        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
-    ):
-        @pm.computation
-        def predictor(
-            aes_data: pm.Argument(
-                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
-            ),
-            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
-        ):
-            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            with self.replicated:
-                y = self.neural_predictor_fn(x, fixedpoint_dtype)
-                pred = self.post_transform(y, fixedpoint_dtype)
-            return self.handle_output(pred, prediction_handler=self.bob)
-
-        return predictor
-
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
         y = self.neural_predictor_fn(x, fixedpoint_dtype)
         return self.post_transform(y, fixedpoint_dtype)

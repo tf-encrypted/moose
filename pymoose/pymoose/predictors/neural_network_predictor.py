@@ -64,23 +64,6 @@ class NeuralNetwork(predictor.Predictor):
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
         return self.neural_predictor_fn(x, fixedpoint_dtype)
 
-    def aes_predictor_factory(
-        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
-    ):
-        @pm.computation
-        def predictor(
-            aes_data: pm.Argument(
-                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
-            ),
-            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
-        ):
-            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            with self.replicated:
-                y = self.neural_predictor_fn(x, fixedpoint_dtype)
-            return self.handle_output(y, prediction_handler=self.bob)
-
-        return predictor
-
     @classmethod
     def from_onnx(cls, model_proto):
         # extract activations from operations
