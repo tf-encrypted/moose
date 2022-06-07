@@ -109,10 +109,6 @@ impl Choreography for GrpcChoreography {
             self.result_stores.entry(session_id.clone()),
             self.metric_stores.entry(session_id.clone()),
         ) {
-            (Entry::Occupied(_), _) => Err(tonic::Status::new(
-                tonic::Code::Aborted,
-                "session id exists already".to_string(),
-            )),
             (Entry::Vacant(result_stores_entry), Entry::Vacant(metric_stores_entry)) => {
                 let results_cell = AsyncCell::shared();
                 result_stores_entry.insert(results_cell);
@@ -196,7 +192,7 @@ impl Choreography for GrpcChoreography {
             }
             (_, _) => Err(tonic::Status::new(
                 tonic::Code::Aborted,
-                "un-consistent metric and result map ".to_string(),
+                "session id exists already or inconsistent metric and result map".to_string(),
             )),
         }
     }
@@ -234,7 +230,6 @@ impl Choreography for GrpcChoreography {
                 let metric_values =
                     bincode::serialize(&metrics).expect("failed to serialize results");
 
-                tracing::info!("Serialized {:?}", metrics);
                 Ok(tonic::Response::new(RetrieveResultsResponse {
                     values,
                     metric_values,
