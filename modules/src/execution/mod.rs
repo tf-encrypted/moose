@@ -40,7 +40,7 @@ impl ExecutionContext {
         computation: &Computation,
         arguments: HashMap<String, Value>,
         role_assignments: HashMap<Role, Identity>,
-    ) -> Result<(AsyncSessionHandle, Environment), Box<dyn std::error::Error>> {
+    ) -> Result<(AsyncSessionHandle, IndexedOutputEnvironment), Box<dyn std::error::Error>> {
         let session = AsyncSession::new(
             session_id,
             arguments,
@@ -49,12 +49,12 @@ impl ExecutionContext {
             Arc::clone(&self.storage),
         );
 
-        let mut outputs: Environment = HashMap::default();
+        let mut outputs: IndexedOutputEnvironment = Vec::default();
 
         {
             let mut env: Environment = HashMap::with_capacity(computation.operations.len());
 
-            for op in computation.operations.iter() {
+            for (op_index, op) in computation.operations.iter().enumerate() {
                 // TODO(Morten) move filtering logic to the session
                 match &op.placement {
                     Placement::Host(host) => {
@@ -82,7 +82,7 @@ impl ExecutionContext {
 
                 if matches!(op.kind, Operator::Output(_)) {
                     // If it is an output, we need to make sure we capture it for returning.
-                    outputs.insert(op.name.clone(), result.clone());
+                    outputs.push((op_index, result));
                 } else {
                     // Everything else should be available in the env for other ops to use.
                     env.insert(op.name.clone(), result);

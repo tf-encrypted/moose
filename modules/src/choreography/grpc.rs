@@ -154,9 +154,11 @@ impl Choreography for GrpcChoreography {
                 let result_stores = Arc::clone(&self.result_stores);
                 tokio::spawn(async move {
                     let mut results = HashMap::with_capacity(outputs.len());
-                    for (output_name, output_value) in outputs {
+                    for (output_ix, output_value) in outputs {
                         let value = output_value.await.unwrap();
-                        results.insert(output_name, value);
+                        let output_op = &computation.operations[output_ix];
+                        let output_tag = output_op.tag.clone();
+                        results.insert(output_tag, value);
                     }
                     tracing::info!("Results ready, {:?}", results.keys());
                     let result_cell = result_stores
