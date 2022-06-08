@@ -638,6 +638,7 @@ def constant(value, dtype=None, vtype=None, placement=None):
                 f"Tensors of dtype `{value.dtype}` not supported as graph constants."
             )
         if vtype is not None and moose_dtype != vtype.dtype:
+            dtype = dtype or vtype.dtype
             if not isinstance(dtype, dtypes.DType):
                 raise TypeError(
                     "`dtype` argument to `constant` must be of type DType, "
@@ -649,8 +650,14 @@ def constant(value, dtype=None, vtype=None, placement=None):
             vtype = ty.TensorType(moose_dtype)
         value = values.TensorConstant(value=value)
     elif isinstance(value, float):
+        if isinstance(vtype, ty.TensorType) and vtype.dtype.is_fixedpoint:
+            # want to use implicit casting, so simply wrap as ndarray and recurse
+            return constant(np.array(value), vtype=vtype)
         value, vtype = _interpret_numeric_value(value, vtype, ty.FloatType())
     elif isinstance(value, int):
+        if isinstance(vtype, ty.TensorType) and vtype.dtype.is_fixedpoint:
+            # want to use implicit casting, so simply wrap as ndarray and recurse
+            return constant(np.array(value), vtype=vtype)
         value, vtype = _interpret_numeric_value(value, vtype, ty.IntType())
     elif isinstance(value, str):
         vtype = vtype or ty.StringType()
@@ -1218,8 +1225,8 @@ def _interpret_numeric_value(value, vtype, fallback_vtype):
     if isinstance(vtype, ty.TensorType):
         dtype = vtype.dtype
         if not dtype.is_float and not dtype.is_integer:
-            raise TypeError("Cannot interpret constant as dtype {dtype}.")
-        value = values.TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
+            raise TypeError(f"Cannot interpret scalar constant as dtype {dtype}.")
+        value = values.TensorConstant(np.array(value, dtype=dtype.numpy_dtype))
     elif isinstance(vtype, ty.FloatType):
         value = values.FloatConstant(value)
     elif isinstance(vtype, ty.IntType):

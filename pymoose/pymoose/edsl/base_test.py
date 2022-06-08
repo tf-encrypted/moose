@@ -135,29 +135,37 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
-    def test_dunder_neg(self):
+    @parameterized.parameters(
+        dtypes.float64,
+        dtypes.fixed(14, 23),
+    )
+    def test_dunder_neg(self, dtype):
         alice = edsl.host_placement("alice")
 
         @edsl.computation
         def dunder_comp():
             with alice:
-                x = edsl.constant(np.array([1.0, -2.0, 3.0], dtype=np.float64))
+                x = edsl.constant(np.array([1.0, -2.0, 3.0]), dtype=dtype)
                 y = -x
             return y
 
         traced_comp = trace(dunder_comp)
         neg_mul_op = traced_comp.operation("mul_0")
+        if dtype.is_fixedpoint:
+            lhs_name, rhs_name = "cast_0", "cast_1"
+        else:
+            lhs_name, rhs_name = "constant_0", "constant_1"
         assert neg_mul_op == ops.MulOperation(
             placement_name="alice",
             name="mul_0",
             # "constant_0" is the implicit -1 constant, and "constant_1" is the x array
-            inputs={"lhs": "constant_0", "rhs": "constant_1"},
+            inputs={"lhs": lhs_name, "rhs": rhs_name},
             signature=ops.OpSignature(
                 {
-                    "lhs": ty.TensorType(dtypes.float64),
-                    "rhs": ty.TensorType(dtypes.float64),
+                    "lhs": ty.TensorType(dtype),
+                    "rhs": ty.TensorType(dtype),
                 },
-                ty.TensorType(dtypes.float64),
+                ty.TensorType(dtype),
             ),
         )
 
