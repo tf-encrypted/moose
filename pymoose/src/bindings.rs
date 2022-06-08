@@ -16,6 +16,8 @@ use pyo3::{exceptions::PyTypeError, prelude::*, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
+type PyGrpcOutputs = (HashMap<String, PyObject>, Option<HashMap<String, PyObject>>);
+
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
     let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
     let rust_comp: Computation = comp.try_into().unwrap();
@@ -284,7 +286,7 @@ impl GrpcRuntime {
         py: Python,
         computation: Vec<u8>,
         arguments: HashMap<String, PyObject>,
-    ) -> PyResult<(HashMap<String, PyObject>, Option<HashMap<String, PyObject>>)> {
+    ) -> PyResult<PyGrpcOutputs> {
         let logical_computation = create_computation_graph_from_py_bytes(computation);
 
         let physical_computation = compile::<moose::compilation::Pass>(logical_computation, None)
