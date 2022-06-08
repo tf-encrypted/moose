@@ -284,7 +284,7 @@ impl GrpcRuntime {
         py: Python,
         computation: Vec<u8>,
         arguments: HashMap<String, PyObject>,
-    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+    ) -> PyResult<(HashMap<String, PyObject>, Option<HashMap<String, PyObject>>)> {
         let logical_computation = create_computation_graph_from_py_bytes(computation);
 
         let physical_computation = compile::<moose::compilation::Pass>(logical_computation, None)
@@ -297,9 +297,9 @@ impl GrpcRuntime {
 
         let session_id = SessionId::random();
 
-        let (typed_outputs, stats) = self
+        let output_metrics = self
             .tokio_runtime
-            .block_on(self.grpc_runtime.run_computation_with_stats(
+            .block_on(self.grpc_runtime.run_computation(
                 &session_id,
                 &physical_computation,
                 typed_arguments,
@@ -307,7 +307,7 @@ impl GrpcRuntime {
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
         let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
-        for (output_name, value) in typed_outputs {
+        for (output_name, value) in output_metrics.outputs {
             match value {
                 Value::HostUnit(_) => None,
                 // TODO: not sure what to support, should eventually standardize output types of computations
@@ -318,11 +318,15 @@ impl GrpcRuntime {
             };
         }
 
-        for (identity, duration) in stats {
-            outputs_py_val.insert(identity, duration.as_micros().into_py(py));
+        if let Some(timings) = output_metrics.elapsed_time {
+            let mut timings_py_val: HashMap<String, PyObject> = HashMap::new();
+            for (role, duration) in timings.iter() {
+                timings_py_val.insert(role.0.clone(), duration.as_micros().into_py(py));
+            }
+            Ok((outputs_py_val, Some(timings_py_val)))
+        } else {
+            Ok((outputs_py_val, None))
         }
-
-        Ok(Some(outputs_py_val))
     }
 }
 

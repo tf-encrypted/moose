@@ -23,7 +23,6 @@ message RetrieveResultsRequest {
 
 message RetrieveResultsResponse {
     bytes values = 1;
-    bytes metric_values = 2;
 }
 
 message AbortComputationRequest {
