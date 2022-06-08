@@ -1041,7 +1041,7 @@ def output(tag, value, placement=None):
     assert isinstance(value, Expression)
     assert isinstance(tag, str)
     placement = _materialize_placement_arg(placement)
-    return OutputExpression(placement=placement, inputs=[value], vtype=value.vtype)
+    return OutputExpression(placement=placement, inputs=[value], vtype=value.vtype, tag=tag)
 
 
 def computation(func):
