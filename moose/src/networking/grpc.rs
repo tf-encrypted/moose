@@ -10,6 +10,7 @@ use self::gen::{SendValueRequest, SendValueResponse};
 use crate::networking::constants;
 use crate::networking::AsyncNetworking;
 use crate::prelude::*;
+use crate::Error;
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use backoff::future::retry;
@@ -74,7 +75,7 @@ impl GrpcNetworking {
             .or_try_insert_with(|| {
                 tracing::debug!("Creating channel to '{}'", receiver);
                 let endpoint: Uri = format!("http://{}", receiver).parse().map_err(|_e| {
-                    crate::Error::Networking(format!(
+                    Error::Networking(format!(
                         "failed to parse identity as endpoint: {:?}",
                         receiver
                     ))
@@ -83,10 +84,7 @@ impl GrpcNetworking {
                 let mut channel = Channel::builder(endpoint);
                 if let Some(ref tls_config) = self.tls_config {
                     channel = channel.tls_config(tls_config.clone()).map_err(|e| {
-                        crate::Error::Networking(format!(
-                            "failed to TLS config {:?}",
-                            e.to_string()
-                        ))
+                        Error::Networking(format!("failed to TLS config {:?}", e.to_string()))
                     })?;
                 };
                 Ok(channel.connect_lazy())
@@ -119,7 +117,7 @@ impl AsyncNetworking for GrpcNetworking {
                     value: val.clone(),
                 };
                 let bytes = bincode::serialize(&tagged_value)
-                    .map_err(|e| crate::Error::Networking(e.to_string()))?;
+                    .map_err(|e| Error::Networking(e.to_string()))?;
                 let request = SendValueRequest {
                     tagged_value: bytes,
                 };
@@ -130,7 +128,7 @@ impl AsyncNetworking for GrpcNetworking {
                 let _response = client
                     .send_value(request)
                     .await
-                    .map_err(|e| crate::Error::Networking(e.to_string()))?;
+                    .map_err(|e| Error::Networking(e.to_string()))?;
                 Ok(())
             },
         )
@@ -153,7 +151,7 @@ impl AsyncNetworking for GrpcNetworking {
         match actual_sender {
             Some(actual_sender) => {
                 if *sender != actual_sender {
-                    Err(crate::Error::Networking(format!(
+                    Err(Error::Networking(format!(
                         "wrong sender; expected {:?} but got {:?}",
                         sender, actual_sender
                     )))

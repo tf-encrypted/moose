@@ -1,9 +1,10 @@
 use crate::computation::Computation;
+use crate::error::Error;
 
 pub fn toposort(mut comp: Computation) -> anyhow::Result<Computation> {
     let graph = comp.as_graph();
     let toposort = petgraph::algo::toposort(&graph, None).map_err(|_| {
-        crate::error::Error::MalformedComputation("cycle detected in the computation graph".into())
+        Error::MalformedComputation("cycle detected in the computation graph".into())
     })?;
 
     // suppose we have [d, c, a, b] as our input computation
