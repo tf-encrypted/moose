@@ -6,7 +6,7 @@ use crate::host::{HostPlacement, HostPrfKey, HostSeed, HostShape, SyncKey};
 use crate::kernels::*;
 use crate::replicated::RepTensor;
 use crate::{Const, Ring};
-use macros::with_context;
+use moose_macros::with_context;
 use std::convert::TryInto;
 
 /// Trait for truncation mask generation

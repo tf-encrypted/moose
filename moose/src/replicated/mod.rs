@@ -10,7 +10,7 @@ use crate::kernels::*;
 use crate::mirrored::Mir3Tensor;
 use crate::types::*;
 use crate::{BitArray, Const, MirroredCounterpart, Ring, Underlying};
-use macros::with_context;
+use moose_macros::with_context;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "compile")]
 use std::convert::TryFrom;

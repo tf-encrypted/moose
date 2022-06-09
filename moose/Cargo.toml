@@ -44,8 +44,8 @@ futures = "~0.3"
 itertools = "~0.10"
 lazy_static = "~1.4"
 log = "~0.4"
-moose-macros = "~0.2"
 maplit = "~1.0"
+moose-macros = "~0.2"
 ndarray = { version="~0.15", features=["serde"] }
 ndarray-linalg = { version = "0.14", features = ["openblas-system"], optional = true }
 num = "~0.4"

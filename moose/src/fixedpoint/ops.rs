@@ -12,7 +12,7 @@ use crate::kernels::*;
 use crate::mirrored::*;
 use crate::replicated::*;
 use crate::types::*;
-use macros::with_context;
+use moose_macros::with_context;
 
 impl IdentityOp {
     pub(crate) fn fixed_host_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT>(
