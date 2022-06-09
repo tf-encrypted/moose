@@ -13,10 +13,10 @@ use moose::Result;
 use std::path::Path;
 
 #[derive(Default)]
-struct AsyncLocalFileStorage {}
+pub struct AsyncFilesystemStorage {}
 
 #[async_trait]
-impl AsyncStorage for AsyncLocalFileStorage {
+impl AsyncStorage for AsyncFilesystemStorage {
     async fn save(&self, key: &str, _session_id: &SessionId, val: &Value) -> Result<()> {
         let path = Path::new(key);
         let extension = path
@@ -58,7 +58,7 @@ impl AsyncStorage for AsyncLocalFileStorage {
     }
 }
 
-pub fn parse_columns(query: &str) -> Result<Vec<String>> {
+fn parse_columns(query: &str) -> Result<Vec<String>> {
     match query {
         "" => Ok(Vec::new()),
         query_str => {
@@ -95,7 +95,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_numpy_async_local_file_storage() {
-        let storage = AsyncLocalFileStorage::default();
+        let storage = AsyncFilesystemStorage::default();
 
         let plc = HostPlacement::from("host");
         let tensor: HostFloat64Tensor = plc.from_raw(array![
@@ -129,7 +129,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_csv_async_local_file_storage() {
-        let storage = AsyncLocalFileStorage::default();
+        let storage = AsyncFilesystemStorage::default();
 
         let plc = HostPlacement::from("host");
         let tensor: HostFloat64Tensor = plc.from_raw(array![[2.3, 4.0, 5.0], [6.0, 7.0, 12.0]]);
