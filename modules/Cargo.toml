@@ -1,9 +1,11 @@
 [package]
 name = "moose-modules"
 version = "0.2.1-beta.1"
-license = "MIT"
+license = "Apache-2.0"
 edition = "2018"
-authors = []
+authors = [
+    "TF Encrypted Authors <tfencrypted@gmail.com>",
+]
 
 [dependencies]
 async_cell = "~0.2"

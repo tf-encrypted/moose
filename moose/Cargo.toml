@@ -1,14 +1,16 @@
 [package]
 name = "moose"
 version = "0.2.1-beta.1"
-license = "MIT"
-authors = [""]
 description = ""
 repository = ""
 homepage = ""
 keywords = ["", ""]
 categories = ["", ""]
+license = "Apache-2.0"
 edition = "2018"
+authors = [
+    "TF Encrypted Authors <tfencrypted@gmail.com>",
+]
 
 [features]
 default = ["blas", "compile", "sync_execute", "async_execute"]
