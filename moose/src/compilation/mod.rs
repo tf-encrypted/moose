@@ -26,7 +26,7 @@ pub const DEFAULT_PASSES: [Pass; 6] = [
 /// Supported compiler passes.
 #[derive(Clone)]
 pub enum Pass {
-    /// Insert send and receive nodes where needed.
+    /// Insert send and receive operations where needed.
     Networking,
     /// Print DOT representation of computation.
     Print,
