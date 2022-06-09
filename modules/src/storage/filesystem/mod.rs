@@ -1,5 +1,10 @@
-use crate::storage::csv::{read_csv, write_csv};
-use crate::storage::numpy::{read_numpy, write_numpy};
+//! Filesystem-based storage.
+
+pub(crate) mod csv;
+pub(crate) mod numpy;
+
+use self::csv::{read_csv, write_csv};
+use self::numpy::{read_numpy, write_numpy};
 use async_trait::async_trait;
 use moose::error::Error;
 use moose::prelude::*;
