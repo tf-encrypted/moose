@@ -2,7 +2,7 @@
 members = [
   "macros",
   "moose",
-  "modules",
+  # "modules",
   "pymoose",
   "elk",
   "reindeer",

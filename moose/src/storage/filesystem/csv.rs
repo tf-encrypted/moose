@@ -1,6 +1,6 @@
 use csv::WriterBuilder;
-use moose::prelude::*;
-use moose::{Error, Result};
+use crate::prelude::*;
+use crate::{Error, Result};
 use ndarray::prelude::*;
 use ndarray::ArcArray;
 use serde::Serialize;
@@ -194,7 +194,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use moose::tokio;
     use ndarray::array;
     use std::io::Write;
     use tempfile::NamedTempFile;

@@ -2775,12 +2775,14 @@ pub(crate) trait MirroredCounterpart {
 pub mod additive;
 pub mod boolean;
 pub mod bristol_fashion;
+pub mod choreography;
 #[cfg(feature = "compile")]
 pub mod compilation;
 pub mod computation;
 pub mod encrypted;
 pub mod error; // TODO make non-pub
 pub mod execution;
+pub(crate) mod grpc;
 pub mod fixedpoint;
 pub mod floatingpoint;
 pub mod host;

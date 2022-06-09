@@ -9,13 +9,16 @@ use std::sync::Arc;
 
 #[cfg(feature = "async_execute")]
 pub mod asynchronous;
+pub mod context;
 pub(crate) mod kernel_helpers;
 #[cfg(feature = "compile")]
 pub mod symbolic;
 #[cfg(feature = "sync_execute")]
 pub mod synchronous;
+
 #[cfg(feature = "async_execute")]
 pub use asynchronous::*;
+pub use context::ExecutionContext;
 #[cfg(feature = "compile")]
 pub use symbolic::*;
 #[cfg(feature = "sync_execute")]

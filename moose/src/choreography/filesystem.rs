@@ -2,9 +2,9 @@
 
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
-use moose::execution::RoleAssignment;
-use moose::prelude::*;
-use moose::tokio;
+use crate::execution::RoleAssignment;
+use crate::prelude::*;
+use crate::computation::Computation;
 use notify::{DebouncedEvent, Watcher};
 use serde::Deserialize;
 use std::borrow::Borrow;
@@ -204,15 +204,15 @@ pub fn parse_session_config_file_with_computation(
         match session_config.computation.format {
             ComputationFormat::Binary => {
                 let comp_raw = std::fs::read(comp_path)?;
-                moose::computation::Computation::from_msgpack(comp_raw)?
+                Computation::from_msgpack(comp_raw)?
             }
             ComputationFormat::Textual => {
                 let comp_raw = std::fs::read_to_string(comp_path)?;
-                moose::computation::Computation::from_textual(&comp_raw)?
+                Computation::from_textual(&comp_raw)?
             }
             ComputationFormat::Bincode => {
                 let comp_raw = std::fs::read(comp_path)?;
-                moose::computation::Computation::from_bincode(&comp_raw)?
+                Computation::from_bincode(&comp_raw)?
             }
         }
     };

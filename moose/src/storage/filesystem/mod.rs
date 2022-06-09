@@ -6,10 +6,10 @@ pub(crate) mod numpy;
 use self::csv::{read_csv, write_csv};
 use self::numpy::{read_numpy, write_numpy};
 use async_trait::async_trait;
-use moose::error::Error;
-use moose::prelude::*;
-use moose::storage::AsyncStorage;
-use moose::Result;
+use crate::error::Error;
+use crate::prelude::*;
+use crate::storage::AsyncStorage;
+use crate::Result;
 use std::path::Path;
 
 #[derive(Default)]
@@ -86,8 +86,7 @@ fn parse_columns(query: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use moose::tokio;
-    use moose::types::HostFloat64Tensor;
+    use crate::types::HostFloat64Tensor;
     use ndarray::array;
     use std::convert::TryFrom;
     use std::fs::File;

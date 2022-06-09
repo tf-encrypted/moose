@@ -13,8 +13,8 @@ use async_trait::async_trait;
 use backoff::future::retry;
 use backoff::ExponentialBackoff;
 use dashmap::DashMap;
-use moose::networking::AsyncNetworking;
-use moose::prelude::*;
+use crate::networking::AsyncNetworking;
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tonic::transport::{Channel, ClientTlsConfig, Uri};
@@ -67,14 +67,14 @@ pub struct GrpcNetworking {
 }
 
 impl GrpcNetworking {
-    fn channel(&self, receiver: &Identity) -> moose::Result<Channel> {
+    fn channel(&self, receiver: &Identity) -> crate::Result<Channel> {
         let channel = self
             .channels
             .entry(receiver.clone())
             .or_try_insert_with(|| {
                 tracing::debug!("Creating channel to '{}'", receiver);
                 let endpoint: Uri = format!("http://{}", receiver).parse().map_err(|_e| {
-                    moose::Error::Networking(format!(
+                    crate::Error::Networking(format!(
                         "failed to parse identity as endpoint: {:?}",
                         receiver
                     ))
@@ -83,7 +83,7 @@ impl GrpcNetworking {
                 let mut channel = Channel::builder(endpoint);
                 if let Some(ref tls_config) = self.tls_config {
                     channel = channel.tls_config(tls_config.clone()).map_err(|e| {
-                        moose::Error::Networking(format!(
+                        crate::Error::Networking(format!(
                             "failed to TLS config {:?}",
                             e.to_string()
                         ))
@@ -104,7 +104,7 @@ impl AsyncNetworking for GrpcNetworking {
         receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
-    ) -> moose::Result<()> {
+    ) -> crate::Result<()> {
         retry(
             ExponentialBackoff {
                 max_elapsed_time: *constants::MAX_ELAPSED_TIME,
@@ -119,7 +119,7 @@ impl AsyncNetworking for GrpcNetworking {
                     value: val.clone(),
                 };
                 let bytes = bincode::serialize(&tagged_value)
-                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
+                    .map_err(|e| crate::Error::Networking(e.to_string()))?;
                 let request = SendValueRequest {
                     tagged_value: bytes,
                 };
@@ -130,7 +130,7 @@ impl AsyncNetworking for GrpcNetworking {
                 let _response = client
                     .send_value(request)
                     .await
-                    .map_err(|e| moose::Error::Networking(e.to_string()))?;
+                    .map_err(|e| crate::Error::Networking(e.to_string()))?;
                 Ok(())
             },
         )
@@ -142,7 +142,7 @@ impl AsyncNetworking for GrpcNetworking {
         sender: &Identity,
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
-    ) -> moose::Result<Value> {
+    ) -> crate::Result<Value> {
         let cell = cell(
             &self.stores,
             self.session_id.clone(),
@@ -153,7 +153,7 @@ impl AsyncNetworking for GrpcNetworking {
         match actual_sender {
             Some(actual_sender) => {
                 if *sender != actual_sender {
-                    Err(moose::Error::Networking(format!(
+                    Err(crate::Error::Networking(format!(
                         "wrong sender; expected {:?} but got {:?}",
                         sender, actual_sender
                     )))
@@ -215,7 +215,7 @@ impl Networking for NetworkingImpl {
         &self,
         request: tonic::Request<SendValueRequest>,
     ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
-        let sender = crate::extract_sender(&request)
+        let sender = crate::grpc::extract_sender(&request)
             .map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?
             .map(Identity::from);
 

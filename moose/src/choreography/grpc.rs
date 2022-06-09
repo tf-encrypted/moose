@@ -15,9 +15,8 @@ use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
-use moose::computation::{SessionId, Value};
-use moose::execution::Identity;
-use moose::tokio;
+use crate::computation::{SessionId, Value};
+use crate::execution::Identity;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -62,7 +61,7 @@ impl GrpcChoreography {
 
 impl GrpcChoreography {
     fn check_choreographer<T>(&self, request: &tonic::Request<T>) -> Result<(), tonic::Status> {
-        let choreographer = crate::extract_sender(request).map_err(|_e| {
+        let choreographer = crate::grpc::extract_sender(request).map_err(|_e| {
             tonic::Status::new(
                 tonic::Code::Aborted,
                 "failed to extract sender identity".to_string(),

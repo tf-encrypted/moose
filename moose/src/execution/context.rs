@@ -1,11 +1,9 @@
 //! Execution extensions.
 
-pub mod grpc;
-
-use moose::computation::IndexedComputation;
-use moose::computation::Operator;
-use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
-use moose::prelude::*;
+use crate::computation::IndexedComputation;
+use crate::computation::Operator;
+use crate::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
+use crate::prelude::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -120,7 +118,7 @@ impl ExecutionContext {
             for (op_index, op) in computation.operations.iter().enumerate() {
                 // TODO(Morten) move filtering logic to the session
                 let placement = computation.placements.get(op.placement).ok_or_else(|| {
-                    moose::Error::MalformedComputation(format!(
+                    crate::Error::MalformedComputation(format!(
                         "Missing placement for operation '{}'",
                         op_index
                     ))
@@ -150,7 +148,7 @@ impl ExecutionContext {
                     .collect();
 
                 let operator = computation.operators.get(op.operator).ok_or_else(|| {
-                    moose::Error::MalformedComputation(format!(
+                    crate::Error::MalformedComputation(format!(
                         "Missing operator for operation '{}'",
                         op_index
                     ))
