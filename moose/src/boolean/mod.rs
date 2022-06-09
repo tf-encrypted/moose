@@ -1,4 +1,4 @@
-//! Abstraction layer for boolean values
+//! Abstraction layer for boolean values.
 
 use crate::computation::*;
 use crate::error::{Error, Result};

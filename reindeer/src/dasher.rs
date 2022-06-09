@@ -1,5 +1,9 @@
+//! Reindeer running a computation locally by simulating all placements.
+
 use moose::computation::Operator;
+use moose::networking::local::LocalAsyncNetworking;
 use moose::prelude::*;
+use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
@@ -62,9 +66,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect()
     };
 
-    let networking = Arc::new(moose::networking::LocalAsyncNetworking::default());
+    let networking = Arc::new(LocalAsyncNetworking::default());
 
-    let storage = Arc::new(moose::storage::LocalAsyncStorage::default());
+    let storage = Arc::new(LocalAsyncStorage::default());
 
     let session = AsyncSession::new(
         session_id,

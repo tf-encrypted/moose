@@ -1,4 +1,4 @@
-//! Placement for plaintext operations by a single role
+//! Placement for plaintext operations by a single role.
 
 use crate::computation::*;
 use crate::error::Result;

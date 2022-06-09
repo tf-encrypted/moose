@@ -5,7 +5,7 @@ use crate::computation::MaximumOp;
 use crate::error::Result;
 use crate::execution::Session;
 use crate::fixedpoint::FixedpointTensor;
-use macros::with_context;
+use moose_macros::with_context;
 
 impl MaximumOp {
     pub(crate) fn kernel<S: Session, RepRingT, RepBitT, MirRingT>(

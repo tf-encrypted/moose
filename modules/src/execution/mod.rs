@@ -1,3 +1,5 @@
+//! Execution extensions.
+
 pub mod grpc;
 
 use moose::computation::IndexedComputation;

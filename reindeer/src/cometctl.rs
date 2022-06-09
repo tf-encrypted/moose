@@ -1,7 +1,9 @@
+//! CLI tool for interacting with a group of Comet reindeers
+
 use clap::{Parser, Subcommand};
 use moose::computation::SessionId;
 use moose::tokio;
-use moose_modules::choreography::{
+use moose_modules::choreography::filesystem::{
     parse_session_config_file_with_computation, parse_session_config_file_without_computation,
 };
 use moose_modules::execution::grpc::GrpcMooseRuntime;
@@ -68,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tls_config = match (args.certs, args.identity) {
         (Some(certs_dir), Some(identity)) => {
-            Some(reindeer::setup_tls_client(&identity, &certs_dir)?)
+            Some(reindeer::load_client_tls_config(&identity, &certs_dir)?)
         }
         (None, None) => None,
         _ => panic!("both --certs and --identity must be specified"),

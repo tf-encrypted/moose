@@ -5,7 +5,7 @@ use crate::error::Result;
 use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::*;
-use macros::with_context;
+use moose_macros::with_context;
 
 impl ShapeOp {
     pub(crate) fn adt_kernel<S: Session, HostT, ShapeT>(

@@ -1,7 +1,6 @@
 use csv::WriterBuilder;
-use moose::error::Error;
 use moose::prelude::*;
-use moose::Result;
+use moose::{Error, Result};
 use ndarray::prelude::*;
 use ndarray::ArcArray;
 use serde::Serialize;

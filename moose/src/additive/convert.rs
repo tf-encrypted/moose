@@ -6,7 +6,7 @@ use crate::execution::Session;
 use crate::host::HostPlacement;
 use crate::kernels::*;
 use crate::replicated::RepTensor;
-use macros::with_context;
+use moose_macros::with_context;
 
 impl RepToAdtOp {
     pub(crate) fn rep_to_adt_kernel<S: Session, HostRingT>(

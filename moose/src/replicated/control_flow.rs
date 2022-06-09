@@ -4,7 +4,7 @@ use super::*;
 use crate::computation::MuxOp;
 use crate::error::Result;
 use crate::execution::Session;
-use macros::with_context;
+use moose_macros::with_context;
 
 impl MuxOp {
     pub(crate) fn rep_kernel<S: Session, RepRingT>(

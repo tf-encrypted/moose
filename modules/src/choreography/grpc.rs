@@ -1,3 +1,5 @@
+//! gRPC-based choreography.
+
 pub(crate) mod gen {
     tonic::include_proto!("moose_choreography");
 }
@@ -16,15 +18,23 @@ use dashmap::DashMap;
 use moose::computation::{SessionId, Value};
 use moose::execution::Identity;
 use moose::tokio;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
-type ResultsStores = DashMap<SessionId, Arc<AsyncCell<HashMap<String, Value>>>>;
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct ComputationOutputs {
+    pub outputs: HashMap<String, Value>,
+    pub elapsed_time: Option<Duration>,
+}
+
+type ResultStores = DashMap<SessionId, Arc<AsyncCell<ComputationOutputs>>>;
 
 pub struct GrpcChoreography {
     own_identity: Identity,
     choreographer: Option<String>,
-    result_stores: Arc<ResultsStores>,
+    result_stores: Arc<ResultStores>,
     networking_strategy: NetworkingStrategy,
     storage_strategy: StorageStrategy,
 }
@@ -39,7 +49,7 @@ impl GrpcChoreography {
         GrpcChoreography {
             own_identity,
             choreographer,
-            result_stores: Arc::new(ResultsStores::default()),
+            result_stores: Arc::new(ResultStores::default()),
             networking_strategy,
             storage_strategy,
         }
@@ -104,11 +114,11 @@ impl Choreography for GrpcChoreography {
         match self.result_stores.entry(session_id.clone()) {
             Entry::Occupied(_) => Err(tonic::Status::new(
                 tonic::Code::Aborted,
-                "session id exists already".to_string(),
+                "session id exists already or inconsistent metric and result map".to_string(),
             )),
             Entry::Vacant(result_stores_entry) => {
-                let results_cell = AsyncCell::shared();
-                result_stores_entry.insert(results_cell);
+                let result_cell = AsyncCell::shared();
+                result_stores_entry.insert(result_cell);
 
                 let computation = bincode::deserialize(&request.computation).map_err(|_e| {
                     tonic::Status::new(
@@ -132,9 +142,12 @@ impl Choreography for GrpcChoreography {
                         )
                     })?;
 
+                let own_identity = self.own_identity.clone();
                 let networking = (self.networking_strategy)(session_id.clone());
                 let storage = (self.storage_strategy)();
-                let context = ExecutionContext::new(self.own_identity.clone(), networking, storage);
+                let context = ExecutionContext::new(own_identity, networking, storage);
+
+                let execution_start_timer = Instant::now();
 
                 let (_handle, outputs) = context
                     .execute_computation(
@@ -152,6 +165,7 @@ impl Choreography for GrpcChoreography {
                     })?;
 
                 let result_stores = Arc::clone(&self.result_stores);
+
                 tokio::spawn(async move {
                     let mut results = HashMap::with_capacity(outputs.len());
                     for (output_name, output_value) in outputs {
@@ -159,10 +173,17 @@ impl Choreography for GrpcChoreography {
                         results.insert(output_name, value);
                     }
                     tracing::info!("Results ready, {:?}", results.keys());
+
                     let result_cell = result_stores
                         .get(&session_id)
                         .expect("session disappeared unexpectedly");
-                    result_cell.set(results);
+
+                    let execution_stop_timer = Instant::now();
+                    let elapsed_time = execution_stop_timer.duration_since(execution_start_timer);
+                    result_cell.set(ComputationOutputs {
+                        outputs: results,
+                        elapsed_time: Some(elapsed_time),
+                    });
                 });
 
                 Ok(tonic::Response::new(LaunchComputationResponse::default()))
@@ -192,15 +213,16 @@ impl Choreography for GrpcChoreography {
         })?;
 
         match self.result_stores.get(&session_id) {
+            Some(results) => {
+                let results = results.value().get().await;
+                let values = bincode::serialize(&results).expect("failed to serialize results");
+
+                Ok(tonic::Response::new(RetrieveResultsResponse { values }))
+            }
             None => Err(tonic::Status::new(
                 tonic::Code::NotFound,
                 "unknown session id".to_string(),
             )),
-            Some(results) => {
-                let results = results.value().get().await;
-                let values = bincode::serialize(&results).expect("failed to serialize results");
-                Ok(tonic::Response::new(RetrieveResultsResponse { values }))
-            }
         }
     }
 }

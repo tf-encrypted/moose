@@ -1,7 +1,9 @@
+//! Moose error types.
+
 use crate::computation::Ty;
 use serde::{Deserialize, Serialize};
 
-/// Common error type used throughout
+/// Common error type used throughout.
 #[derive(Clone, Debug, Deserialize, Serialize, thiserror::Error)]
 pub enum Error {
     #[error("Unexpected error")]

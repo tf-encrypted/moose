@@ -1,3 +1,5 @@
+//! CLI tool for the Moose compiler.
+
 use clap::{ArgEnum, Parser, Subcommand};
 use moose::compilation::compile;
 use moose::prelude::Computation;
