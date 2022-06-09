@@ -6,6 +6,7 @@ edition = "2018"
 authors = [
     "TF Encrypted Authors <tfencrypted@gmail.com>",
 ]
+description = "Macros used by Moose"
 
 [lib]
 proc-macro = true
