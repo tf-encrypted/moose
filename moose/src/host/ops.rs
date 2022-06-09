@@ -7,7 +7,6 @@ use aes_prng::AesRng;
 use bitvec::prelude::BitVec;
 use ndarray::LinalgScalar;
 use ndarray::Zip;
-#[cfg(feature = "blas")]
 use ndarray_linalg::{Inverse, Lapack};
 use num_traits::{clamp_min, Float, FromPrimitive, Signed, Zero};
 use std::convert::TryInto;
@@ -1218,7 +1217,6 @@ impl TransposeOp {
 }
 
 impl InverseOp {
-    #[cfg(feature = "blas")]
     pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
         plc: &HostPlacement,
@@ -1248,17 +1246,6 @@ impl InverseOp {
             ),
         };
         Ok(x_inv)
-    }
-
-    #[cfg(not(feature = "blas"))]
-    pub(crate) fn host_kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _x: HostTensor<T>,
-    ) -> Result<HostTensor<T>> {
-        Err(Error::UnimplementedOperator(
-            "Please enable 'blas' feature".to_string(),
-        ))
     }
 }
 

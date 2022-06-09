@@ -590,7 +590,6 @@ mod tests {
         assert_eq!(z, expected);
     }
 
-    #[cfg(feature = "blas")]
     #[test]
     fn test_inverse() {
         let sess = SyncSession::default();

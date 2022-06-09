@@ -20,8 +20,7 @@ homepage = "https://github.com/tf-encrypted/moose"
 documentation = "https://docs.rs/moose"
 
 [features]
-default = ["blas", "compile", "sync_execute", "async_execute"]
-blas = ["ndarray-linalg"]
+default = ["compile", "sync_execute", "async_execute"]
 compile = []
 sync_execute = []
 async_execute = []
@@ -48,7 +47,7 @@ maplit = "~1.0"
 moose-macros = "~0.2"
 ndarray = { version = "~0.15", features = ["serde"] }
 ndarray-npy = "~0.8"
-ndarray-linalg = { version = "0.14", features = ["openblas-system"], optional = true }
+ndarray-linalg = { version = "0.14", features = ["openblas-system"] }
 num = "~0.4"
 num-traits = "~0.2"
 notify = "4.0"
