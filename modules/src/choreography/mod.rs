@@ -1,3 +1,8 @@
+//! Choreography extensions.
+
+pub mod filesystem;
+pub mod grpc;
+
 use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl, Identity};
 use moose::prelude::{Computation, Role, SessionId};
 use serde::Deserialize;
@@ -27,12 +32,12 @@ impl FromStr for SessionConfig {
 #[derive(Debug, Deserialize)]
 pub struct ComputationConfig {
     pub path: String,
-    pub format: Format,
+    pub format: ComputationFormat,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum Format {
+pub enum ComputationFormat {
     Binary,
     Textual,
     Bincode,
@@ -53,15 +58,15 @@ pub fn parse_session_config_file_with_computation(
     let computation = {
         let comp_path = &session_config.computation.path;
         match session_config.computation.format {
-            Format::Binary => {
+            ComputationFormat::Binary => {
                 let comp_raw = std::fs::read(comp_path)?;
                 moose::computation::Computation::from_msgpack(comp_raw)?
             }
-            Format::Textual => {
+            ComputationFormat::Textual => {
                 let comp_raw = std::fs::read_to_string(comp_path)?;
                 moose::computation::Computation::from_textual(&comp_raw)?
             }
-            Format::Bincode => {
+            ComputationFormat::Bincode => {
                 let comp_raw = std::fs::read(comp_path)?;
                 moose::computation::Computation::from_bincode(&comp_raw)?
             }
@@ -98,6 +103,3 @@ pub fn parse_session_config_file_without_computation(
 }
 
 pub type RoleAssignment = HashMap<Role, Identity>;
-
-pub mod filesystem;
-pub mod grpc;

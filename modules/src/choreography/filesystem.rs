@@ -1,3 +1,5 @@
+//! Filesystem-based choreography.
+
 use super::parse_session_config_file_with_computation;
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
 use crate::execution::ExecutionContext;
