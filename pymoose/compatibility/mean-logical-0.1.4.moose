@@ -1,2 +1,0 @@
-x = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
-mean = HostMean{}: (HostFloat32Tensor) -> HostFloat32Tensor (x) @Host(alice)

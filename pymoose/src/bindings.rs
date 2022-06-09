@@ -426,36 +426,3 @@ fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pymodule!(moose_runtime))?;
     Ok(())
 }
-
-#[cfg(test)]
-mod compatibility_tests {
-    use moose::compilation::{compile, Pass};
-    use moose::textual::parallel_parse_computation;
-    use rstest::rstest;
-
-    #[rstest]
-    #[case("compatibility/aes-lingreg-logical-0.1.2.moose")]
-    #[case("compatibility/aes-lingreg-logical-0.1.3.moose")]
-    #[case("compatibility/mean-logical-0.1.4.moose")]
-    #[case("compatibility/mean-logical-0.1.5.moose")]
-    fn test_old_versions_parsing(#[case] path: String) -> Result<(), anyhow::Error> {
-        let source = std::fs::read_to_string(path)?;
-        let computation =
-            parallel_parse_computation(&source, crate::bindings::DEFAULT_PARSE_CHUNKS)?;
-        let _ = compile::<Pass>(computation, None)?;
-        Ok(())
-    }
-
-    #[rstest]
-    #[case("compatibility/aes-lingreg-physical-0.1.2.moose.gz")]
-    #[case("compatibility/aes-lingreg-physical-0.1.5.moose.gz")]
-    fn test_old_versions_parsing_gzip(#[case] path: String) -> Result<(), anyhow::Error> {
-        use flate2::read::GzDecoder;
-        use std::io::Read;
-        let mut decoder = GzDecoder::new(std::fs::File::open(path)?);
-        let mut source = String::new();
-        decoder.read_to_string(&mut source)?;
-        let _ = parallel_parse_computation(&source, crate::bindings::DEFAULT_PARSE_CHUNKS)?;
-        Ok(())
-    }
-}
