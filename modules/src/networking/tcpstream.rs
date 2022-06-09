@@ -1,3 +1,5 @@
+//! Direct TCP networking implementation.
+
 use async_trait::async_trait;
 use moose::tokio;
 use moose::{

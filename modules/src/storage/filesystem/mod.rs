@@ -1,4 +1,4 @@
-//! Filesystem-based storage.
+//! Filesystem-based storage implementation.
 
 pub(crate) mod csv;
 pub(crate) mod numpy;
