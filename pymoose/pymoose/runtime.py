@@ -4,7 +4,6 @@ from typing import Optional
 
 from pymoose.computation import computation as comp
 from pymoose.computation import utils
-from pymoose.computation.placements import HostPlacement
 from pymoose.edsl import base as edsl
 from pymoose.edsl import tracer
 from pymoose.edsl.base import HostPlacementExpression
