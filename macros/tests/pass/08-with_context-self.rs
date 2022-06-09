@@ -1,4 +1,4 @@
-use macros::with_context;
+use moose_macros::with_context;
 
 struct Player;
 

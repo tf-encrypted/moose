@@ -1,14 +1,23 @@
 [package]
 name = "moose"
-version = "0.2.1-beta.1"
-license = "MIT"
-authors = [""]
-description = ""
-repository = ""
-homepage = ""
-keywords = ["", ""]
-categories = ["", ""]
+version = "0.2.1"
 edition = "2018"
+license = "Apache-2.0"
+authors = [
+    "TF Encrypted Authors <tfencrypted@gmail.com>",
+]
+description = "Encrypted learning and data processing framework"
+keywords = [
+  "cryptography",
+  "secure-computation",
+  "machine-learning",
+  "data-science",
+  "distributed",
+]
+categories = ["cryptography"]
+repository = "https://github.com/tf-encrypted/moose"
+homepage = "https://github.com/tf-encrypted/moose"
+documentation = "https://docs.rs/moose"
 
 [features]
 default = ["blas", "compile", "sync_execute", "async_execute"]
@@ -34,8 +43,8 @@ futures = "~0.3"
 itertools = "~0.10"
 lazy_static = "~1.4"
 log = "~0.4"
-macros = { path = "../macros" }
 maplit = "~1.0"
+moose-macros = "~0.2"
 ndarray = { version="~0.15", features=["serde"] }
 ndarray-linalg = { version = "0.14", features = ["openblas-system"], optional = true }
 num = "~0.4"
