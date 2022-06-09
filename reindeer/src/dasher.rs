@@ -1,3 +1,5 @@
+//! Reindeer running a computation locally by simulating all placements.
+
 use moose::computation::Operator;
 use moose::prelude::*;
 use moose::tokio;

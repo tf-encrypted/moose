@@ -1,3 +1,5 @@
+//! Core Moose framework.
+
 /// Map a type to its canonical type
 ///
 /// Using this macro requires adding the following trait bound:
