@@ -1,12 +1,11 @@
 [package]
 name = "macros"
-version = "0.2.1-beta.1"
+version = "0.2.1"
 license = "Apache-2.0"
 edition = "2018"
 authors = [
     "TF Encrypted Authors <tfencrypted@gmail.com>",
 ]
-publish = false
 
 [lib]
 proc-macro = true
