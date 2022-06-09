@@ -36,14 +36,15 @@ if __name__ == "__main__":
     if args.verbose:
         get_logger().setLevel(level=logging.DEBUG)
 
-    runtime = pm.GrpcMooseRuntime(
-        {
-            "alice": "localhost:50000",
-            "bob": "localhost:50001",
-            "carole": "localhost:50002",
-        }
-    )
+    role_map = {
+        alice: "localhost:50000",
+        bob: "localhost:50001",
+        carole: "localhost:50002",
+    }
+
+    runtime = pm.GrpcMooseRuntime(role_map)
     runtime.set_default()
 
-    results = my_computation(np.array([5.0, 6.0], dtype=np.float64))
-    print(results)
+    results, _ = my_computation(np.array([5.0, 6.0], dtype=np.float64))
+
+    print("Outputs: ", results)

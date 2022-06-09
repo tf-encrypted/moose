@@ -2,13 +2,21 @@ use crate::choreography::grpc::gen::choreography_client::ChoreographyClient;
 use crate::choreography::grpc::gen::{
     AbortComputationRequest, LaunchComputationRequest, RetrieveResultsRequest,
 };
+use crate::choreography::grpc::ComputationOutputs;
 use moose::prelude::{Computation, Identity, Role, SessionId, Value};
 use std::collections::HashMap;
+use std::time::Duration;
 use tonic::transport::{Channel, ClientTlsConfig, Uri};
 
 pub struct GrpcMooseRuntime {
     role_assignments: HashMap<Role, Identity>,
     channels: HashMap<Role, Channel>,
+}
+
+#[derive(Debug)]
+pub struct GrpcOutputs {
+    pub outputs: HashMap<String, Value>,
+    pub elapsed_time: Option<HashMap<Role, Duration>>,
 }
 
 impl GrpcMooseRuntime {
@@ -40,7 +48,7 @@ impl GrpcMooseRuntime {
         session_id: &SessionId,
         computation: &Computation,
         arguments: HashMap<String, Value>,
-    ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
+    ) -> Result<GrpcOutputs, Box<dyn std::error::Error>> {
         self.launch_computation(session_id, computation, arguments)
             .await?;
         self.retrieve_results(session_id).await
@@ -97,11 +105,13 @@ impl GrpcMooseRuntime {
     pub async fn retrieve_results(
         &self,
         session_id: &SessionId,
-    ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
+    ) -> Result<GrpcOutputs, Box<dyn std::error::Error>> {
         let session_id = bincode::serialize(&session_id)?;
 
-        let mut combined_results = HashMap::new();
-        for channel in self.channels.values() {
+        let mut combined_outputs = HashMap::new();
+        let mut combined_stats = HashMap::new();
+
+        for (role, channel) in self.channels.iter() {
             let mut client = ChoreographyClient::new(channel.clone());
 
             let request = RetrieveResultsRequest {
@@ -109,10 +119,28 @@ impl GrpcMooseRuntime {
             };
 
             let response = client.retrieve_results(request).await?;
-            let vals = bincode::deserialize::<HashMap<String, Value>>(&response.get_ref().values)?;
-            combined_results.extend(vals);
+
+            let ComputationOutputs {
+                outputs,
+                elapsed_time,
+            } = bincode::deserialize::<ComputationOutputs>(&response.get_ref().values)?;
+            combined_outputs.extend(outputs);
+
+            if let Some(time) = elapsed_time {
+                combined_stats.insert(role.clone(), time);
+            }
         }
 
-        Ok(combined_results)
+        if combined_stats.is_empty() {
+            Ok(GrpcOutputs {
+                outputs: combined_outputs,
+                elapsed_time: None,
+            })
+        } else {
+            Ok(GrpcOutputs {
+                outputs: combined_outputs,
+                elapsed_time: Some(combined_stats),
+            })
+        }
     }
 }
