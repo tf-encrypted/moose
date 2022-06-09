@@ -26,15 +26,14 @@ sync_execute = []
 async_execute = []
 
 [dependencies]
-aes = "~0.8"
 aes-prng = "~0.2"
 anyhow = "~1.0"
 async_cell = "~0.2"
 async-trait = "~0.1"
 backoff = { version = "~0.4", features = ["tokio"] }
 bincode = "~1.3"
-bitvec = { version="~1", features=["serde"] }
-blake3 = { version="~1.3", features=["std"] }
+bitvec = { version = "~1", features = ["serde"] }
+blake3 = { version = "~1.3", features = ["std"] }
 byteorder = "~1.4"
 bytes = "1"
 csv = "~1.1"
@@ -46,7 +45,7 @@ lazy_static = "~1.4"
 log = "~0.4"
 maplit = "~1.0"
 moose-macros = "~0.2"
-ndarray = { version="~0.15", features=["serde"] }
+ndarray = { version = "~0.15", features = ["serde"] }
 ndarray-npy = "~0.8"
 ndarray-linalg = { version = "0.14", features = ["openblas-system"] }
 num = "~0.4"
@@ -59,24 +58,25 @@ prost = "0.9"
 rand = { version = "~0.8", features = ["std", "std_rng"] }
 rayon = "~1.5"
 rmp-serde = "~1.0"
-serde = { version="~1.0", features=["derive", "rc"] }
+serde = { version = "~1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 static_assertions = "~1.1"
 thiserror = "~1.0"
-tokio = { version="~1.17", features=["full"] }
+tokio = { version = "~1.17", features = ["full"] }
 toml = "0.5"
 tonic = { version = "~0.6", features = ["tls"] }
-tracing = { version="~0.1", features=["log"] }
-nom = { version="~7.1" }
+tracing = { version = "~0.1", features = ["log"] }
+nom = { version = "~7.1" }
 x509-parser = "~0.13"
 
 [build-dependencies]
 tonic-build = "~0.6"
 
 [dev-dependencies]
+aes = "~0.8"
 aes-gcm = "~0.9"
 base64 = "~0.13"
-criterion = { version="~0.3", features=["async_tokio"] }
+criterion = { version = "~0.3", features = ["async_tokio"] }
 getrandom = "~0.2"
 proptest = "~1.0"
 rand_chacha = "~0.3"
