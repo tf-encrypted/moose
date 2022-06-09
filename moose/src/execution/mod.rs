@@ -155,7 +155,7 @@ mod tests {
             run_async,
         )?;
 
-        assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+        assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["output_0"]);
         Ok(())
     }
 
@@ -174,7 +174,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
+        let seed: HostSeed = (outputs.get("output_0").unwrap().clone()).try_into()?;
         if run_async {
             // Async session uses a random session id, so we can not predict the output.
             // But at least it should not be empty
@@ -209,7 +209,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let output: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let output: HostShape = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(output.0, RawShape(vec![2, 2]));
         Ok(())
     }
@@ -231,7 +231,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let z: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let z: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let expected: Value = "HostInt64Tensor([15]) @Host(alice)".try_into()?;
         assert_eq!(expected, z.into());
         Ok(())
@@ -341,7 +341,8 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let concatenated: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let concatenated: HostInt64Tensor =
+            (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, concatenated.into());
         Ok(())
     }
@@ -382,7 +383,7 @@ mod tests {
             false => _run_computation_test(computation, storage_mapping, arguments, run_async)?,
         };
 
-        let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, res.into());
         Ok(())
     }
@@ -417,7 +418,7 @@ mod tests {
             HostPlacement::from("alice"),
         )
         .into();
-        assert_eq!(outputs["output"], expected_output);
+        assert_eq!(outputs["output_0"], expected_output);
         Ok(())
     }
 
@@ -442,7 +443,7 @@ mod tests {
                 .into_dyn(),
             HostPlacement::from("alice"),
         );
-        let x_inv: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let x_inv: HostFloat32Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_output, x_inv);
         Ok(())
     }
@@ -472,7 +473,7 @@ mod tests {
 
         match dtype.as_str() {
             "HostFloat32Tensor" => {
-                let r: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostFloat32Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
                     HostTensor::<f32>(
@@ -483,7 +484,7 @@ mod tests {
                 Ok(())
             }
             "HostFloat64Tensor" => {
-                let r: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostFloat64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
                     HostTensor::<f64>(
@@ -494,7 +495,7 @@ mod tests {
                 Ok(())
             }
             "HostInt64Tensor" => {
-                let r: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
                     HostTensor::<i64>(
@@ -522,7 +523,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let actual_shape: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let actual_shape: HostShape = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let actual_raw_shape = actual_shape.0;
         let expected_raw_shape = RawShape(vec![2, 2]);
         assert_eq!(actual_raw_shape, expected_raw_shape);
@@ -542,7 +543,7 @@ mod tests {
             hashmap!("alice".to_string() => hashmap!());
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
-        let res: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostShape = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let actual_shape = res.0;
         let expected_shape = RawShape(vec![3, 4]);
         assert_eq!(expected_shape, actual_shape);
@@ -566,7 +567,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let actual_shape = res.shape().0;
         let expected_shape = RawShape(vec![2, 1]);
         assert_eq!(expected_shape, actual_shape);
@@ -659,7 +660,7 @@ mod tests {
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let comp_result = outputs
-            .get("output")
+            .get("output_0")
             .ok_or_else(|| anyhow::anyhow!("Expected result missing"))?;
 
         if unwrap_flag {
@@ -698,7 +699,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let comp_result: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -727,7 +728,8 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let comp_result: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostFloat64Tensor =
+            (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -759,7 +761,8 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let comp_result: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostRing64Tensor =
+            (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -831,13 +834,13 @@ mod tests {
         match type_str.as_str() {
             "HostRing64Tensor" => {
                 let comp_result: HostRing64Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "HostRing128Tensor" => {
                 let comp_result: HostRing128Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
@@ -901,13 +904,13 @@ mod tests {
         match type_str.as_str() {
             "Ring64" => {
                 let comp_result: HostRing64Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "Ring128" => {
                 let comp_result: HostRing128Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
@@ -939,13 +942,13 @@ mod tests {
         match type_str.as_str() {
             "HostRing64Tensor" => {
                 let comp_result: HostRing64Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "HostRing128Tensor" => {
                 let comp_result: HostRing128Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }

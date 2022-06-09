@@ -55,8 +55,9 @@ mod tests {
         assert!(comp.contains(
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp
-            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+        assert!(comp.contains(
+            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+        ));
         Ok(())
     }
 
@@ -83,8 +84,9 @@ mod tests {
         assert!(comp.contains(
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp
-            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+        assert!(comp.contains(
+            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+        ));
         Ok(())
     }
 
@@ -123,8 +125,9 @@ mod tests {
         assert!(comp.contains(
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
         ));
-        assert!(comp
-            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+        assert!(comp.contains(
+            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+        ));
         Ok(())
     }
 
@@ -152,8 +155,9 @@ mod tests {
         assert!(comp.contains(
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp
-            .contains("z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"));
+        assert!(comp.contains(
+            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+        ));
         assert!(comp.contains(
             "add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
