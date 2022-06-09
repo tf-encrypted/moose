@@ -212,7 +212,7 @@ impl Networking for NetworkingImpl {
     async fn send_value(
         &self,
         request: tonic::Request<SendValueRequest>,
-    ) -> Result<tonic::Response<SendValueResponse>, tonic::Status> {
+    ) -> std::result::Result<tonic::Response<SendValueResponse>, tonic::Status> {
         let sender = crate::grpc::extract_sender(&request)
             .map_err(|e| tonic::Status::new(tonic::Code::Aborted, e))?
             .map(Identity::from);
