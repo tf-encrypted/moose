@@ -1,5 +1,5 @@
-use moose::prelude::*;
-use moose::{Error, Result};
+use crate::prelude::*;
+use crate::{Error, Result};
 use ndarray::ArrayD;
 use ndarray_npy::{read_npy, write_npy};
 use std::fs::File;
@@ -300,7 +300,6 @@ fn extract_dtype(npy_filename: &str) -> Result<Ty> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use moose::tokio;
     use ndarray::array;
     use std::io::Write;
     use tempfile::NamedTempFile;

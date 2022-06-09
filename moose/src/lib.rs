@@ -2775,6 +2775,7 @@ pub(crate) trait MirroredCounterpart {
 pub mod additive;
 pub mod boolean;
 pub mod bristol_fashion;
+pub mod choreography;
 #[cfg(feature = "compile")]
 pub mod compilation;
 pub mod computation;
@@ -2783,6 +2784,7 @@ pub mod error; // TODO make non-pub
 pub mod execution;
 pub mod fixedpoint;
 pub mod floatingpoint;
+pub(crate) mod grpc;
 pub mod host;
 pub mod integer;
 pub mod kernels;

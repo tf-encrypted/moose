@@ -1,13 +1,14 @@
 //! Networking traits and implementations.
-//!
-//! See also the `moose_modules` crate for more implementations.
 
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::Identity;
 use async_trait::async_trait;
 
+mod constants;
+pub mod grpc;
 pub mod local;
+pub mod tcpstream;
 
 /// Requirements for synchronous networking.
 ///

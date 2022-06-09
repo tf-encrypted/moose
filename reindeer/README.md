@@ -51,7 +51,7 @@ The worker listens for changes to the specified directory and will automatically
 Debug logging to console may be turned on by setting:
 
 ```
-export RUST_LOG="moose=debug,moose_modules=debug"
+export RUST_LOG="moose=debug"
 ```
 
 ## Tracing

@@ -3,8 +3,8 @@
 pub mod filesystem;
 pub mod grpc;
 
-use moose::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
-use moose::prelude::SessionId;
+use crate::execution::{AsyncNetworkingImpl, AsyncStorageImpl};
+use crate::prelude::SessionId;
 
 pub type NetworkingStrategy = Box<dyn Fn(SessionId) -> AsyncNetworkingImpl + Send + Sync>;
 

@@ -3,7 +3,7 @@ use crate::choreography::grpc::gen::{
     AbortComputationRequest, LaunchComputationRequest, RetrieveResultsRequest,
 };
 use crate::choreography::grpc::ComputationOutputs;
-use moose::prelude::{Computation, Identity, Role, SessionId, Value};
+use crate::prelude::{Computation, Identity, Role, SessionId, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 use tonic::transport::{Channel, ClientTlsConfig, Uri};
