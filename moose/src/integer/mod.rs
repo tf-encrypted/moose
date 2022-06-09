@@ -1,4 +1,5 @@
-//! Abstraction layer for Integer values
+//! Abstraction layer for integer values.
+
 use crate::computation::*;
 use crate::error::Result;
 use crate::kernels::*;

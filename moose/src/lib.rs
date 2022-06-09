@@ -1,3 +1,5 @@
+//! Core Moose framework.
+
 /// Map a type to its canonical type
 ///
 /// Using this macro requires adding the following trait bound:
@@ -2793,6 +2795,5 @@ pub mod storage;
 pub mod textual;
 pub mod types;
 
-#[doc(inline)]
 pub use error::{Error, Result};
 pub use tokio;

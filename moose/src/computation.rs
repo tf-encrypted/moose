@@ -1,3 +1,5 @@
+//! Moose computation format.
+
 use crate::additive::*;
 use crate::error::{Error, Result};
 #[cfg(feature = "compile")]

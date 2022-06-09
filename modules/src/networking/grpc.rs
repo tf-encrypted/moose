@@ -1,3 +1,5 @@
+//! gRPC-based networking implementation.
+
 mod gen {
     tonic::include_proto!("moose_networking");
 }
@@ -57,7 +59,7 @@ impl GrpcNetworkingManager {
     }
 }
 
-struct GrpcNetworking {
+pub struct GrpcNetworking {
     tls_config: Option<ClientTlsConfig>,
     session_id: SessionId,
     stores: Arc<SessionStores>,

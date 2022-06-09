@@ -1,5 +1,8 @@
+//! Common library (helper functions) for the reindeers.
+
 use tonic::transport::{Certificate, ClientTlsConfig, Identity, ServerTlsConfig};
 
+/// Setup Jaeger tracing via OpenTelemetry
 pub fn setup_tracing(identity: &str, service_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     use opentelemetry::sdk::trace::Config;
     use opentelemetry::sdk::Resource;
@@ -25,7 +28,8 @@ pub fn setup_tracing(identity: &str, service_name: &str) -> Result<(), Box<dyn s
     Ok(())
 }
 
-pub fn setup_tls_client(
+/// Load client-side TLS configuration from files
+pub fn load_client_tls_config(
     my_cert_name: &str,
     certs_dir: &str,
 ) -> Result<ClientTlsConfig, Box<dyn std::error::Error>> {
@@ -36,7 +40,8 @@ pub fn setup_tls_client(
     Ok(client_tls)
 }
 
-pub fn setup_tls_server(
+/// Load server-side TLS configuration from files
+pub fn load_server_tlc_config(
     my_cert_name: &str,
     certs_dir: &str,
 ) -> Result<ServerTlsConfig, Box<dyn std::error::Error>> {
@@ -49,7 +54,7 @@ pub fn setup_tls_server(
 
 const CA_NAME: &str = "ca";
 
-pub fn load_identity_and_ca(
+fn load_identity_and_ca(
     my_cert_name: &str,
     certs_dir: &str,
 ) -> Result<(Identity, Certificate), Box<dyn std::error::Error>> {

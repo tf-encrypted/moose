@@ -1,5 +1,7 @@
+//! Reindeer using gRPC choreography and gRPC networking.
+
 use moose::prelude::*;
-use moose::storage::LocalAsyncStorage;
+use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
 use moose_modules::choreography::grpc::GrpcChoreography;
 use moose_modules::networking::grpc::GrpcNetworkingManager;
@@ -47,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let networking = match opt.certs {
         Some(ref certs_dir) => {
-            let client = reindeer::setup_tls_client(&my_cert_name, certs_dir)?;
+            let client = reindeer::load_client_tls_config(&my_cert_name, certs_dir)?;
             GrpcNetworkingManager::from_tls_config(client)
         }
         None => GrpcNetworkingManager::without_tls(),
@@ -64,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut server = Server::builder();
 
     if let Some(ref certs_dir) = opt.certs {
-        let tls_server_config = reindeer::setup_tls_server(&my_cert_name, certs_dir)?;
+        let tls_server_config = reindeer::load_server_tlc_config(&my_cert_name, certs_dir)?;
         server = server.tls_config(tls_server_config)?;
     }
 

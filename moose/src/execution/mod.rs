@@ -1,4 +1,4 @@
-//! Support for executing computations
+//! Support for executing computations.
 
 use crate::computation::{Operator, Placement, Role, SessionId, Value};
 use crate::error::Result;
@@ -34,7 +34,7 @@ pub trait Session {
     ) -> Result<Self::Value>;
 }
 
-pub trait SetupGeneration<P> {
+pub(crate) trait SetupGeneration<P> {
     type Setup;
     fn setup(&self, plc: &P) -> Result<Arc<Self::Setup>>;
 }
@@ -52,6 +52,7 @@ pub trait RuntimeSession: Session {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
 }
 
+/// Runtime identity of player.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Display, Serialize, Deserialize)]
 pub struct Identity(pub String);
 
@@ -86,9 +87,11 @@ mod tests {
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
     use crate::host::{HostPlacement, HostSeed, HostTensor, RawSeed, RawShape};
-    use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
+    use crate::networking::{local::LocalAsyncNetworking, AsyncNetworking};
     use crate::prelude::*;
-    use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
+    use crate::storage::{
+        local::LocalAsyncStorage, local::LocalSyncStorage, AsyncStorage, SyncStorage,
+    };
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;

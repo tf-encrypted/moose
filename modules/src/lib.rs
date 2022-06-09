@@ -1,3 +1,5 @@
+//! Moose extension modules.
+
 pub mod choreography;
 pub mod networking;
 pub mod storage;

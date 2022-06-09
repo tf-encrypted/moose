@@ -1,3 +1,5 @@
+//! gRPC-based choreography.
+
 pub(crate) mod gen {
     tonic::include_proto!("moose_choreography");
 }

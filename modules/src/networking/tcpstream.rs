@@ -1,3 +1,5 @@
+//! Direct TCP networking implementation.
+
 use async_trait::async_trait;
 use moose::tokio;
 use moose::{
@@ -226,7 +228,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
-    ) -> moose::error::Result<()> {
+    ) -> moose::Result<()> {
         let key = (session_id, rendezvous_key);
         tracing::debug!("sending key: {:?} to: {}", key, receiver);
         let send_channel = self.send_channels.get(receiver).ok_or_else(|| {
@@ -263,7 +265,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
-    ) -> moose::error::Result<Value> {
+    ) -> moose::Result<Value> {
         let key = (session_id.clone(), rendezvous_key.clone());
         tracing::debug!("receiving key: {:?} from: {}", key, sender);
 

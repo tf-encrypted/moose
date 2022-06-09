@@ -1,4 +1,5 @@
-//! Placement backed by two-party additive secret sharing
+//! Placement backed by two-party additive secret sharing.
+
 use crate::computation::{Placed, Role};
 use crate::error::Result;
 use crate::execution::Session;
@@ -10,8 +11,8 @@ mod convert;
 mod dabit;
 mod ops;
 mod trunc;
-pub use dabit::DaBitProvider;
-pub use trunc::TruncPrProvider;
+pub(crate) use dabit::DaBitProvider;
+pub(crate) use trunc::TruncPrProvider;
 
 /// Placement type for two-party additive secret sharing
 #[derive(Serialize, Deserialize, Hash, PartialEq, Eq, Clone, Debug)]

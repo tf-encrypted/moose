@@ -1,4 +1,4 @@
-//! Placements backed by three-party replicated secret sharing
+//! Placements backed by three-party replicated secret sharing.
 
 use crate::computation::*;
 use crate::error::{Error, Result};
