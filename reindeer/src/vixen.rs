@@ -3,7 +3,7 @@ use moose::execution::Identity;
 use moose::prelude::*;
 use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
-use moose_modules::networking::tcpstream::TcpStreamNetworking;
+use moose::networking::tcpstream::TcpStreamNetworking;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;

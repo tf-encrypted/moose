@@ -2,7 +2,6 @@
 members = [
   "macros",
   "moose",
-  # "modules",
   "pymoose",
   "elk",
   "reindeer",

@@ -11,7 +11,6 @@ publish = false
 [dependencies]
 clap = { version = "~3.1", features = ["derive"] }
 moose = { path = "../moose", default-features = false, features = ["async_execute"] }
-moose-modules = { path = "../modules" }
 opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
 opentelemetry-jaeger = "0.16"
 serde_json = "1.0"

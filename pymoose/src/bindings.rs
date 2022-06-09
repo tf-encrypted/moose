@@ -6,7 +6,7 @@ use moose::host::HostTensor;
 use moose::prelude::*;
 use moose::textual::{parallel_parse_computation, ToTextual};
 use moose::tokio;
-use moose_modules::execution::grpc::GrpcMooseRuntime;
+use moose::execution::grpc::GrpcMooseRuntime;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;

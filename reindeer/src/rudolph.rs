@@ -3,8 +3,8 @@
 use moose::prelude::*;
 use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
-use moose_modules::choreography::filesystem::FilesystemChoreography;
-use moose_modules::networking::grpc::GrpcNetworkingManager;
+use moose::choreography::filesystem::FilesystemChoreography;
+use moose::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tonic::transport::Server;
