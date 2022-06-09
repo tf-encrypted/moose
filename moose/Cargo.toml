@@ -1,16 +1,24 @@
 [package]
 name = "moose"
 version = "0.2.1-beta.1"
-description = ""
-repository = ""
-homepage = ""
-keywords = ["", ""]
-categories = ["", ""]
-license = "Apache-2.0"
 edition = "2018"
+license = "Apache-2.0"
 authors = [
     "TF Encrypted Authors <tfencrypted@gmail.com>",
 ]
+description = "Encrypted learning and data processing framework"
+keywords = [
+  "cryptography",
+  "secure-computation",
+  "machine-learning",
+  "data-science",
+  "distributed",
+]
+categories = ["cryptography"]
+repository = "https://github.com/tf-encrypted/moose"
+homepage = "https://github.com/tf-encrypted/moose"
+documentation = "https://docs.rs/moose"
+readme = "README.md"
 
 [features]
 default = ["blas", "compile", "sync_execute", "async_execute"]
