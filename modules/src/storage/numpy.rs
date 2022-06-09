@@ -1,6 +1,5 @@
-use moose::error::Error;
 use moose::prelude::*;
-use moose::Result;
+use moose::{Error, Result};
 use ndarray::ArrayD;
 use ndarray_npy::{read_npy, write_npy};
 use std::fs::File;

@@ -2795,6 +2795,5 @@ pub mod storage;
 pub mod textual;
 pub mod types;
 
-#[doc(inline)]
 pub use error::{Error, Result};
 pub use tokio;
