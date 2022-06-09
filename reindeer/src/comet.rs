@@ -1,10 +1,10 @@
 //! Reindeer using gRPC choreography and gRPC networking.
 
+use moose::choreography::grpc::GrpcChoreography;
+use moose::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
 use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
-use moose::choreography::grpc::GrpcChoreography;
-use moose::networking::grpc::GrpcNetworkingManager;
 use std::sync::Arc;
 use structopt::StructOpt;
 use tonic::transport::Server;

@@ -1,12 +1,12 @@
 use crate::computation::PyComputation;
 use moose::compilation::compile;
 use moose::compilation::toposort;
+use moose::execution::grpc::GrpcMooseRuntime;
 use moose::execution::AsyncTestRuntime;
 use moose::host::HostTensor;
 use moose::prelude::*;
 use moose::textual::{parallel_parse_computation, ToTextual};
 use moose::tokio;
-use moose::execution::grpc::GrpcMooseRuntime;
 use ndarray::LinalgScalar;
 use numpy::{Element, PyArrayDescr, PyArrayDyn, ToPyArray};
 use pyo3::exceptions::PyRuntimeError;
