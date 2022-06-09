@@ -1,6 +1,5 @@
 //! Direct TCP networking implementation.
 
-use async_trait::async_trait;
 use crate::{
     computation::{RendezvousKey, SessionId, Value},
     error::Error,
@@ -8,6 +7,7 @@ use crate::{
     networking::AsyncNetworking,
     Result,
 };
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;

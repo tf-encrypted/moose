@@ -1,6 +1,6 @@
-use csv::WriterBuilder;
 use crate::prelude::*;
 use crate::{Error, Result};
+use csv::WriterBuilder;
 use ndarray::prelude::*;
 use ndarray::ArcArray;
 use serde::Serialize;

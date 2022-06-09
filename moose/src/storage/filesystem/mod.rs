@@ -5,11 +5,11 @@ pub(crate) mod numpy;
 
 use self::csv::{read_csv, write_csv};
 use self::numpy::{read_numpy, write_numpy};
-use async_trait::async_trait;
 use crate::error::Error;
 use crate::prelude::*;
 use crate::storage::AsyncStorage;
 use crate::Result;
+use async_trait::async_trait;
 use std::path::Path;
 
 #[derive(Default)]

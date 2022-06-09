@@ -2782,9 +2782,9 @@ pub mod computation;
 pub mod encrypted;
 pub mod error; // TODO make non-pub
 pub mod execution;
-pub(crate) mod grpc;
 pub mod fixedpoint;
 pub mod floatingpoint;
+pub(crate) mod grpc;
 pub mod host;
 pub mod integer;
 pub mod kernels;

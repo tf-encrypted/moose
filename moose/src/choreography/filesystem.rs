@@ -1,10 +1,10 @@
 //! Filesystem-based choreography.
 
 use crate::choreography::{NetworkingStrategy, StorageStrategy};
+use crate::computation::Computation;
 use crate::execution::ExecutionContext;
 use crate::execution::RoleAssignment;
 use crate::prelude::*;
-use crate::computation::Computation;
 use notify::{DebouncedEvent, Watcher};
 use serde::Deserialize;
 use std::borrow::Borrow;

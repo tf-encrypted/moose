@@ -1,4 +1,3 @@
-
 pub(crate) fn extract_sender<T>(request: &tonic::Request<T>) -> Result<Option<String>, String> {
     match request.peer_certs() {
         None => Ok(None),

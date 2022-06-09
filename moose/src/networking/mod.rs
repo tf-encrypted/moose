@@ -12,7 +12,6 @@ pub mod grpc;
 pub mod local;
 pub mod tcpstream;
 
-
 /// Requirements for synchronous networking.
 ///
 /// An implementation of this trait must be provided when using Moose
