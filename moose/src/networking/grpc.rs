@@ -10,7 +10,7 @@ use self::gen::{SendValueRequest, SendValueResponse};
 use crate::networking::constants;
 use crate::networking::AsyncNetworking;
 use crate::prelude::*;
-use crate::Error;
+use crate::{Error, Result};
 use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use backoff::future::retry;
@@ -68,7 +68,7 @@ pub struct GrpcNetworking {
 }
 
 impl GrpcNetworking {
-    fn channel(&self, receiver: &Identity) -> crate::Result<Channel> {
+    fn channel(&self, receiver: &Identity) -> Result<Channel> {
         let channel = self
             .channels
             .entry(receiver.clone())
@@ -102,7 +102,7 @@ impl AsyncNetworking for GrpcNetworking {
         receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
-    ) -> crate::Result<()> {
+    ) -> Result<()> {
         retry(
             ExponentialBackoff {
                 max_elapsed_time: *constants::MAX_ELAPSED_TIME,
@@ -140,7 +140,7 @@ impl AsyncNetworking for GrpcNetworking {
         sender: &Identity,
         rendezvous_key: &RendezvousKey,
         _session_id: &SessionId,
-    ) -> crate::Result<Value> {
+    ) -> Result<Value> {
         let cell = cell(
             &self.stores,
             self.session_id.clone(),
