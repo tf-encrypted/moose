@@ -13,7 +13,7 @@ use async_cell::sync::AsyncCell;
 use async_trait::async_trait;
 use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
-use moose::computation::{SessionId, Value};
+use moose::computation::{Operator, SessionId, Value};
 use moose::execution::Identity;
 use moose::tokio;
 use std::collections::HashMap;
@@ -157,7 +157,11 @@ impl Choreography for GrpcChoreography {
                     for (output_ix, output_value) in outputs {
                         let value = output_value.await.unwrap();
                         let output_op = &computation.operations[output_ix];
-                        let output_tag = output_op.tag.clone();
+                        let output_tag = match &output_op.kind {
+                            Operator::Output(op) => Some(op.tag.clone()),
+                            _ => None,
+                        }
+                        .unwrap();
                         results.insert(output_tag, value);
                     }
                     tracing::info!("Results ready, {:?}", results.keys());

@@ -336,11 +336,11 @@ impl TestSyncExecutor {
     ) -> anyhow::Result<HashMap<String, Value>> {
         let mut env: HashMap<String, Value> = HashMap::with_capacity(computation.operations.len());
 
-        let output_names: Vec<String> = computation
+        let output_tags: Vec<(String, String)> = computation
             .operations
             .iter() // guessing that par_iter won't help here
-            .filter_map(|op| match op.kind {
-                Operator::Output(_) => Some(op.name.clone()),
+            .filter_map(|op| match &op.kind {
+                Operator::Output(output_op) => Some((op.name.clone(), output_op.tag.clone())),
                 _ => None,
             })
             .collect();
@@ -362,9 +362,9 @@ impl TestSyncExecutor {
             env.insert(op.name.clone(), value);
         }
 
-        let outputs: HashMap<String, Value> = output_names
+        let outputs: HashMap<String, Value> = output_tags
             .iter()
-            .map(|op_name| (op_name.clone(), env.get(op_name).cloned().unwrap()))
+            .map(|tag_tuple| (tag_tuple.1.clone(), env.get(&tag_tuple.0).cloned().unwrap()))
             .collect();
         Ok(outputs)
     }
