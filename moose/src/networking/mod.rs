@@ -1,6 +1,4 @@
 //! Networking traits and implementations.
-//!
-//! See also the `moose_modules` crate for more implementations.
 
 use crate::computation::*;
 use crate::error::{Error, Result};
