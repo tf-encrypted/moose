@@ -8,7 +8,7 @@ use crate::host::{HostPrfKey, HostString};
 use crate::kernels::{DispatchKernel, Kernel};
 use crate::networking::{local::LocalAsyncNetworking, AsyncNetworking};
 use crate::replicated::{RepSetup, ReplicatedPlacement};
-use crate::storage::{AsyncStorage, LocalAsyncStorage};
+use crate::storage::{local::LocalAsyncStorage, AsyncStorage};
 use futures::future::{Map, Shared};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;

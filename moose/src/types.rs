@@ -1,4 +1,4 @@
-//! Moose recognized types
+//! Moose recognized types.
 
 use crate::additive::{AdtShape, AdtTensor};
 use crate::boolean::BoolTensor;

@@ -1,7 +1,7 @@
 use moose::computation::Role;
 use moose::execution::Identity;
 use moose::prelude::*;
-use moose::storage::LocalAsyncStorage;
+use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
 use moose_modules::networking::tcpstream::TcpStreamNetworking;
 use std::collections::HashMap;

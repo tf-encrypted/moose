@@ -89,7 +89,9 @@ mod tests {
     use crate::host::{HostPlacement, HostSeed, HostTensor, RawSeed, RawShape};
     use crate::networking::{local::LocalAsyncNetworking, AsyncNetworking};
     use crate::prelude::*;
-    use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
+    use crate::storage::{
+        local::LocalAsyncStorage, local::LocalSyncStorage, AsyncStorage, SyncStorage,
+    };
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;

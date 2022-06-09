@@ -3,7 +3,7 @@
 use moose::computation::Operator;
 use moose::networking::local::LocalAsyncNetworking;
 use moose::prelude::*;
-use moose::storage::LocalAsyncStorage;
+use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
