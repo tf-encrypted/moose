@@ -1,4 +1,5 @@
-//! Placement backed by two-party additive secret sharing
+//! Placement backed by two-party additive secret sharing.
+
 use crate::computation::{Placed, Role};
 use crate::error::Result;
 use crate::execution::Session;

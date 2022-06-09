@@ -1,4 +1,4 @@
-//! Abstraction layer for floating-point values
+//! Abstraction layer for floating-point values.
 
 use crate::computation::{Placed, Placement};
 use crate::error::Result;

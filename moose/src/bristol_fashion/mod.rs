@@ -1,4 +1,4 @@
-//! Support for evaluating [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/)
+//! Support for evaluating [Bristol Fashion circuits](https://homes.esat.kuleuven.be/~nsmart/MPC/).
 
 use crate::execution::Session;
 use crate::kernels::{PlacementAnd, PlacementNeg, PlacementXor};
