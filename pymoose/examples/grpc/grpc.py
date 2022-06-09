@@ -37,9 +37,9 @@ if __name__ == "__main__":
         get_logger().setLevel(level=logging.DEBUG)
 
     role_map = {
-        alice.name: "localhost:50000",
-        bob.name: "localhost:50001",
-        carole.name: "localhost:50002",
+        alice: "localhost:50000",
+        bob: "localhost:50001",
+        carole: "localhost:50002",
     }
 
     runtime = pm.GrpcMooseRuntime(role_map)

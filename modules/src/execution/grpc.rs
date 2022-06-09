@@ -121,12 +121,12 @@ impl GrpcMooseRuntime {
             let response = client.retrieve_results(request).await?;
 
             let ComputationOutputs {
-                outputs: vals,
-                elapsed_time: duration,
+                outputs,
+                elapsed_time,
             } = bincode::deserialize::<ComputationOutputs>(&response.get_ref().values)?;
-            combined_outputs.extend(vals);
+            combined_outputs.extend(outputs);
 
-            if let Some(time) = duration {
+            if let Some(time) = elapsed_time {
                 combined_stats.insert(role.clone(), time);
             }
         }

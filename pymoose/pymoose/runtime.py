@@ -4,8 +4,10 @@ from typing import Optional
 
 from pymoose.computation import computation as comp
 from pymoose.computation import utils
+from pymoose.computation.placements import HostPlacement
 from pymoose.edsl import base as edsl
 from pymoose.edsl import tracer
+from pymoose.edsl.base import HostPlacementExpression
 from pymoose.edsl.base import set_current_runtime
 from pymoose.rust import moose_runtime
 
@@ -79,13 +81,18 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
 class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
     """Moose runtime backed by gRPC choreography."""
 
-    def __new__(cls, identities: Dict[str, str]):
+    def __new__(cls, identities: Dict):
         """Creates a runtime with a fixed cluster of gRPC servers.
 
         Args:
             identities: Mapping of identities (e.g. host placement identifiers) to gRPC
                 host addresses.
         """
+
+        identities = {
+            role.name if isinstance(role, HostPlacementExpression) else role: addr
+            for role, addr in identities.items()
+        }
         return moose_runtime.GrpcRuntime.__new__(GrpcMooseRuntime, identities)
 
     def set_default(self):

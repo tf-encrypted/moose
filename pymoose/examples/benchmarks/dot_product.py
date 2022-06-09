@@ -27,7 +27,7 @@ def dot_product_comp(
     with rep:
         z = pm.dot(x, y)
 
-    with alice:
+    with carole:
         res = pm.cast(z, pm.float64)
 
     return res
@@ -46,8 +46,16 @@ if __name__ == "__main__":
         help="shape used for dot products",
     )
 
+    parser.add_argument(
+        "--n",
+        dest="n_iter",
+        type=int,
+        default="1",
+        help="number of iterations for averaging the experiment",
+    )
     args = parser.parse_args()
     shape = args.shape
+    n_iter = args.n_iter
 
     if isinstance(shape, list) and len(shape) > 2:
         raise ValueError(
@@ -58,9 +66,9 @@ if __name__ == "__main__":
         get_logger().setLevel(level=logging.DEBUG)
 
     role_map = {
-        alice.name: "localhost:50000",
-        bob.name: "localhost:50001",
-        carole.name: "localhost:50002",
+        alice: "localhost:50000",
+        bob: "localhost:50001",
+        carole: "localhost:50002",
     }
 
     runtime = pm.GrpcMooseRuntime(role_map)
@@ -68,14 +76,12 @@ if __name__ == "__main__":
 
     x = np.ones(shape, dtype=np.float64)
     y = np.ones(shape, dtype=np.float64)
-    outputs, timings = runtime.evaluate_computation(
-        computation=dot_product_comp, arguments={"x_arg": x, "y_arg": y}
-    )
 
-    print("timings: ", timings)
+    AVG_TIME = 0
+    for _ in range(n_iter):
+        outputs, timings = runtime.evaluate_computation(
+            computation=dot_product_comp, arguments={"x_arg": x, "y_arg": y}
+        )
+        AVG_TIME += max(timings.values())
 
-    if timings is not None:
-        for (identity, timing) in timings.items():
-            print(f"computation on {identity} took {timing * 0.001} ms")
-
-    print("Outputs: ", outputs)
+    print(f"On average all outputs are ready in {AVG_TIME / n_iter * 0.001} ms")

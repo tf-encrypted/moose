@@ -143,7 +143,7 @@ impl Choreography for GrpcChoreography {
                 let own_identity = self.own_identity.clone();
                 let networking = (self.networking_strategy)(session_id.clone());
                 let storage = (self.storage_strategy)();
-                let context = ExecutionContext::new(own_identity.clone(), networking, storage);
+                let context = ExecutionContext::new(own_identity, networking, storage);
 
                 let execution_start_timer = Instant::now();
 
