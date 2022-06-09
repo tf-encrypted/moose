@@ -582,6 +582,7 @@ class EdslTest(parameterized.TestCase):
                         {"value": ty.TensorType(tensor_dtype)},
                         ty.TensorType(tensor_dtype),
                     ),
+                    tag="output_0",
                 ),
             },
             placements={"player0": plc.HostPlacement(name="player0")},
