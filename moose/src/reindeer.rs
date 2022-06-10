@@ -3,7 +3,7 @@
 use tonic::transport::{Certificate, ClientTlsConfig, Identity, ServerTlsConfig};
 
 /// Setup Jaeger tracing via OpenTelemetry
-#[cfg(feature = "tracing")]
+#[cfg(feature = "telemetry")]
 pub fn setup_tracing(identity: &str, service_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     use opentelemetry::sdk::trace::Config;
     use opentelemetry::sdk::Resource;
@@ -29,7 +29,7 @@ pub fn setup_tracing(identity: &str, service_name: &str) -> Result<(), Box<dyn s
     Ok(())
 }
 
-#[cfg(not(feature = "tracing"))]
+#[cfg(not(feature = "telemetry"))]
 pub fn setup_tracing(
     _identity: &str,
     _service_name: &str,

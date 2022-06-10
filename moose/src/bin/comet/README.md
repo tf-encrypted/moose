@@ -3,106 +3,54 @@
 
 Reindeer using gRPC choreography, in-memory storage, and gRPC networking.
 
-## Launching
-
 To launch Comet you need to specify:
 
-- The identity to use for this particular worker; this string must be a interpretable as a valid gRPC endpoint with an implicit `http://` prefix.
+- The identity to use for this particular instance; this must be interpretable as a valid gRPC endpoint.
 
 - The port on which to start a gRPC server.
 
-- The directory to look for sessions in (see below).
+In order to run Comet with gRPC over TLS, first generate and distribute certificates to each instance, and then specify their location using the `--certs` argument. You must also specify the identity used by the choreographer.
 
-The following is an example using the provided `examples` directory for sessions:
+Due to security, Comet will refuse to run with the same session id more than once. For this reason, the `cometctl` tool allows you to specify a session id using the `--session-id` parameter.
+
+## Example
+
+The following launches three instances:
 
 ```sh
 comet \
-  --identity "localhost:50000" \
-  --port 50000 \
-  --sessions ./examples
+  --identity localhost:50000 \
+  --port 50000
+
+comet \
+  --identity localhost:50001 \
+  --port 50001
+
+comet \
+  --identity localhost:50002 \
+  --port 50002
 ```
 
-Note that during development it can be useful to have `cargo watch` automatically re-launch workers on code changes. This can be achieved as follows.
+and then uses the CLI tools to launch one of the sessions in the `examples` directory:
 
 ```sh
-cargo watch -c -x 'run --bin comet -- --identity "localhost:50000" --port 50000 --sessions ./examples' -i examples
+cometctl run examples/test.session
+cometctl run --session-id "second session" examples/test.session
 ```
 
-Note that the `-i examples` makes sure that the workers are not re-launched when files in `./examples` are changed.
-
-## Logging
-
-Debug logging to console may be turned on by setting:
+To run the example over TLS, using the _insecure_ certificates provided in `examples/certs`:
 
 ```sh
-export RUST_LOG="moose=debug"
-```
-
-## Tracing
-
-Rudolph has basic support for Jaeger/OpenTelemetry via the `--telemetry` flag.
-
-Jaeger may be launched via docker:
-
-```sh
-docker run -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
-```
-
-Once running, Rudolph can be launched via the following. Note that we encourage setting `RUST_LOG` to limit the number of spans generated, in particular for large computations.
-
-```sh
-comet --identity "localhost:50000" --port 50000 --sessions ./examples --telemetry
-```
-
-## Heaptrack
-
-We have been using [heaptrack](https://github.com/KDE/heaptrack) to measure the memory consumptions of computations,
-but in order to do so it appears that you need to launch Rudolph directly, and not via `cargo run`.
-
-This can be done by first building it:
-
-```
-cargo build --bin rudolph
-```
-
-and then running the produced executable:
-
-```
-./target/debug/rudolph
-```
-
-In particular, to use heaptrack run:
-
-```
-heaptrack ./target/debug/rudolph
-```
-
-# TLS support
-
-In order to run the reindeer with gRPC and TLS make sure to generate TLS certificates.
-The certificates used for `test.session` example were generated using the following commands.
-
-To run `test.moose` using `comet`, type the following commands in individual terminals inside the `reindeer` folder:
-
-```
 comet \
   --identity localhost:50000 \
   --port 50000 \
   --certs examples/certs \
   --choreographer choreographer
+```
 
-comet \
-  --identity localhost:50001 \
-  --port 50001 \
-  --certs examples/certs \
-  --choreographer choreographer
+and
 
-comet \
-  --identity localhost:50002 \
-  --port 50002 \
-  --certs examples/certs \
-  --choreographer choreographer
-
+```sh
 cometctl \
   --identity choreographer \
   --certs examples/certs \

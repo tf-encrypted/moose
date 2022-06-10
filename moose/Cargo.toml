@@ -28,7 +28,7 @@ default = [
 compile = []
 sync_execute = []
 async_execute = []
-tracing = [
+telemetry = [
   "opentelemetry",
   "opentelemetry-jaeger",
   "tracing-opentelemetry",
