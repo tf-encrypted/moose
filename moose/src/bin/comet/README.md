@@ -1,4 +1,3 @@
-
 # Comet
 
 Reindeer using gRPC choreography, in-memory storage, and gRPC networking.

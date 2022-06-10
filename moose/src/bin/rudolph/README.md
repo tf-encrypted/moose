@@ -1,4 +1,3 @@
-
 # Rudolph
 
 Reindeer using filesystem choreography, in-memory storage, and gRPC networking.
