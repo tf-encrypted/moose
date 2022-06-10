@@ -3,6 +3,4 @@ members = [
   "macros",
   "moose",
   "pymoose",
-  "elk",
-  "reindeer",
 ]

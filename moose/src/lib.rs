@@ -2784,7 +2784,7 @@ pub mod error; // TODO make non-pub
 pub mod execution;
 pub mod fixedpoint;
 pub mod floatingpoint;
-pub(crate) mod grpc;
+mod grpc;
 pub mod host;
 pub mod integer;
 pub mod kernels;
@@ -2792,6 +2792,7 @@ pub mod logical;
 pub mod mirrored;
 pub mod networking;
 pub mod prelude;
+pub mod reindeer;
 pub mod replicated;
 pub mod storage;
 pub mod textual;
