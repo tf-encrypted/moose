@@ -21,11 +21,11 @@ Moose is a community driven, open source project. Moose was created at Cape.
 
 ## Installation
 
-You will need to have [Rust](https://www.rust-lang.org/learn/get-started) and OpenBLAS installed. Once you have these you can install Moose using:
+You will need to have OpenBLAS installed:
 
-```sh
-cargo install moose
-```
+- Debian/Ubuntu: `sudo apt install libopenblas-dev`
+
+- macOS: `homebrew install openblas`
 
 If you plan to use the Python bindings you can install these using:
 
@@ -33,13 +33,13 @@ If you plan to use the Python bindings you can install these using:
 pip install moose-python
 ```
 
-OpenBLAS may be installed using:
+Assuming you already have [Rust](https://www.rust-lang.org/learn/get-started) installed, you can install the Moose tools using:
 
-- Debian/Ubuntu: `sudo apt install libopenblas-dev`
+```sh
+cargo install moose
+```
 
-- macOS: `homebrew install openblas`
-
-Please see [DEVELOP.md](./DEVELOP.md) for further instructions on how to install and work with the Moose source code.
+Please see [DEVELOP.md](./DEVELOP.md) for further instructions on how to install and work with the source code.
 
 ## Example
 
