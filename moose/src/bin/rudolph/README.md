@@ -33,7 +33,7 @@ rudolph \
   --sessions ./examples
 ```
 
-To launch a new session, simply distribute new `.session` (and associated `.moose` files):
+To launch a new session, simply distribute new `.session` (and associated `.moose`) files:
 
 ```sh
 cp ./examples/test.session ./examples/test2.session
