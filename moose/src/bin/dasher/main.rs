@@ -12,7 +12,7 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(about = "Run computation locally by simulating all roles as seperate identities")]
-struct Opt {
+pub struct Opt {
     computation: String,
 
     #[structopt(short, long)]
