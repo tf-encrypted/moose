@@ -161,7 +161,7 @@ To ease your development we encourage you to install the following cargo subcomm
 
 - [`install-update`](https://crates.io/crates/cargo-update) to keep cargo subcommands up-to-date.
 
-- [`watch`](https://crates.io/crates/cargo-watchcargo-watch) to type check your code on every save;  `cargo watch --exec test` will run all tests on every save.
+- [`watch`](https://crates.io/crates/cargo-watchcargo-watch) to type check your code on every save; `cargo watch --exec test` will run all tests on every save.
 
 - [`outdated`](https://crates.io/crates/cargo-outdated) to check if your dependencies are up to date.
 
@@ -175,36 +175,11 @@ To ease your development we encourage you to install the following cargo subcomm
 
 - [`expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
 
+- [`asm`](https://github.com/gnzlbg/cargo-asm) to dump assembly or LLVM IR (the latter via `cargo llvm-ir`).
+
 - [`llvm-lines`](https://github.com/dtolnay/cargo-llvm-lines) to inspect code bloat.
 
 [Tokio Console](https://tokio.rs/blog/2021-12-announcing-tokio-console) is also interesting.
-
-
-
-
-
-
-- [`cargo watch`](https://crates.io/crates/cargo-watchcargo-watch) will type check your code on every save;  `cargo watch --exec test` will run all tests on every save.
-
-- [`cargo outdated`](https://crates.io/crates/cargo-outdated) checks if your dependencies are up to date.
-
-- [`cargo audit`](https://crates.io/crates/cargo-audit) checks if any vulnerabilities have been detected for your current dependencies.
-
-- [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny) checks security advisories and licence conflicts.
-
-- [`cargo release`](https://crates.io/crates/cargo-release) automates the release cycle, including bumping versions.
-
-- [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
-
-- [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
-
-- [`cargo asm`](https://github.com/gnzlbg/cargo-asm) to dump assembly or LLVM IR (the latter via `cargo llvm-ir`).
-
-- [`cargo llvm-lines`](https://github.com/dtolnay/cargo-llvm-lines) to inspect code bloat.
-
-[Tokio Console](https://tokio.rs/blog/2021-12-announcing-tokio-console) is also interesting.
-
-To keep all of these up-to-date once installed, we recommend using [`cargo-update`](https://crates.io/crates/cargo-update).
 
 ## Tips and Tricks
 
