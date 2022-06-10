@@ -1,4 +1,3 @@
-publish = false
 tag = false
 push = false
 pre-release-commit-message = "release {{version}} of {{crate_name}}"
