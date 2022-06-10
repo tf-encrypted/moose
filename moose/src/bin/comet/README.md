@@ -1,7 +1,7 @@
 
 # Comet
 
-Reindeer using gRPC-based choreography, in-memory storage, and gRPC-based networking.
+Reindeer using gRPC choreography, in-memory storage, and gRPC networking.
 
 ## Launching
 
@@ -25,26 +25,16 @@ comet \
 Note that during development it can be useful to have `cargo watch` automatically re-launch workers on code changes. This can be achieved as follows.
 
 ```sh
-cargo watch -c -x 'run --bin rudolph -- --identity "localhost:50000" --port 50000 --sessions ./examples' -i examples
+cargo watch -c -x 'run --bin comet -- --identity "localhost:50000" --port 50000 --sessions ./examples' -i examples
 ```
 
 Note that the `-i examples` makes sure that the workers are not re-launched when files in `./examples` are changed.
-
-## Sessions
-
-Sessions are controlled by two sets of files:
-
-- `.moose` files that contain Moose computations in either textual or binary format. These must be physical computations since no compilation is currently done by the worker.
-
-- `.session` files that specify sessions and we encourage taking a look at the example files to see their format. The name of the file is used to derive the session id.
-
-The worker listens for changes to the specified directory and will automatically launch new sessions when new `.session` files are created, i.e. there is no need to relaunch workers to run new sessions.
 
 ## Logging
 
 Debug logging to console may be turned on by setting:
 
-```
+```sh
 export RUST_LOG="moose=debug"
 ```
 
@@ -54,14 +44,14 @@ Rudolph has basic support for Jaeger/OpenTelemetry via the `--telemetry` flag.
 
 Jaeger may be launched via docker:
 
-```
+```sh
 docker run -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
 ```
 
-Once running, Rudolph can be launched via the following. Note that we encourage setting `RUST_LOG` to limit the number of spans generated, in particular for large comptuations.
+Once running, Rudolph can be launched via the following. Note that we encourage setting `RUST_LOG` to limit the number of spans generated, in particular for large computations.
 
-```
-rudolph --identity "localhost:50000" --port 50000 --sessions ./examples --telemetry
+```sh
+comet --identity "localhost:50000" --port 50000 --sessions ./examples --telemetry
 ```
 
 ## Heaptrack

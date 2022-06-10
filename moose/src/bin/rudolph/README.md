@@ -1,17 +1,15 @@
 
 # Rudolph
 
-Reindeer using filesystem-based choreography, in-memory storage, and gRPC-based networking.
-
-## Launching
+Reindeer using filesystem choreography, in-memory storage, and gRPC networking.
 
 To launch Rudolph you need to specify:
 
-- The identity to use for this particular worker; this string must be a interpretable as a valid gRPC endpoint with an implicit `http://` prefix.
+- The identity to use for this particular instance; this must be a interpretable as a valid gRPC endpoint.
 
-- The port on which to start a gRPC server.
+- The port on which to start a gRPC server; this must match the given identity.
 
-- The directory to look for sessions in (see below).
+- The directory in which to look for sessions.
 
 The following is an example using the provided `examples` directory for sessions:
 
@@ -29,16 +27,6 @@ cargo watch -c -x 'run --bin rudolph -- --identity "localhost:50000" --port 5000
 ```
 
 Note that `-i examples` means workers are not re-launched when files in `./examples` are changed.
-
-## Sessions
-
-Sessions are controlled by two sets of files:
-
-- `.moose` files that contain Moose computations in either textual or binary format. These must be physical computations since no compilation is currently done by the worker.
-
-- `.session` files that specify sessions and we encourage taking a look at the example files to see their format. The name of the file is used to derive the session id.
-
-Rudolph listens for changes to the specified directory and will automatically launch new sessions when new `.session` files are created, i.e. there is no need to relaunch workers to run new sessions.
 
 ## Logging
 
