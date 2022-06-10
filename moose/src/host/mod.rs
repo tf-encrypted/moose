@@ -1,4 +1,4 @@
-//! Placement for plaintext operations by a single role
+//! Placement for plaintext operations by a single role.
 
 use crate::computation::*;
 use crate::error::Result;
@@ -590,7 +590,6 @@ mod tests {
         assert_eq!(z, expected);
     }
 
-    #[cfg(feature = "blas")]
     #[test]
     fn test_inverse() {
         let sess = SyncSession::default();

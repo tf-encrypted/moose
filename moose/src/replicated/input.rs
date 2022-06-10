@@ -123,7 +123,7 @@ mod tests {
     use crate::computation::SessionId;
     use crate::kernels::{PlacementFixedpointEncode, PlacementReveal, PlacementShare};
     use crate::prelude::*;
-    use crate::storage::LocalSyncStorage;
+    use crate::storage::local::LocalSyncStorage;
     use ndarray::prelude::*;
     use std::rc::Rc;
 

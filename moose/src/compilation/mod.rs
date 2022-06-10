@@ -1,35 +1,67 @@
-use crate::compilation::deprecated_shape::deprecated_shape_support;
-use crate::compilation::lowering::lowering;
-use crate::compilation::networking::networking_pass;
-use crate::compilation::print::print_graph;
-use crate::compilation::pruning::prune_graph;
-use crate::compilation::toposort::toposort;
-use crate::compilation::typing::update_types_one_hop;
-use crate::compilation::well_formed::well_formed;
+//! Moose compilation framework.
+
 use crate::computation::Computation;
 use crate::textual::ToTextual;
 use std::convert::TryFrom;
 
-pub mod deprecated_shape;
-pub mod lowering;
-pub mod networking;
-pub mod print;
-pub mod pruning;
+mod deprecated_shape;
+mod lowering;
+mod networking;
+mod print;
+mod pruning;
 pub mod toposort;
-pub mod typing;
-pub mod well_formed;
+mod typing;
+mod well_formed;
 
+/// Default compiler passes in order.
+pub const DEFAULT_PASSES: [Pass; 6] = [
+    Pass::Typing,
+    Pass::DeprecatedShape,
+    Pass::Lowering,
+    Pass::Prune,
+    Pass::Networking,
+    Pass::Toposort,
+];
+
+/// Supported compiler passes.
 #[derive(Clone)]
 pub enum Pass {
+    /// Insert send and receive operations where needed.
     Networking,
+    /// Print DOT representation of computation.
     Print,
-    Prune,
-    Lowering,
-    Toposort,
-    Typing,
-    WellFormed,
+    /// Print textual representation of computation.
     Dump,
+    /// Prune unneeded operations.
+    Prune,
+    /// Lower computation.
+    Lowering,
+    /// Sort computation in topological order.
+    Toposort,
+    /// Perform basic type inference of operations.
+    Typing,
+    /// Check well-formedness.
+    WellFormed,
     DeprecatedShape, // Support HostShape in the logical dialect (for pre-0.2.0 computations)
+}
+
+impl Pass {
+    fn run(&self, comp: Computation) -> anyhow::Result<Computation> {
+        match self {
+            Pass::Toposort => self::toposort::toposort(comp),
+            Pass::Networking => self::networking::networking_pass(comp),
+            Pass::Print => self::print::print_graph(comp),
+            Pass::Prune => self::pruning::prune_graph(comp),
+            Pass::Lowering => self::lowering::lowering(comp),
+            Pass::Typing => self::typing::update_types_one_hop(comp),
+            Pass::WellFormed => self::well_formed::well_formed(comp),
+            Pass::DeprecatedShape => self::deprecated_shape::deprecated_shape_support(comp),
+            Pass::Dump => {
+                println!("{}", comp.to_textual());
+                Ok(comp)
+            }
+        }
+    }
 }
 
 impl TryFrom<&str> for Pass {
@@ -66,16 +98,6 @@ impl TryFrom<&Pass> for Pass {
 }
 
 #[deprecated]
-pub const DEFAULT_PASSES: [Pass; 6] = [
-    Pass::Typing,
-    Pass::DeprecatedShape,
-    Pass::Lowering,
-    Pass::Prune,
-    Pass::Networking,
-    Pass::Toposort,
-];
-
-#[deprecated]
 pub fn compile_passes<'p, P>(
     mut computation: Computation,
     passes: &'p [P],
@@ -94,6 +116,7 @@ where
     Ok(computation)
 }
 
+/// Compile computation using specified or default passes.
 pub fn compile<P>(comp: Computation, passes: Option<Vec<P>>) -> anyhow::Result<Computation>
 where
     for<'p> Pass: TryFrom<&'p P, Error = anyhow::Error>,
@@ -104,25 +127,6 @@ where
         Some(passes) => {
             let passes = passes.as_ref();
             compile_passes(comp, passes)
-        }
-    }
-}
-
-impl Pass {
-    fn run(&self, comp: Computation) -> anyhow::Result<Computation> {
-        match self {
-            Pass::Networking => networking_pass(comp),
-            Pass::Print => print_graph(comp),
-            Pass::Prune => prune_graph(comp),
-            Pass::Lowering => lowering(comp),
-            Pass::Typing => update_types_one_hop(comp),
-            Pass::WellFormed => well_formed(comp),
-            Pass::DeprecatedShape => deprecated_shape_support(comp),
-            Pass::Dump => {
-                println!("{}", comp.to_textual());
-                Ok(comp)
-            }
-            Pass::Toposort => toposort(comp),
         }
     }
 }

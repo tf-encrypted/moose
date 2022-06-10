@@ -1,4 +1,4 @@
-//! Support for executing computations
+//! Support for executing computations.
 
 use crate::computation::{Operator, Placement, Role, SessionId, Value};
 use crate::error::Result;
@@ -9,13 +9,17 @@ use std::sync::Arc;
 
 #[cfg(feature = "async_execute")]
 pub mod asynchronous;
+pub mod context;
+pub mod grpc;
 pub(crate) mod kernel_helpers;
 #[cfg(feature = "compile")]
 pub mod symbolic;
 #[cfg(feature = "sync_execute")]
 pub mod synchronous;
+
 #[cfg(feature = "async_execute")]
 pub use asynchronous::*;
+pub use context::ExecutionContext;
 #[cfg(feature = "compile")]
 pub use symbolic::*;
 #[cfg(feature = "sync_execute")]
@@ -34,7 +38,7 @@ pub trait Session {
     ) -> Result<Self::Value>;
 }
 
-pub trait SetupGeneration<P> {
+pub(crate) trait SetupGeneration<P> {
     type Setup;
     fn setup(&self, plc: &P) -> Result<Arc<Self::Setup>>;
 }
@@ -52,6 +56,7 @@ pub trait RuntimeSession: Session {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity>;
 }
 
+/// Runtime identity of player.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Display, Serialize, Deserialize)]
 pub struct Identity(pub String);
 
@@ -86,9 +91,11 @@ mod tests {
     use crate::error::Error;
     use crate::execution::{SyncSession, TestSyncExecutor};
     use crate::host::{HostPlacement, HostSeed, HostTensor, RawSeed, RawShape};
-    use crate::networking::{AsyncNetworking, LocalAsyncNetworking};
+    use crate::networking::{local::LocalAsyncNetworking, AsyncNetworking};
     use crate::prelude::*;
-    use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
+    use crate::storage::{
+        local::LocalAsyncStorage, local::LocalSyncStorage, AsyncStorage, SyncStorage,
+    };
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -422,7 +429,6 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "blas")]
     #[rstest]
     #[case(true)]
     #[case(false)]

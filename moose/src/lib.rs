@@ -1,3 +1,5 @@
+//! Core Moose framework.
+
 /// Map a type to its canonical type
 ///
 /// Using this macro requires adding the following trait bound:
@@ -2773,6 +2775,7 @@ pub(crate) trait MirroredCounterpart {
 pub mod additive;
 pub mod boolean;
 pub mod bristol_fashion;
+pub mod choreography;
 #[cfg(feature = "compile")]
 pub mod compilation;
 pub mod computation;
@@ -2781,6 +2784,7 @@ pub mod error; // TODO make non-pub
 pub mod execution;
 pub mod fixedpoint;
 pub mod floatingpoint;
+mod grpc;
 pub mod host;
 pub mod integer;
 pub mod kernels;
@@ -2788,11 +2792,11 @@ pub mod logical;
 pub mod mirrored;
 pub mod networking;
 pub mod prelude;
+pub mod reindeer;
 pub mod replicated;
 pub mod storage;
 pub mod textual;
 pub mod types;
 
-#[doc(inline)]
 pub use error::{Error, Result};
 pub use tokio;

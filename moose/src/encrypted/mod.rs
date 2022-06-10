@@ -1,4 +1,4 @@
-//! Abstraction layer for AES encrypted values
+//! Abstraction layer for AES encrypted values.
 
 use crate::computation::{Placed, Placement};
 use crate::error::Result;

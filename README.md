@@ -29,26 +29,27 @@ Install python development headers for your OS. (eg - `python3-dev` for Ubuntu, 
 Install OpenBLAS development headers via `libopenblas-dev` for Ubuntu.
 
 To install the library and all of its dependencies, run:
-```
+
+```sh
 make install
 ```
 
 This unwraps into two other targets, which are kept separate for purposes of caching in CI:
 
-```
+```sh
 make pydep  # install dependencies
 make pylib  # install runtime Python library
 ```
 
 You will also need to compile protobuf files before running any examples that use gRPC, which you can do via:
 
-```
+```sh
 make build
 ```
 
 ### Running locally for testing
 
-```
+```sh
 python main.py --runtime test
 ```
 
@@ -56,14 +57,14 @@ python main.py --runtime test
 
 You can start a cluster locally using the following:
 
-```
+```sh
 cd docker/dev
 docker-compose up
 ```
 
 Once done you can run the following to evaluate a computation on it:
 
-```
+```sh
 python main.py --runtime remote
 ```
 
@@ -71,7 +72,7 @@ python main.py --runtime remote
 
 To ensure your changes will pass our CI, it's wise to run the following commands before committing:
 
-```
+```sh
 make ci-ready
 
 # or, more verbosely:
@@ -79,6 +80,66 @@ make ci-ready
 make fmt
 make lint
 make test-ci
+```
+
+TODO
+
+```sh
+alias elk="cargo run --bin elk --"
+alias rudolph="cargo run --bin rudolph --"
+alias comet="cargo run --bin comet --"
+alias cometctl="cargo run --bin cometctl --"
+```
+
+During development it can be useful to have `cargo watch` automatically re-launch eg reindeer on code changes. This can be achieved as follows, in this case for Rudolph:
+
+```sh
+cargo watch -c -x 'run --bin rudolph -- --identity "localhost:50000" --port 50000 --sessions ./examples' -i examples
+```
+
+Note that `-i examples` means workers are not re-launched when files in `./examples` are changed.
+
+### Logging
+
+Logging may be turned on by setting:
+
+```sh
+export RUST_LOG="moose=debug"
+```
+
+### Telemetry
+
+Moose also has basic support for Jaeger/OpenTelemetry via the `telemetry` feature, and telemetry in the reindeer can be turned on with the `--telemetry` flag.
+
+Jaeger may be launched via docker:
+
+```sh
+docker run -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
+```
+
+We encourage setting `RUST_LOG` to an appropriate value to limit the number of spans generated, in particular for large computations.
+
+### Benchmarking
+
+We have been using [heaptrack](https://github.com/KDE/heaptrack) to measure the memory consumptions of computations,
+but in order to do so it appears that you need to launch Rudolph directly, and not via `cargo run`.
+
+This can be done by first building it:
+
+```sh
+cargo build --bin rudolph
+```
+
+and then running the produced executable:
+
+```sh
+./target/debug/rudolph
+```
+
+In particular, to use heaptrack run:
+
+```sh
+heaptrack ./target/debug/rudolph
 ```
 
 ### Testing

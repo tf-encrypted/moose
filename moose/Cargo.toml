@@ -1,66 +1,128 @@
 [package]
 name = "moose"
-version = "0.2.1-beta.1"
-license = "MIT"
-authors = [""]
-description = ""
-repository = ""
-homepage = ""
-keywords = ["", ""]
-categories = ["", ""]
+version = "0.2.2"
 edition = "2018"
+license = "Apache-2.0"
+authors = [
+    "TF Encrypted Authors <tfencrypted@gmail.com>",
+]
+description = "Encrypted learning and data processing framework"
+keywords = [
+  "cryptography",
+  "secure-computation",
+  "machine-learning",
+  "data-science",
+  "distributed",
+]
+categories = ["cryptography"]
+repository = "https://github.com/tf-encrypted/moose"
+homepage = "https://github.com/tf-encrypted/moose"
+documentation = "https://docs.rs/moose"
 
 [features]
-default = ["blas", "compile", "sync_execute", "async_execute"]
-blas = ["ndarray-linalg"]
+default = [
+  "compile",
+  "sync_execute",
+  "async_execute",
+  "telemetry",
+]
 compile = []
 sync_execute = []
 async_execute = []
+telemetry = [
+  "opentelemetry",
+  "opentelemetry-jaeger",
+  "tracing-opentelemetry",
+]
 
 [dependencies]
-aes = "~0.8"
 aes-prng = "~0.2"
 anyhow = "~1.0"
 async_cell = "~0.2"
 async-trait = "~0.1"
+backoff = { version = "~0.4", features = ["tokio"] }
 bincode = "~1.3"
-bitvec = { version="~1", features=["serde"] }
-blake3 = { version="~1.3", features=["std"] }
+bitvec = { version = "~1", features = ["serde"] }
+blake3 = { version = "~1.3", features = ["std"] }
 byteorder = "~1.4"
 bytes = "1"
+clap = { version = "~3.1", features = ["derive"] }
+csv = "~1.1"
 dashmap = "~5.1"
 derive_more = "~0.99"
 futures = "~0.3"
 itertools = "~0.10"
 lazy_static = "~1.4"
 log = "~0.4"
-macros = { path = "../macros" }
 maplit = "~1.0"
-ndarray = { version="~0.15", features=["serde"] }
-ndarray-linalg = { version = "0.14", features = ["openblas-system"], optional = true }
+moose-macros = "~0.2"
+ndarray = { version = "~0.15", features = ["serde"] }
+ndarray-npy = "~0.8"
+ndarray-linalg = { version = "0.14", features = ["openblas-system"] }
 num = "~0.4"
 num-traits = "~0.2"
+notify = "4.0"
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"], optional = true }
+opentelemetry-jaeger = { version = "0.16", optional = true }
 parking_lot = "~0.12"
 paste = "~1.0"
 petgraph = "~0.6"
+prost = "0.9"
 rand = { version = "~0.8", features = ["std", "std_rng"] }
 rayon = "~1.5"
 rmp-serde = "~1.0"
-serde = { version="~1.0", features=["derive", "rc"] }
+serde = { version = "~1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
 static_assertions = "~1.1"
+structopt = "0.3"
 thiserror = "~1.0"
-tokio = { version="~1.17", features=["full"] }
-tracing = { version="~0.1", features=["log"] }
-nom = { version="~7.1" }
+tokio = { version = "~1.17", features = ["full"] }
+toml = "0.5"
+tonic = { version = "~0.6", features = ["tls"] }
+tracing = { version = "~0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-opentelemetry = { version = "0.17", optional = true }
+nom = { version = "~7.1" }
+x509-parser = "~0.13"
+
+[build-dependencies]
+tonic-build = "~0.6"
 
 [dev-dependencies]
+aes = "~0.8"
 aes-gcm = "~0.9"
-criterion = { version="~0.3", features=["async_tokio"] }
+base64 = "~0.13"
+criterion = { version = "~0.3", features = ["async_tokio"] }
 getrandom = "~0.2"
 proptest = "~1.0"
 rand_chacha = "~0.3"
 rstest = "~0.12"
 tempfile = "~3.3"
+tonic-build = "~0.6"
+
+[[bin]]
+name = "comet"
+path = "src/bin/comet/comet.rs"
+
+[[bin]]
+name = "cometctl"
+path = "src/bin/comet/cometctl.rs"
+
+[[bin]]
+name = "dasher"
+path = "src/bin/dasher/main.rs"
+
+[[bin]]
+name = "elk"
+path = "src/bin/elk/main.rs"
+
+[[bin]]
+name = "rudolph"
+path = "src/bin/rudolph/main.rs"
+
+[[bin]]
+name = "vixen"
+path = "src/bin/vixen/main.rs"
 
 [[bench]]
 name = "exec"

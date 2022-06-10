@@ -1,3 +1,5 @@
+//! Moose computation format.
+
 use crate::additive::*;
 use crate::error::{Error, Result};
 #[cfg(feature = "compile")]
@@ -11,7 +13,7 @@ use crate::textual::ToTextual;
 use crate::types::*;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
-use macros::{FromTextual, ShortName, ToTextual};
+use moose_macros::{FromTextual, ShortName, ToTextual};
 use paste::paste;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;

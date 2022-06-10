@@ -5,7 +5,7 @@ use crate::execution::Session;
 use crate::host::{HostPlacement, SyncKey};
 use crate::kernels::*;
 use crate::types::{HostPrfKey, HostSeed};
-use macros::with_context;
+use moose_macros::with_context;
 
 /// Internal trait for DaBit generation
 pub trait DaBitProvider<S: Session, HostShapeT, O1, O2> {

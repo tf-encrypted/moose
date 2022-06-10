@@ -61,7 +61,12 @@ class NeuralNetwork(aes_predictor.AesPredictor):
 
         return x
 
-    def predictor_factory(self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+    def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+        return self.neural_predictor_fn(x, fixedpoint_dtype)
+
+    def aes_predictor_factory(
+        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
+    ):
         @pm.computation
         def predictor(
             aes_data: pm.Argument(

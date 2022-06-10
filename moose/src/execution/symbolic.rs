@@ -1,4 +1,4 @@
-//! Symbolic execution of computations
+//! Symbolic execution of computations.
 //!
 //! This is used during compilation to lower operations.
 //! In general, it works by evaluating kernels on symbolic values and
@@ -84,12 +84,13 @@ where
     type BitLength = T::BitLength;
 }
 
+/// Handle to value produced by operation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SymbolicHandle<P> {
-    pub op: String,
+    pub(crate) op: String,
     // NOTE if we had a handle to the graph we
     // could perhaps derive the placement instead
-    pub plc: P,
+    pub(crate) plc: P,
 }
 
 impl<T: Placed> Placed for Symbolic<T>

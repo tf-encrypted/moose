@@ -1,4 +1,4 @@
-//! Textual representation of computations
+//! Textual representation of computations.
 
 use crate::additive::AdditivePlacement;
 use crate::computation::*;
