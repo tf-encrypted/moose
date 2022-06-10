@@ -143,7 +143,7 @@ mod tests {
             .join("\n");
         definition.push_str(&body);
         definition
-            .push_str("\nz = Output{tag = \"output_0\"}: (HostRing64Tensor) -> HostRing64Tensor (x0) @Host(alice)");
+            .push_str(r#"\nz = Output{tag = "output_0"}: (HostRing64Tensor) -> HostRing64Tensor (x0) @Host(alice)"#);
 
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =

@@ -56,7 +56,7 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
-            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+            r#"z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#
         ));
         Ok(())
     }
@@ -85,7 +85,7 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
-            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+            r#"z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#
         ));
         Ok(())
     }
@@ -126,7 +126,7 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp.contains(
-            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+            r#"z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#
         ));
         Ok(())
     }
@@ -156,13 +156,13 @@ mod tests {
             "mul = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp.contains(
-            "z = Output{tag = \"z\"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"
+            r#"z = Output{tag = "z"}: (HostFloat32Tensor) -> HostFloat32Tensor (mul) @Host(alice)"#
         ));
         assert!(comp.contains(
             "add = Add: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
-            .contains("z2 = Output{tag = \"z2\"}: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"));
+            .contains(r#"z2 = Output{tag = "z2"}: (HostFloat32Tensor) -> HostFloat32Tensor (add) @Host(alice)"#));
         Ok(())
     }
 }

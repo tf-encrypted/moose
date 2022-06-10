@@ -1972,7 +1972,7 @@ mod tests {
     #[test]
     fn test_output() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = Output{tag = \"z\"}: (HostRing64Tensor) -> HostRing64Tensor (x10) @Host(alice)",
+            r#"z = Output{tag = "z"}: (HostRing64Tensor) -> HostRing64Tensor (x10) @Host(alice)"#,
         )?;
         assert_eq!(op.name, "z");
         Ok(())
