@@ -1,11 +1,10 @@
 //! Storage traits and implementations.
-//!
-//! See also the `moose_modules` crate for more implementations.
 
 use crate::computation::*;
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 
+pub mod filesystem;
 pub mod local;
 
 pub trait SyncStorage {

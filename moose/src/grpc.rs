@@ -1,13 +1,4 @@
-//! Moose extension modules.
-
-pub mod choreography;
-pub mod networking;
-pub mod storage;
-
-// TODO(Morten) this module will move into `moose` soon
-pub mod execution;
-
-fn extract_sender<T>(request: &tonic::Request<T>) -> Result<Option<String>, String> {
+pub(crate) fn extract_sender<T>(request: &tonic::Request<T>) -> Result<Option<String>, String> {
     match request.peer_certs() {
         None => Ok(None),
         Some(certs) => {

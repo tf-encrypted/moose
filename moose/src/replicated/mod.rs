@@ -257,7 +257,7 @@ where
     RepBitT: Placed<Placement = ReplicatedPlacement>,
 {
     type Error = Error;
-    fn try_from(v: Symbolic<RepBitArray<RepBitT, N>>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<RepBitArray<RepBitT, N>>) -> Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected(None)), // TODO err message

@@ -1,12 +1,12 @@
 //! CLI tool for interacting with a group of Comet reindeers
 
 use clap::{Parser, Subcommand};
-use moose::computation::SessionId;
-use moose::tokio;
-use moose_modules::choreography::filesystem::{
+use moose::choreography::filesystem::{
     parse_session_config_file_with_computation, parse_session_config_file_without_computation,
 };
-use moose_modules::execution::grpc::GrpcMooseRuntime;
+use moose::computation::SessionId;
+use moose::execution::grpc::GrpcMooseRuntime;
+use moose::tokio;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::PathBuf;
