@@ -14,15 +14,15 @@ use std::path::Path;
 use std::str::FromStr;
 
 /// Filesystem-based choreography.
-/// 
+///
 /// Sessions are controlled by two sets of files:
-/// 
+///
 /// - `.moose` files that contain Moose computations;
 ///   these must be physical computations.
-/// 
+///
 /// - `.session` files that specify session configurations;
 ///   the name of the file is used to derive the session id.
-/// 
+///
 /// `FilesystemChoreography` listens for changes to the sessions directory
 /// and will launch new sessions when new `.session` files are created.
 pub struct FilesystemChoreography {
