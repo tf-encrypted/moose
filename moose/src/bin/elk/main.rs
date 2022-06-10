@@ -14,14 +14,14 @@ use std::path::{Path, PathBuf};
     about = "Elk compiler CLI",
     // long_about = ""
 )]
-struct Cli {
+pub struct Cli {
     #[clap(subcommand)]
     command: Commands,
 }
 
 #[derive(Subcommand, Debug)]
-enum Commands {
-    /// Compile a Moose computation
+pub enum Commands {
+    /// Compile a computation
     Compile {
         /// Input file
         input: PathBuf,
@@ -41,13 +41,14 @@ enum Commands {
         #[clap(short, long)]
         passes: Option<String>,
     },
-    /// Print stats about a computation without transforming it
+
+    /// Collect stats about a computation
     #[clap(subcommand)]
     Stats(StatsCommands),
 }
 
 #[derive(Subcommand, Debug)]
-enum StatsCommands {
+pub enum StatsCommands {
     /// Print operator histogram
     OpHist {
         /// Input file
@@ -61,6 +62,7 @@ enum StatsCommands {
         #[clap(long)]
         by_placement: bool,
     },
+
     /// Print operator counts
     OpCount {
         /// Input file
@@ -74,6 +76,7 @@ enum StatsCommands {
         #[clap(long)]
         by_placement: bool,
     },
+
     /// Print out degree
     OutDegree {
         /// Input file
@@ -90,7 +93,7 @@ enum StatsCommands {
 }
 
 #[derive(Clone, Debug, ArgEnum)]
-enum ComputationFormat {
+pub enum ComputationFormat {
     Bincode,
     Msgpack,
     Textual,

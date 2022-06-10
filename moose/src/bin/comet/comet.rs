@@ -10,7 +10,7 @@ use structopt::StructOpt;
 use tonic::transport::Server;
 
 #[derive(Debug, StructOpt, Clone)]
-struct Opt {
+pub struct Opt {
     #[structopt(env, long)]
     /// Own identity in sessions
     identity: String,

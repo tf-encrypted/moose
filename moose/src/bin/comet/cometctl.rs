@@ -13,8 +13,8 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[clap(name = "cometctl")]
-#[clap(about = "A simple CLI for interacting with Comets")]
-struct Cli {
+#[clap(about = "A simple CLI tool for interacting with a Comet cluster")]
+pub struct Cli {
     #[clap(subcommand)]
     command: Commands,
 
@@ -28,7 +28,8 @@ struct Cli {
 }
 
 #[derive(Subcommand, Debug)]
-enum Commands {
+pub enum Commands {
+    /// Launch computation on cluster (non-blocking)
     Launch {
         /// Session config file to use
         session_config: PathBuf,
@@ -37,6 +38,7 @@ enum Commands {
         /// Session id to use
         session_id: Option<String>,
     },
+    /// Abort computation on cluster
     Abort {
         /// Session config file to use
         session_config: PathBuf,
@@ -45,6 +47,7 @@ enum Commands {
         /// Session id to use
         session_id: Option<String>,
     },
+    /// Retrieve results of computation from cluster (blocking)
     Results {
         /// Session config file to use
         session_config: PathBuf,
@@ -53,6 +56,7 @@ enum Commands {
         /// Session id to use
         session_id: Option<String>,
     },
+    /// Launch computation and retrieve results (blocking)
     Run {
         /// Session config file to use
         session_config: PathBuf,

@@ -12,7 +12,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 #[derive(Debug, StructOpt, Clone)]
-struct Opt {
+pub struct Opt {
     #[structopt(long)]
     comp: String,
 
