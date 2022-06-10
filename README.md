@@ -1,6 +1,6 @@
 # Moose
 
-Moose is a framework for secure multi-party computation, written in Rust.
+Moose is a production-ready framework for encrypted learning and data processing in a distributed environment.
 
 Moose includes an API, a compiler, and a runtime. It’s designed to be secure, fast, scalable, and extensible. Moose is production ready and secure by default.
 
@@ -25,6 +25,12 @@ You will need to have [Rust](https://www.rust-lang.org/learn/get-started) and Op
 cargo install moose
 ```
 
+If you plan to use the Python bindings you can install these using:
+
+```sh
+pip install moose-python
+```
+
 OpenBLAS may be installed using:
 
 - Debian/Ubuntu: `sudo apt install libopenblas-dev`
@@ -35,7 +41,11 @@ Please see [DEVELOP.md](./DEVELOP.md) for further instructions on how to install
 
 ## Example
 
-TODO
+```python
+TODO: simple local example using PyMoose
+```
+
+Please see the [examples](./examples/) directory for more ways to use Moose, including running in an actual distributed setting.
 
 ## License
 

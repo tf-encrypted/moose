@@ -1,6 +1,6 @@
 # Moose
 
-Moose is a production-ready Rust framework for encrypted learning and data processing in a distributed environment.
+Core Moose framework and binaries.
 
 TODO: improve example below, and add as proper example; include in cargo docs?
 
@@ -20,23 +20,5 @@ let argmax = alice.reveal(&sess, &argmax_shared);
 let y_target: HostRing64Tensor = alice.from_raw(y_target);
 ```
 
-## Running
+## Binaries
 
-Besides a recent [rust stable](https://rust-lang.github.io/rustup/concepts/channels.html) you only nee
-
-Install OpenBLAS development headers via `libopenblas-dev` for Ubuntu.
-
-### Developing
-
-### Testing
-
-### Documentation
-
-To generate documentation provided by rust using the source files use:
-
-```
-cargo doc --no-deps --open
-```
-
-In order to fetch the latest documentation on the cryptographic protocols implemented in moose
-check our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper)!

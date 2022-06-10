@@ -60,7 +60,7 @@ export RUST_LOG="moose=debug"
 
 To generate documentation provided by rust using the source files use:
 
-```
+```sh
 cargo doc --no-deps --open
 ```
 
@@ -181,8 +181,9 @@ cargo watch -c -x 'run --bin rudolph -- --identity "localhost:50000" --port 5000
 
 Note that `-i examples` means workers are not re-launched when files in `./examples` are changed.
 
-# TODO
 
+
+# TODO
 
 ### Bootstrapping
 
