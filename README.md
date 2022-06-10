@@ -45,7 +45,7 @@ Alternatively, you can install from the source code. Please see [DEVELOP.md](./D
 
 ## Example
 
-The following is a simple encrypted computation using the Python bindings:
+The following is a simple example using the Python bindings to express and evaluate an encrypted computation using replicated secret sharing:
 
 ```python
 import numpy as np
