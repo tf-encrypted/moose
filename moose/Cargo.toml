@@ -24,7 +24,6 @@ default = [
   "compile",
   "sync_execute",
   "async_execute",
-  "tracing",
 ]
 compile = []
 sync_execute = []
@@ -32,7 +31,6 @@ async_execute = []
 tracing = [
   "opentelemetry",
   "opentelemetry-jaeger",
-  "tracing-subscriber",
   "tracing-opentelemetry",
 ]
 
@@ -81,7 +79,7 @@ tokio = { version = "~1.17", features = ["full"] }
 toml = "0.5"
 tonic = { version = "~0.6", features = ["tls"] }
 tracing = { version = "~0.1", features = ["log"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-opentelemetry = { version = "0.17", optional = true }
 nom = { version = "~7.1" }
 x509-parser = "~0.13"
