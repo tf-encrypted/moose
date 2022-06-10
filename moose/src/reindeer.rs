@@ -34,7 +34,7 @@ pub fn setup_tracing(
     _identity: &str,
     _service_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    panic!("please enable 'tracing' feature");
+    panic!("please enable 'telemetry' feature");
 }
 
 /// Load client-side TLS configuration from files
