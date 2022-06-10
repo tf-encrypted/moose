@@ -1,6 +1,24 @@
 # Moose
 
-Moose is the core framework for encrypted learning and data processing in distributed environments. It is production ready and secure by default.
+Moose is a production-ready Rust framework for encrypted learning and data processing in a distributed environment.
+
+TODO: improve example below, and add as proper example; include in cargo docs?
+
+```rust
+use moose::prelude::*;
+
+let alice = HostPlacement::from("alice");
+let rep = ReplicatedPlacement::from(["alice", "bob", "carole"]);
+
+let sess = SyncSession::default();
+
+let x: HostRingTensor<_> = alice.from_raw(x);
+let x_shared = rep.share(&sess, &x);
+let argmax_shared = rep.argmax(&sess, axis, upmost_index, &x_shared);
+
+let argmax = alice.reveal(&sess, &argmax_shared);
+let y_target: HostRing64Tensor = alice.from_raw(y_target);
+```
 
 ## Running
 
@@ -52,38 +70,6 @@ Once your PR has been merged to `main`:
 6. update to the next dev version with `cargo release --workspace --no-publish beta --execute` and create a PR for that
 
 If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
-
-### Rust Development
-
-You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project.
-
-We compile and test against the stable toolchain so make sure to either set the stable toolchain as the default using `rustup default stable`.
-
-We require code to be formatted according to `cargo fmt` so make sure to run this command before submitted your work. You should also run `cargo clippy` to lint your code.
-
-To ease your development we encourage you to install the following extra cargo commands:
-
-- [`cargo watch`](https://crates.io/crates/cargo-watchcargo-watch) will type check your code on every save;  `cargo watch --exec test` will run all tests on every save.
-
-- [`cargo outdated`](https://crates.io/crates/cargo-outdated) checks if your dependencies are up to date.
-
-- [`cargo audit`](https://crates.io/crates/cargo-audit) checks if any vulnerabilities have been detected for your current dependencies.
-
-- [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny) checks security advisories and licence conflicts.
-
-- [`cargo release`](https://crates.io/crates/cargo-release) automates the release cycle, including bumping versions.
-
-- [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
-
-- [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
-
-- [`cargo asm`](https://github.com/gnzlbg/cargo-asm) to dump assembly or LLVM IR (the latter via `cargo llvm-ir`).
-
-- [`cargo llvm-lines`](https://github.com/dtolnay/cargo-llvm-lines) to inspect code bloat.
-
-[Tokio Console](https://tokio.rs/blog/2021-12-announcing-tokio-console) is also interesting.
-
-To keep all of these up-to-date once installed, we recommend using [`cargo-update`](https://crates.io/crates/cargo-update).
 
 ## License
 
