@@ -11,8 +11,8 @@ use std::path::{Path, PathBuf};
 #[derive(Parser, Debug)]
 #[clap(name = "elk")]
 #[clap(
-    about = "A Moose compiler wrapper CLI",
-    long_about = "Takes an input file with the Computation's Textual representation and applies the specified passes to it."
+    about = "Elk compiler CLI",
+    // long_about = ""
 )]
 struct Cli {
     #[clap(subcommand)]
