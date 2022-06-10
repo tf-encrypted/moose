@@ -20,10 +20,21 @@ homepage = "https://github.com/tf-encrypted/moose"
 documentation = "https://docs.rs/moose"
 
 [features]
-default = ["compile", "sync_execute", "async_execute"]
+default = [
+  "compile",
+  "sync_execute",
+  "async_execute",
+  "tracing",
+]
 compile = []
 sync_execute = []
 async_execute = []
+tracing = [
+  "opentelemetry",
+  "opentelemetry-jaeger",
+  "tracing-subscriber",
+  "tracing-opentelemetry",
+]
 
 [dependencies]
 aes-prng = "~0.2"
@@ -52,6 +63,8 @@ ndarray-linalg = { version = "0.14", features = ["openblas-system"] }
 num = "~0.4"
 num-traits = "~0.2"
 notify = "4.0"
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"], optional = true }
+opentelemetry-jaeger = { version = "0.16", optional = true }
 parking_lot = "~0.12"
 paste = "~1.0"
 petgraph = "~0.6"
@@ -62,11 +75,14 @@ rmp-serde = "~1.0"
 serde = { version = "~1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 static_assertions = "~1.1"
+structopt = "0.3"
 thiserror = "~1.0"
 tokio = { version = "~1.17", features = ["full"] }
 toml = "0.5"
 tonic = { version = "~0.6", features = ["tls"] }
 tracing = { version = "~0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
+tracing-opentelemetry = { version = "0.17", optional = true }
 nom = { version = "~7.1" }
 x509-parser = "~0.13"
 
@@ -86,8 +102,28 @@ tempfile = "~3.3"
 tonic-build = "~0.6"
 
 [[bin]]
+name = "comet"
+path = "src/bin/comet/comet.rs"
+
+[[bin]]
+name = "cometctl"
+path = "src/bin/comet/cometctl.rs"
+
+[[bin]]
+name = "dasher"
+path = "src/bin/dasher/main.rs"
+
+[[bin]]
 name = "elk"
 path = "src/bin/elk/main.rs"
+
+[[bin]]
+name = "rudolph"
+path = "src/bin/rudolph/main.rs"
+
+[[bin]]
+name = "vixen"
+path = "src/bin/vixen/main.rs"
 
 [[bench]]
 name = "exec"

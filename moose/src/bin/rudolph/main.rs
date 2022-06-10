@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !opt.telemetry {
         tracing_subscriber::fmt::init();
     } else {
-        reindeer::setup_tracing(&opt.identity, "rudolph")?;
+        moose::reindeer::setup_tracing(&opt.identity, "rudolph")?;
     }
 
     let root_span = tracing::span!(tracing::Level::INFO, "app_start");
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let manager = match opt.certs {
         Some(ref certs_dir) => {
-            let client = reindeer::load_client_tls_config(&my_cert_name, certs_dir)?;
+            let client = moose::reindeer::load_client_tls_config(&my_cert_name, certs_dir)?;
             GrpcNetworkingManager::from_tls_config(client)
         }
         None => GrpcNetworkingManager::without_tls(),
@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut server = Server::builder();
 
     if let Some(ref certs_dir) = opt.certs {
-        let tls_server_config = reindeer::load_server_tlc_config(&my_cert_name, certs_dir)?;
+        let tls_server_config = moose::reindeer::load_server_tlc_config(&my_cert_name, certs_dir)?;
         server = server.tls_config(tls_server_config)?;
     }
 

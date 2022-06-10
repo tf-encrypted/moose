@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tls_config = match (args.certs, args.identity) {
         (Some(certs_dir), Some(identity)) => {
-            Some(reindeer::load_client_tls_config(&identity, &certs_dir)?)
+            Some(moose::reindeer::load_client_tls_config(&identity, &certs_dir)?)
         }
         (None, None) => None,
         _ => panic!("both --certs and --identity must be specified"),
