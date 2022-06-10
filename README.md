@@ -21,7 +21,7 @@ Moose is a community driven, open source project. Moose was created at Cape.
 
 ## Installation
 
-In many cases you will want to install only the Python bindings on eg your laptop, and only the Moose tools on the servers making up the distributed cluster.
+Moose is packaged in two ways: the Python bindings and the CLI tools. In a typical use case you might want to install the Python bindings on your laptop and the CLI tools on the servers running in the distributed cluster (or use the [Docker image](https://hub.docker.com/r/tfencrypted/moose)).
 
 Install the Python bindings using:
 
@@ -29,21 +29,19 @@ Install the Python bindings using:
 pip install moose-python
 ```
 
-and install the Moose tools using:
+Install the CLI tools using (assuming you already have [Rust installed](https://www.rust-lang.org/learn/get-started)):
 
 ```sh
 cargo install moose
 ```
 
-You will need to have OpenBLAS installed for both:
+You will also need to have OpenBLAS installed in both cases:
 
 - Debian/Ubuntu: `sudo apt install libopenblas-dev`
 
 - macOS: `homebrew install openblas`
 
-You will need to have [Rust](https://www.rust-lang.org/learn/get-started) installed for the latter.
-
-Please see [DEVELOP.md](./DEVELOP.md) for further instructions on how to install and work with the source code.
+Alternatively, you can install from the source code. Please see [DEVELOP.md](./DEVELOP.md) for further instructions on how to do that, as well as working with it.
 
 ## Example
 
