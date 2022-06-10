@@ -747,6 +747,7 @@ impl OutputOp {
     pub(crate) fn float_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
         plc: &HostPlacement,
+        tag: String,
         x: FloatTensor<HostFloatT, MirroredT>,
     ) -> Result<FloatTensor<HostFloatT, MirroredT>>
     where
@@ -757,7 +758,7 @@ impl OutputOp {
             FloatTensor::Mirrored3(_v) => unimplemented!(),
         };
 
-        Ok(FloatTensor::Host(plc.output(sess, &x)))
+        Ok(FloatTensor::Host(plc.output(sess, tag, &x)))
     }
 }
 

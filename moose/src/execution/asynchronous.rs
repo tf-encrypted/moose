@@ -619,9 +619,9 @@ impl AsyncExecutor {
                 .map_err(|e| {
                     Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
                 })?;
-            if matches!(op.kind, Operator::Output(_)) {
+            if let Operator::Output(output_op) = &op.kind {
                 // If it is an output, we need to make sure we capture it for returning.
-                outputs.insert(op.name.clone(), value.clone());
+                outputs.insert(output_op.tag.clone(), value.clone());
             } else {
                 // Everything else should be available in the env for other ops to use.
                 env.insert(op.name.clone(), value);
@@ -700,8 +700,8 @@ impl AsyncTestRuntime {
                 .run_computation(computation, &role_assignments, own_identity, &moose_session)
                 .unwrap();
 
-            for (output_name, output_future) in outputs {
-                output_futures.insert(output_name, output_future);
+            for (output_tag, output_future) in outputs {
+                output_futures.insert(output_tag, output_future);
             }
 
             session_handles.push(moose_session.into_handle()?)
@@ -719,9 +719,9 @@ impl AsyncTestRuntime {
 
         let outputs = rt.block_on(async {
             let mut outputs: HashMap<String, Value> = HashMap::new();
-            for (output_name, output_future) in output_futures {
+            for (output_tag, output_future) in output_futures {
                 let value = output_future.await.unwrap();
-                outputs.insert(output_name, value);
+                outputs.insert(output_tag, value);
             }
 
             outputs

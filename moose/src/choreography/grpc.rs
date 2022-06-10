@@ -10,7 +10,7 @@ use self::gen::{
     LaunchComputationResponse, RetrieveResultsRequest, RetrieveResultsResponse,
 };
 use super::{NetworkingStrategy, StorageStrategy};
-use crate::computation::{SessionId, Value};
+use crate::computation::{Operator, SessionId, Value};
 use crate::execution::ExecutionContext;
 use crate::execution::Identity;
 use async_cell::sync::AsyncCell;
@@ -167,9 +167,15 @@ impl Choreography for GrpcChoreography {
 
                 tokio::spawn(async move {
                     let mut results = HashMap::with_capacity(outputs.len());
-                    for (output_name, output_value) in outputs {
+                    for (output_ix, output_value) in outputs {
                         let value = output_value.await.unwrap();
-                        results.insert(output_name, value);
+                        let output_op = &computation.operations[output_ix];
+                        let output_tag = match &output_op.kind {
+                            Operator::Output(op) => Some(op.tag.clone()),
+                            _ => None,
+                        }
+                        .unwrap();
+                        results.insert(output_tag, value);
                     }
                     tracing::info!("Results ready, {:?}", results.keys());
 

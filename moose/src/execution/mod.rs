@@ -150,7 +150,8 @@ mod tests {
             .join("\n");
         definition.push_str(&body);
         definition
-            .push_str("\nz = Output: (HostRing64Tensor) -> HostRing64Tensor (x0) @Host(alice)");
+            .push_str(r#"
+            z = Output{tag = "output_0"}: (HostRing64Tensor) -> HostRing64Tensor (x0) @Host(alice)"#);
 
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -162,7 +163,7 @@ mod tests {
             run_async,
         )?;
 
-        assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+        assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["output_0"]);
         Ok(())
     }
 
@@ -174,14 +175,14 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
         seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
-        output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
+        output = Output{tag = "output_0"}: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let seed: HostSeed = (outputs.get("output").unwrap().clone()).try_into()?;
+        let seed: HostSeed = (outputs.get("output_0").unwrap().clone()).try_into()?;
         if run_async {
             // Async session uses a random session id, so we can not predict the output.
             // But at least it should not be empty
@@ -208,7 +209,7 @@ mod tests {
         xshape = Constant{value=HostShape([2, 2])}: () -> HostShape @Host(alice)
         sampled = SampleSeeded{}: (HostShape, HostSeed) -> HostRing64Tensor (xshape, seed) @Host(alice)
         shape = Shape: (HostRing64Tensor) -> HostShape (sampled) @Host(alice)
-        output = Output: (HostShape) -> HostShape (shape) @Host(alice)
+        output = Output{tag = "output_0"}: (HostShape) -> HostShape (shape) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -216,7 +217,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let output: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let output: HostShape = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(output.0, RawShape(vec![2, 2]));
         Ok(())
     }
@@ -228,7 +229,7 @@ mod tests {
         let source = r#"x = Input {arg_name = "x"}: () -> HostInt64Tensor @Host(alice)
         y = Input {arg_name = "y"}: () -> HostInt64Tensor @Host(alice)
         z = Add: (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor (x, y) @Host(alice)
-        output = Output: (HostInt64Tensor) -> HostInt64Tensor (z) @Host(alice)
+        output = Output{tag = "output_0"}: (HostInt64Tensor) -> HostInt64Tensor (z) @Host(alice)
         "#;
         let x: Value = "HostInt64Tensor([5]) @Host(alice)".try_into()?;
         let y: Value = "HostInt64Tensor([10]) @Host(alice)".try_into()?;
@@ -238,7 +239,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let z: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let z: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let expected: Value = "HostInt64Tensor([15]) @Host(alice)".try_into()?;
         assert_eq!(expected, z.into());
         Ok(())
@@ -265,7 +266,7 @@ mod tests {
         saved_uri = Constant{value = HostString("saved_data")}: () -> HostString () @Host(alice)
         x = Load: (HostString, HostString) -> TensorType (x_uri, x_query) @Host(alice)
         save = Save: (HostString, TensorType) -> HostUnit (saved_uri, x) @Host(alice)
-        output = Output: (HostUnit) -> HostUnit (save) @Host(alice)
+        output = Output{tag = "output_0"}: (HostUnit) -> HostUnit (save) @Host(alice)
         "#;
         let source = source_template.replace("TensorType", &data_type_str);
         let plc = HostPlacement::from("alice");
@@ -339,7 +340,7 @@ mod tests {
         let source_template = r#"x_0 = Constant{value=HostInt64Tensor([[1,2], [3,4]])}: () -> HostInt64Tensor @Host(alice)
         x_1 = Constant{value=HostInt64Tensor([[5, 6], [7,8]])}: () -> HostInt64Tensor @Host(alice)
         concatenated = Concat {axis=test_axis}: [HostInt64Tensor] -> HostInt64Tensor (x_0, x_1) @Host(alice)
-        output = Output: (HostInt64Tensor) -> HostInt64Tensor (concatenated) @Host(alice)
+        output = Output{tag = "output_0"}: (HostInt64Tensor) -> HostInt64Tensor (concatenated) @Host(alice)
         "#;
         let source = source_template.replace("test_axis", &axis.to_string());
         let arguments: HashMap<String, Value> = hashmap!();
@@ -348,7 +349,8 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let concatenated: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let concatenated: HostInt64Tensor =
+            (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, concatenated.into());
         Ok(())
     }
@@ -372,7 +374,7 @@ mod tests {
         x0 = Constant{value=HostInt64Tensor([5])}: () -> HostInt64Tensor @Host(alice)
         x1 = Constant{value=HostInt64Tensor([3])}: () -> HostInt64Tensor @Host(bob)
         res = StdOp: (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor (x0, x1) @Host(alice)
-        output = Output: (HostInt64Tensor) -> HostInt64Tensor (res) @Host(alice)
+        output = Output{tag = "output_0"}: (HostInt64Tensor) -> HostInt64Tensor (res) @Host(alice)
         "#;
         let source = source_template.replace("StdOp", &test_op);
         let computation: Computation = source.try_into()?;
@@ -389,7 +391,7 @@ mod tests {
             false => _run_computation_test(computation, storage_mapping, arguments, run_async)?,
         };
 
-        let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, res.into());
         Ok(())
     }
@@ -403,7 +405,7 @@ mod tests {
         x0 = Constant{value=HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         x1 = Constant{value=HostFloat32Tensor([[1.0, 0.0], [0.0, 1.0]])}: () -> HostFloat32Tensor @Host(bob)
         res = Dot: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (x0, x1) @Host(alice)
-        output = Output: (HostFloat32Tensor) -> HostFloat32Tensor (res) @Host(alice)
+        output = Output{tag = "output_0"}: (HostFloat32Tensor) -> HostFloat32Tensor (res) @Host(alice)
         "#;
         let computation: Computation = source.try_into()?;
         let arguments: HashMap<String, Value> = hashmap!();
@@ -424,7 +426,7 @@ mod tests {
             HostPlacement::from("alice"),
         )
         .into();
-        assert_eq!(outputs["output"], expected_output);
+        assert_eq!(outputs["output_0"], expected_output);
         Ok(())
     }
 
@@ -434,7 +436,7 @@ mod tests {
     fn test_standard_inverse(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=HostFloat32Tensor([[3.0, 2.0], [2.0, 3.0]])} : () -> HostFloat32Tensor @Host(alice)
         x_inv = Inverse : (HostFloat32Tensor) -> HostFloat32Tensor (x) @Host(alice)
-        output = Output: (HostFloat32Tensor) -> HostFloat32Tensor (x_inv) @Host(alice)
+        output = Output{tag = "output_0"}: (HostFloat32Tensor) -> HostFloat32Tensor (x_inv) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -448,7 +450,7 @@ mod tests {
                 .into_dyn(),
             HostPlacement::from("alice"),
         );
-        let x_inv: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let x_inv: HostFloat32Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_output, x_inv);
         Ok(())
     }
@@ -467,7 +469,7 @@ mod tests {
         let template = r#"
         s = Constant{value=HostShape([2, 2])}: () -> HostShape @Host(alice)
         r = Ones : (HostShape) -> dtype (s) @Host(alice)
-        output = Output : (dtype) -> dtype (r) @Host(alice)
+        output = Output{tag = "output_0"} : (dtype) -> dtype (r) @Host(alice)
         "#;
         let source = template.replace("dtype", &dtype);
         let arguments: HashMap<String, Value> = hashmap!();
@@ -478,7 +480,7 @@ mod tests {
 
         match dtype.as_str() {
             "HostFloat32Tensor" => {
-                let r: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostFloat32Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
                     HostTensor::<f32>(
@@ -489,7 +491,7 @@ mod tests {
                 Ok(())
             }
             "HostFloat64Tensor" => {
-                let r: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostFloat64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
                     HostTensor::<f64>(
@@ -500,7 +502,7 @@ mod tests {
                 Ok(())
             }
             "HostInt64Tensor" => {
-                let r: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
                     HostTensor::<i64>(
@@ -521,14 +523,14 @@ mod tests {
         let source = r#"
         x = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor @Host(alice)
         shape = Shape: (HostFloat32Tensor) -> HostShape (x) @Host(alice)
-        output = Output: (HostShape) -> HostShape (shape) @Host(alice)"#;
+        output = Output{tag = "output_0"}: (HostShape) -> HostShape (shape) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let actual_shape: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let actual_shape: HostShape = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let actual_raw_shape = actual_shape.0;
         let expected_raw_shape = RawShape(vec![2, 2]);
         assert_eq!(actual_raw_shape, expected_raw_shape);
@@ -542,13 +544,13 @@ mod tests {
     fn test_shape_slice(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value = HostShape([2, 3, 4, 5])}: () -> HostShape @Host(alice)
         slice = Slice {slice = {start = 1, end = 3}}: (HostShape) -> HostShape (x) @Host(alice)
-        output = Output: (HostShape) -> HostShape (slice) @Host(alice)"#;
+        output = Output{tag = "output_0"}: (HostShape) -> HostShape (slice) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
-        let res: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostShape = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let actual_shape = res.0;
         let expected_shape = RawShape(vec![3, 4]);
         assert_eq!(expected_shape, actual_shape);
@@ -565,14 +567,14 @@ mod tests {
         let source = r#"
         x = Constant{value = HostInt64Tensor([1, 2])}: () -> HostInt64Tensor @Host(alice)
         expand_dims = ExpandDims {axis = [1]}: (HostInt64Tensor) -> HostInt64Tensor (x) @Host(alice)
-        output = Output: (HostInt64Tensor) -> HostInt64Tensor (expand_dims) @Host(alice)"#;
+        output = Output{tag = "output_0"}: (HostInt64Tensor) -> HostInt64Tensor (expand_dims) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string() => hashmap!());
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         let actual_shape = res.shape().0;
         let expected_shape = RawShape(vec![2, 1]);
         assert_eq!(expected_shape, actual_shape);
@@ -654,7 +656,7 @@ mod tests {
             r#"
             s = Constant{{value=HostFloat32Tensor([[1, 2], [3, 4]])}}: () -> HostFloat32Tensor @Host(alice)
             r = {} {}: (HostFloat32Tensor) -> HostFloat32Tensor (s) @Host(alice)
-            output = Output : (HostFloat32Tensor) -> HostFloat32Tensor (r) @Host(alice)
+            output = Output{{tag = "output_0"}} : (HostFloat32Tensor) -> HostFloat32Tensor (r) @Host(alice)
         "#,
             reduce_op_test, axis_str
         );
@@ -665,7 +667,7 @@ mod tests {
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
         let comp_result = outputs
-            .get("output")
+            .get("output_0")
             .ok_or_else(|| anyhow::anyhow!("Expected result missing"))?;
 
         if unwrap_flag {
@@ -696,7 +698,7 @@ mod tests {
         let source = r#"
         s = Constant{value=HostInt64Tensor([[1,2], [3, 4]])}: () -> HostInt64Tensor @Host(alice)
         r = Transpose : (HostInt64Tensor) -> HostInt64Tensor (s) @Host(alice)
-        output = Output : (HostInt64Tensor) -> HostInt64Tensor (r) @Host(alice)
+        output = Output{tag = "output_0"} : (HostInt64Tensor) -> HostInt64Tensor (r) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -704,7 +706,7 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let comp_result: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostInt64Tensor = (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -723,7 +725,7 @@ mod tests {
             r#"
             x = Constant{{value=HostFloat64Tensor([1.0, 1.0, 1.0])}}: () -> HostFloat64Tensor @Host(alice)
         res = AtLeast2D {{ to_column_vector = {} }} : (HostFloat64Tensor) -> HostFloat64Tensor (x) @Host(alice)
-        output = Output : (HostFloat64Tensor) -> HostFloat64Tensor (res) @Host(alice)
+        output = Output{{tag = "output_0"}} : (HostFloat64Tensor) -> HostFloat64Tensor (res) @Host(alice)
         "#,
             to_column_vector
         );
@@ -733,7 +735,8 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let comp_result: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostFloat64Tensor =
+            (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -755,7 +758,7 @@ mod tests {
             x =  Constant{{value=HostRing64Tensor([3])}}: () -> HostRing64Tensor @Host(alice)
             y = Constant{{value=HostRing64Tensor([2])}}: () -> HostRing64Tensor @Host(alice)
             res = {} : (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor (x, y) @Host(alice)
-            output = Output : (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
+            output = Output{{tag = "output_0"}} : (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
             "#,
             test_op
         );
@@ -765,7 +768,8 @@ mod tests {
         let outputs =
             _run_computation_test(source.try_into()?, storage_mapping, arguments, run_async)?;
 
-        let comp_result: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostRing64Tensor =
+            (outputs.get("output_0").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -824,7 +828,7 @@ mod tests {
             r#"x = Constant{{value={}}}: () -> HostRing64Tensor @Host(alice)
         y = Constant{{value={}}}: () -> HostRing64Tensor @Host(alice)
         res = Dot : (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor (x, y) @Host(alice)
-        output = Output : (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
+        output = Output{{tag = "output_0"}} : (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
         "#,
             x_str, y_str
         );
@@ -837,13 +841,13 @@ mod tests {
         match type_str.as_str() {
             "HostRing64Tensor" => {
                 let comp_result: HostRing64Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "HostRing128Tensor" => {
                 let comp_result: HostRing128Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
@@ -893,7 +897,7 @@ mod tests {
         let source = format!(
             r#"shape = Constant{{value=HostShape([{shape}])}}: () -> HostShape @Host(alice)
         res = Fill {{value = {t}(1)}} : (HostShape) -> Host{t}Tensor (shape) @Host(alice)
-        output = Output : (Host{t}Tensor) -> Host{t}Tensor (res) @Host(alice)
+        output = Output{{tag = "output_0"}} : (Host{t}Tensor) -> Host{t}Tensor (res) @Host(alice)
         "#,
             t = type_str,
             shape = shape_str,
@@ -907,13 +911,13 @@ mod tests {
         match type_str.as_str() {
             "Ring64" => {
                 let comp_result: HostRing64Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "Ring128" => {
                 let comp_result: HostRing128Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
@@ -933,7 +937,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let template_source = r#"x = Constant{value=HostRing64Tensor([4, 4])}: () -> HostRing64Tensor @Host(alice)
         res = Shr {amount = 1}: (HostRing64Tensor) -> HostRing64Tensor (x) @Host(alice)
-        output = Output: (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
+        output = Output{tag = "output_0"}: (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
         "#;
         let source = template_source.replace("HostRing64Tensor", type_str.as_str());
         let arguments: HashMap<String, Value> = hashmap!();
@@ -945,13 +949,13 @@ mod tests {
         match type_str.as_str() {
             "HostRing64Tensor" => {
                 let comp_result: HostRing64Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "HostRing128Tensor" => {
                 let comp_result: HostRing128Tensor =
-                    (outputs.get("output").unwrap().clone()).try_into()?;
+                    (outputs.get("output_0").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
@@ -979,7 +983,7 @@ mod tests {
     fn test_duplicate_session_ids() {
         let source = r#"key = Constant{value=HostPrfKey(00000000000000000000000000000000)}: () -> HostPrfKey @Host(alice)
         seed = DeriveSeed {sync_key = [1, 2, 3]}: (HostPrfKey) -> HostSeed (key) @Host(alice)
-        output = Output: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
+        output = Output{tag = "output_0"}: (HostSeed) -> HostSeed (seed) @Host(alice)"#;
 
         let networking: Arc<dyn Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
