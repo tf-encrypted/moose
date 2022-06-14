@@ -1,4 +1,5 @@
 import numpy as np
+from absl.testing import absltest
 from absl.testing import parameterized
 
 from pymoose.computation import computation as comp
@@ -67,6 +68,64 @@ _DUNDER_METHODS = {
     "__gt__": lambda x, y: x > y,
     "__lt__": lambda x, y: x < y,
 }
+
+
+def build_ez_swap():
+    alice = edsl.host_placement("alice")
+    bob = edsl.host_placement("bob")
+    carole = edsl.host_placement("carole")
+
+    @edsl.computation
+    def ez_swap(x: edsl.Argument(alice, dtype=dtypes.float64)):
+        with bob:
+            y = edsl.add(x, x)
+
+        with carole:
+            z = edsl.mul(y, y)
+
+        return z
+
+    return ez_swap
+
+
+def build_mirr_swap():
+    alice = edsl.host_placement("alice")
+    bob = edsl.host_placement("bob")
+    carole = edsl.host_placement("carole")
+    mirr = edsl.mirrored_placement("mirrored", [alice, bob, carole])
+    fp_dtype = dtypes.fixed(14, 23)
+
+    @edsl.computation
+    def mirr_swap(x: edsl.Argument(alice, dtype=fp_dtype)):
+        with mirr:
+            y = edsl.add(x, x)
+
+        with carole:
+            z = edsl.mul(y, y)
+
+        return z
+
+    return mirr_swap
+
+
+def build_repl_swap():
+    alice = edsl.host_placement("alice")
+    bob = edsl.host_placement("bob")
+    carole = edsl.host_placement("carole")
+    repl = edsl.replicated_placement("replicated", [alice, bob, carole])
+    fp_dtype = dtypes.fixed(14, 23)
+
+    @edsl.computation
+    def repl_swap(x: edsl.Argument(alice, dtype=fp_dtype)):
+        with repl:
+            y = edsl.add(x, x)
+
+        with carole:
+            z = edsl.mul(y, y)
+
+        return z
+
+    return repl_swap
 
 
 class EdslTest(parameterized.TestCase):
@@ -836,6 +895,54 @@ class EdslTest(parameterized.TestCase):
             ),
         )
 
+    @parameterized.parameters(
+        (build_ez_swap, {"alice": "re_l", "bob": "vincent", "carole": "pino"}),
+        (build_mirr_swap, {"alice": "re_l", "bob": "vincent", "carole": "pino"}),
+        (build_repl_swap, {"alice": "re_l", "bob": "vincent", "carole": "pino"}),
+        (
+            build_mirr_swap,
+            {"alice": "re_l", "bob": "vincent", "carole": "pino", "mirrored": "proxy"},
+        ),
+        (
+            build_repl_swap,
+            {
+                "alice": "re_l",
+                "bob": "vincent",
+                "carole": "pino",
+                "replicated": "proxy",
+            },
+        ),
+    )
+    def test_role_swap(self, comp_builder, role_map):
+        vanilla_comp = comp_builder()
+        swapped_comp = vanilla_comp.with_role_map(role_map)
+        vanilla = trace(vanilla_comp)
+        swapped = trace(swapped_comp)
+        for (vk, vv), (sk, sv) in zip(
+            vanilla.placements.items(), swapped.placements.items()
+        ):
+            vkm = role_map.get(vk, None)
+            vvm = role_map.get(vv.name, None)
+            if vkm is not None or vvm is not None:
+                assert vkm == sk, f"{vk} was mapped to  {sk}, not {vkm}"
+                assert vvm == sv.name, f"{vv} was mapped to  {sv}, not {vvm}"
+
+    def test_role_swap_cycle(self):
+        vanilla_comp = build_ez_swap()
+        role_swap = {"alice": "bob", "bob": "alice"}
+        swapped_comp = vanilla_comp.with_role_map(role_swap)
+        vanilla = trace(vanilla_comp)
+        swapped = trace(swapped_comp)
+        for op_name, op in vanilla.operations.items():
+            if op.placement_name == "alice":
+                assert swapped.operations[op_name].placement_name == "bob"
+            elif op.placement_name == "bob":
+                assert swapped.operations[op_name].placement_name == "alice"
+
 
 def _npdtype_into_moose_dtype(npdtype):
     return edsl._NUMPY_DTYPES_MAP[npdtype]
+
+
+if __name__ == "__main__":
+    absltest.main()
