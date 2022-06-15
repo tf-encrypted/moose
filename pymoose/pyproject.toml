@@ -1,0 +1,25 @@
+[project]
+name = "pymoose"
+version = "0.2.2"  # NOTE: auto-updated during release
+license = {file = "../LICENSE"}
+authors = [
+    {name = "The TF Encrypted Authors"},
+    {email = "contact@tf-encrypted.io"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 2 - Pre-Alpha",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security :: Cryptography",
+]
+urls = {repository = "https://github.com/tf-encrypted/moose"}
+dependencies = [
+    "numpy",
+    "msgpack-python",
+]
+
+[build-system]
+requires = ["maturin>=0.13,<0.14"]
+build-backend = "maturin"

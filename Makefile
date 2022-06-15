@@ -22,7 +22,7 @@ install-release: pydep pylib-release
 
 .PHONY: pylib
 pylib:
-	cd pymoose && python setup.py develop
+	cd pymoose && maturin develop
 
 .PHONY: install
 install: pydep pylib
