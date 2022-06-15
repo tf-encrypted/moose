@@ -33,9 +33,9 @@ pub struct Opt {
     /// Report telemetry to Jaeger
     telemetry: bool,
 
-    #[structopt(default_value = "in-memory", long)]
-    /// Select storage type: in-memory or file-system (default: in-memory)
-    storage_type: String,
+    #[structopt(long)]
+    /// Use file system storage if true otherwise it will use in-memory storage as default
+    file_system_storage: bool,
 }
 
 #[tokio::main]
@@ -61,10 +61,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => GrpcNetworkingManager::without_tls(),
     };
 
-    let storage_strategy: StorageStrategy = match opt.storage_type.as_str() {
-        "in-memory" => Box::new(|| Arc::new(LocalAsyncStorage::default())),
-        "file-system" => Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
-        _ => unimplemented!(),
+    let storage_strategy: StorageStrategy = match opt.file_system_storage {
+        true => Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
+        false => Box::new(|| Arc::new(LocalAsyncStorage::default())),
     };
 
     let networking_server = networking.new_server();
