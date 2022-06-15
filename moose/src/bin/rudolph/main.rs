@@ -38,6 +38,10 @@ pub struct Opt {
     #[structopt(long)]
     /// Report telemetry to Jaeger
     telemetry: bool,
+
+    #[structopt(long)]
+    /// Use file system storage if true otherwise use in-memory storage as default
+    file_system_storage: bool,
 }
 
 #[tokio::main]
@@ -80,6 +84,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::error!("gRPC error: {}", e);
         }
     });
+
+    let storage_strategy: StorageStrategy = match opt.file_system_storage {
+        true => Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
+        false => Box::new(|| Arc::new(LocalAsyncStorage::default())),
+    };
 
     // NOTE(Morten) if we want to move this into separate task then we need
     // to make sure AsyncSessionHandle::join_on_first_error is Send, which

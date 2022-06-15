@@ -34,7 +34,7 @@ pub struct Opt {
     telemetry: bool,
 
     #[structopt(long)]
-    /// Use file system storage if true otherwise it will use in-memory storage as default
+    /// Use file system storage if true otherwise use in-memory storage as default
     file_system_storage: bool,
 }
 
