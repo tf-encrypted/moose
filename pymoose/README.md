@@ -3,8 +3,8 @@ Pymoose: Python bindings to the Elk compiler and Moose Runtime
 ### Installation & Testing
 ```
 pip install -r requirements-dev.txt
-pip install -e .
-pytest .
+maturin develop
+pytest -m "not slow" .
 ```
 
 ### Usage
