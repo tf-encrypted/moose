@@ -8,7 +8,7 @@ from pymoose.edsl import base as edsl
 from pymoose.edsl import tracer
 from pymoose.edsl.base import HostPlacementExpression
 from pymoose.edsl.base import set_current_runtime
-from pymoose.rust import moose_runtime
+from pymoose.pymoose import moose_runtime
 
 
 class LocalMooseRuntime(moose_runtime.LocalRuntime):

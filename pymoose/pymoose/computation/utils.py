@@ -84,7 +84,7 @@ def serialize_computation(computation):
 
 
 def deserialize_computation(bytes_stream):
-    computation = msgpack.unpackb(bytes_stream, object_hook=_decode)
+    computation = msgpack.unpackb(bytes_stream, object_hook=_decode, raw=False)
     get_logger().debug(computation)
     return computation
 

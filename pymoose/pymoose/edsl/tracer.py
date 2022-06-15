@@ -7,7 +7,7 @@ from pymoose.computation import placements as plc
 from pymoose.computation import types as ty
 from pymoose.computation import utils
 from pymoose.edsl import base as expr
-from pymoose.rust import elk_compiler
+from pymoose.pymoose import elk_compiler
 
 
 def trace(abstract_computation):

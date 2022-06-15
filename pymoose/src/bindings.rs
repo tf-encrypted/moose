@@ -430,7 +430,7 @@ fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[pymodule]
-#[pyo3(name = "_rust")]
+#[pyo3(name = "pymoose")]
 fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pymodule!(elk_compiler))?;
     m.add_wrapped(wrap_pymodule!(moose_runtime))?;
