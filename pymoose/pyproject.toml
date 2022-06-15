@@ -1,6 +1,7 @@
 [project]
 name = "pymoose"
 version = "0.2.2"  # NOTE: auto-updated during release
+description = "Python bindings to Moose, a framework for secure multi-party computation written in Rust."
 license = {file = "../LICENSE"}
 authors = [
     {name = "The TF Encrypted Authors"},
