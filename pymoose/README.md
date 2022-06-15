@@ -1,4 +1,4 @@
-Pymoose: Python bindings to the Elk compiler and Moose Runtime
+PyMoose: Python bindings for Moose
 ===============
 ### Installation & Testing
 ```
@@ -35,9 +35,9 @@ def my_computation(
     return z
 
 runtime = pm.GrpcMooseRuntime({
-    alice: "localhost:50000",
-    bob: "localhost:50001",
-    carole: "localhost:50002",
+    alice: "1.1.1.1:50000",
+    bob: "1.1.1.2:50001",
+    carole: "1.1.1.3:50002",
 })
 runtime.set_default()
 
