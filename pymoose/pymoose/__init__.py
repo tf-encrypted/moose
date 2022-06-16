@@ -44,6 +44,7 @@ from pymoose.edsl.base import mirrored_placement
 from pymoose.edsl.base import mul
 from pymoose.edsl.base import mux
 from pymoose.edsl.base import ones
+from pymoose.edsl.base import output
 from pymoose.edsl.base import relu
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
@@ -115,6 +116,7 @@ __all__ = [
     mux,
     MooseComputation,
     ones,
+    output,
     predictors,
     relu,
     replicated_placement,
