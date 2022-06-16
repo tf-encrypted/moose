@@ -4,7 +4,7 @@ from enum import Enum
 import numpy as np
 
 import pymoose as pm
-from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor
 from pymoose.predictors import predictor_utils
 
 
@@ -14,7 +14,7 @@ class Activation(Enum):
     RELU = 3
 
 
-class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
+class MLPPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
     def __init__(self, weights, biases, activation):
         super().__init__()
         self.weights = weights
@@ -119,24 +119,6 @@ class MLPPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
             else:
                 x = x
         return x
-
-    def aes_predictor_factory(
-        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
-    ):
-        @pm.computation
-        def predictor(
-            aes_data: pm.Argument(
-                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
-            ),
-            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
-        ):
-            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            with self.replicated:
-                y = self.neural_predictor_fn(x, fixedpoint_dtype)
-                pred = self.post_transform(y, fixedpoint_dtype)
-            return self.handle_output(pred, prediction_handler=self.bob)
-
-        return predictor
 
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
         y = self.neural_predictor_fn(x, fixedpoint_dtype)
