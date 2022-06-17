@@ -12,31 +12,33 @@ connected in the same region.
 
 # Performance
 
-Latency for matrix multiplication - time in seconds for evaluating a single dot product
-node with various tensor sizes.
+## Sequential computations
 
-|         | 1x1      | 10x10    | 100x100  | 1000x1000 |
+Timings given in s.
+
+| MP-SPDZ/`moose` | 1x1      | 10x10    | 100x100  | 1000x1000 |
 | ------- | -------- | -------- | -------- | --------- |
-| MP-SPDZ | 0.0005      | 0.0006      | 0.031    | 43.00     |
-| `moose` | 0.004      | 0.004     | 0.007    | 5.444     |
+| 1       | 0.0006<br/>0.0039  | 0.0005<br/>0.0027     | 0.0322<br/>0.102    | 43.710<br/>5.910     |
+| 10      | 0.001<br/>0.017    | 0.0016<br/>0.0180     | 0.248<br/>0.717   | 430.590<br/>54.588   |
+| 100     | 0.006<br/>0.099    | 0.0116<br/>0.1232     | 2.422<br/>0.675  | 4305.900<br/>5456.757|
 
 
-Throughput (matrix multiplications per second). This number is computed by
-varying the `n_parallel` argument for the `dot_product` computation which adds
-`n_parallel` dot product nodes to the graph that can be evaluated in parallel.
-In the table below we compute the maximum throughput where the number of dot
-products in parallel vary through {1, 10, 100, 1000, 10000}.
 
-Note that as the tensor size grows then the maximum throughput is achieved
-with a smaller number of nodes evaluated in parallel. This is because the
-physical computation grows and the tokio tasks spawned have a larger memory and
-compute footprint depleting the AWS instances from available resources.
+## Parallel computations
 
-|         | 1x1   | 10x10    | 100x100  | 1000x1000 |
+Timings given in s.
+
+| MP-SPDZ/`moose` | 1x1    | 10x10    | 100x100  | 1000x1000 |
 | ------- | -------- | -------- | -------- | --------- |
-| MP-SPDZ | 226598      | 137107      | 774    | 0.63     |
-| `moose` | 3047      | 1434      | 729    | 0.71     |
+| 1       | 0.001<br/>0.039    | 0.0005<br/>0.004    | 0.031<br/>0.006  | 43.158<br/>5.844      |
+| 10      | 0.003<br/>0.010    | 3.152<br/>0.0107    | 0.051<br/>0.016  | 43.679<br/>11.110     |
+| 100     | 0.032<br/>0.041    | 33.06<br/>0.066     | 0.219<br/>0.135  | 175.369<br>163.098    |
 
+
+
+## Logistic regression
+
+TODO
 
 # How to reproduce the benchmarks
 
@@ -63,36 +65,6 @@ c = a * b
 for i in range(n):
     print_ln_to(2, "%s", c[i].reveal_to(2))
 ```
-
-python pymoose/examples/benchmarks/dot_product.py --shape 1000 1000 --n 10 --n_parallel 10  13973.8578000 ms
-python pymoose/examples/benchmarks/dot_product.py --shape 1000 1000 --n 3 --n_parallel 100 208302.7673333 ms
-
-python pymoose/examples/benchmarks/dot_product.py --shape 100 100 --n 10 --n_parallel 100 159.8916 ms
-python pymoose/examples/benchmarks/dot_product.py --shape 100 100 --n 10 --n_parallel 1000 1332.007 ms
-python pymoose/examples/benchmarks/dot_product.py --shape 100 100 --n 10 --n_parallel 1000 751.93 ops/s
-python pymoose/examples/benchmarks/dot_product.py --shape 100 100 --n 10 --n_parallel 1000 629.26 ops/s
-python pymoose/examples/benchmarks/dot_product.py --shape 100 100 --n 5 --n_parallel 10000 556.117 ops/s
-python pymoose/examples/benchmarks/dot_product.py --shape 100 100 --n 10 --n_parallel 1000 729.13 ops/s
-
-
-python pymoose/examples/benchmarks/dot_product.py --shape 10 10 --n 10 --n_parallel 1000 1271.97 ops/s
-python pymoose/examples/benchmarks/dot_product.py --shape 10 10 --n 10 --n_parallel 10000 1434.58 ops/s
-python pymoose/examples/benchmarks/dot_product.py --shape 1 1 --n 10 --n_parallel 10000  3047.16 ops/s
-
-/bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot_thread-1-36-360000 -ip HOSTS 1.58871
-./bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot_thread-10-36-360000 -ip HOSTS 2.62567
-./bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot_thread-100-36-972 -ip HOSTS 1.32536
-./bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot_thread-100-36-9972 -ip HOSTS 12.879s
-/bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot_thread-1000-36-360 -ip HOSTS 566.479
-
-/bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot-100 -ip HOSTS
-Time = 0.0317824 seconds
-
-./bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot-10 -ip HOSTS
-Time = 0.0006443 seconds
-
-./bin/Linux-amd64/replicated-ring-party.x -p 0 test_dot-1 -ip HOSTS
-Time = 0.000551438 second
 
 TODO: add instructions needed to run moose, version number (same with MP-SPDZ).
 Add mpc file that were needed for MP-SPDZ.
