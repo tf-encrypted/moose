@@ -8,6 +8,7 @@ alice = pm.host_placement("alice")
 bob = pm.host_placement("bob")
 carole = pm.host_placement("carole")
 repl = pm.replicated_placement(name="rep", players=[alice, bob, carole])
+mirr = pm.mirrored_placement(name="mirr", players=[alice, bob, carole])
 
 N_INSTANCES = 1280
 N_FEATURES = 10
@@ -31,10 +32,10 @@ class LogisticRegressor:
         dy = y_hat - y
         return dy
 
-    def backward(self, x, dy, batch_size):
+    def backward(self, dy, x, batch_size_inv):
         xT = pm.transpose(x)
-        dW = pm.dot(xT, dy) / batch_size
-        db = pm.sum(dy, axis=0) / batch_size
+        dW = pm.mul(pm.dot(xT, dy), batch_size_inv)
+        db = pm.mul(pm.sum(dy, axis=0), batch_size_inv)
         return dW, db
 
     def update(self, weights):
@@ -91,9 +92,7 @@ def train(
 ):
 
     with alice:
-        batch_size = pm.constant(BATCH_SIZE, dtype=pm.float64)
-        x, y, batch_size = to_fixedpoint(x, y, batch_size)
-
+        x, y = to_fixedpoint(x, y)
         x_batches = [
             x[i * BATCH_SIZE : (i + 1) * BATCH_SIZE, :] for i in range(N_BATCHES)
         ]
@@ -106,14 +105,22 @@ def train(
         model.update(to_fixedpoint(*model.weights))
         learning_rate = pm.constant(LEARNING_RATE, dtype=pm.float64)
         momentum = pm.constant(MOMENTUM, dtype=pm.float64)
+        learning_rate, momentum = to_fixedpoint(learning_rate, momentum)
         optimizer = SGDMomentum(learning_rate, momentum)
-        optimizer.update(to_fixedpoint(optimizer.learning_rate, optimizer.momentum))
+
+    with mirr:
+        # NOTE: since `batch_size` is used in public-private division in model.backward,
+        # we want to pin it to a mirrored placement to avoid a full replicated.
+        # we also invert the constant to use mul instead of div
+        batch_size_inv = pm.constant(1.0 / BATCH_SIZE, dtype=FIXED_DTYPE)
 
     with repl:
+        # NOTE: only share the input data once, otherwise sharing happens twice in below loop
+        x_batches = [pm.identity(xb) for xb in x_batches]
         for xb, yb in zip(x_batches, y_batches):
             y_hat = model(xb)
             dy = model.loss_grad(yb, y_hat)
-            dW, db = model.backward(xb, dy, batch_size)
+            dW, db = model.backward(dy, xb, batch_size_inv)
             weights = optimizer.step(model.weights, (dW, db))
             model.update(weights)
 
