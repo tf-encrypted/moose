@@ -1,11 +1,9 @@
 //! Reindeer using file-based choreography and gRPC networking.
 
 use moose::choreography::filesystem::FilesystemChoreography;
-use moose::choreography::StorageStrategy;
 use moose::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
 use moose::storage::filesystem::AsyncFilesystemStorage;
-use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -40,10 +38,6 @@ pub struct Opt {
     #[structopt(long)]
     /// Report telemetry to Jaeger
     telemetry: bool,
-
-    #[structopt(long)]
-    /// Use file system storage if true otherwise use in-memory storage as default
-    file_system_storage: bool,
 }
 
 #[tokio::main]
@@ -87,11 +81,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let storage_strategy: StorageStrategy = match opt.file_system_storage {
-        true => Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
-        false => Box::new(|| Arc::new(LocalAsyncStorage::default())),
-    };
-
     // NOTE(Morten) if we want to move this into separate task then we need
     // to make sure AsyncSessionHandle::join_on_first_error is Send, which
     // means fixing the use of RwLock
@@ -99,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         own_identity,
         opt.sessions,
         Box::new(move |session_id| manager.new_session(session_id)),
-        storage_strategy,
+        Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
     )
     .process(opt.ignore_existing, opt.no_listen)
     .await?;

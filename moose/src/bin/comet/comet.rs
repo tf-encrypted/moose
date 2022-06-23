@@ -1,11 +1,9 @@
 //! Reindeer using gRPC choreography and gRPC networking.
 
 use moose::choreography::grpc::GrpcChoreography;
-use moose::choreography::StorageStrategy;
 use moose::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
 use moose::storage::filesystem::AsyncFilesystemStorage;
-use moose::storage::local::LocalAsyncStorage;
 use moose::tokio;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -32,10 +30,6 @@ pub struct Opt {
     #[structopt(long)]
     /// Report telemetry to Jaeger
     telemetry: bool,
-
-    #[structopt(long)]
-    /// Use file system storage if true otherwise use in-memory storage as default
-    file_system_storage: bool,
 }
 
 #[tokio::main]
@@ -61,17 +55,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => GrpcNetworkingManager::without_tls(),
     };
 
-    let storage_strategy: StorageStrategy = match opt.file_system_storage {
-        true => Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
-        false => Box::new(|| Arc::new(LocalAsyncStorage::default())),
-    };
-
     let networking_server = networking.new_server();
     let choreography = GrpcChoreography::new(
         own_identity,
         opt.choreographer,
         Box::new(move |session_id| networking.new_session(session_id)),
-        storage_strategy,
+        Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
     );
 
     let mut server = Server::builder();
