@@ -127,6 +127,8 @@ We encourage setting `RUST_LOG` to an appropriate value to limit the number of s
 
 ## Releasing
 
+### Moose
+
 Follow these steps to release a new version:
 
 0. Make sure `cargo release` is installed (`cargo install cargo-release`)
@@ -154,6 +156,19 @@ Once your PR has been merged to `main`:
 6. update to the next dev version with `cargo release --workspace --no-publish beta --execute` and create a PR for that
 
 If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
+
+### PyMoose
+
+TODO
+
+### Docker
+
+Build and push the Docker image using:
+
+```sh
+docker build -t tfencrypted/moose .
+docker push tfencrypted/moose
+```
 
 ## Rust tools
 
