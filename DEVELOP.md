@@ -1,9 +1,5 @@
 # Develop
 
-You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project. We use the [stable toolchain](https://rust-lang.github.io/rustup/concepts/channels.html) which can be set as the default using `rustup default stable`.
-
-Install OpenBLAS development headers via `libopenblas-dev` for Ubuntu.
-
 ## Getting started
 
 To install Moose from source:
@@ -13,7 +9,26 @@ git clone https://github.com/tf-encrypted/moose
 cd moose
 ```
 
-## Installing binaries
+You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project; we generally use the [stable toolchain](https://rust-lang.github.io/rustup/concepts/channels.html).
+
+### Debian/Ubuntu
+
+Install dependencies:
+
+```sh
+sudo apt install libopenblas-dev
+sudo apt install python3-dev
+```
+
+### macOS
+
+Install dependencies (using [Homebrew](https://brew.sh/)):
+
+```sh
+brew install openblas
+```
+
+## Installing
 
 If you wish you can install the Moose binaries as follows:
 
@@ -64,8 +79,7 @@ To generate documentation provided by rust using the source files use:
 cargo doc --no-deps --open
 ```
 
-In order to fetch the latest documentation on the cryptographic protocols implemented in moose
-check our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper)!
+Our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper) contains more documentation on the cryptographic protocols implemented in Moose.
 
 ## Formatting and linting
 
@@ -207,36 +221,3 @@ cargo watch -c -x 'run --bin rudolph -- --identity "localhost:50000" --port 5000
 ```
 
 Note that `-i examples` means workers are not re-launched when files in `./examples` are changed.
-
-
-
-# TODO
-
-### Bootstrapping
-
-Install python development headers for your OS. (eg - `python3-dev` for Ubuntu, or `python38-devel` for OpenSUSE).
-
-To install the library and all of its dependencies, run:
-
-```sh
-make install
-```
-
-This unwraps into two other targets, which are kept separate for purposes of caching in CI:
-
-```sh
-make pydep  # install dependencies
-make pylib  # install runtime Python library
-```
-
-You will also need to compile protobuf files before running any examples that use gRPC, which you can do via:
-
-```sh
-make build
-```
-
-### Running locally for testing
-
-```sh
-python main.py --runtime test
-```
