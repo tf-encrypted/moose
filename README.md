@@ -2,17 +2,13 @@
 
 Moose is a secure distributed dataflow framework consisting of a compiler, runtime, and Python eDSL and bindings. It is suitable for, but not limited to, encrypted machine learning and data processing. It production ready and written primarily in Rust.
 
-Computations are expressed using either the Python eDSL or by programming against the Rust API. Each operation in the dataflow graphs are pinned to a placement which represents either a physical host or one of several kinds of virtual execution units.
+Computations are expressed using either the eDSL or by programming against the Rust API. Each operation in the dataflow graphs are pinned to a placement which represents either a physical machine or one of several kinds of virtual execution units. Moose currently includes support for machine learning and deep learning models, and a virtual placement backed by secure multi-party computation (MPC) in the form of replicated secret sharing. Please see [docs.rs](https://docs.rs/moose/), the [examples](https://github.com/tf-encrypted/moose/examples/), or our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper) for more details.
 
-Moose currently supports operations to express machine learning and deep learning models, and includes a virtual placement backed by secure multi-party computation (MPC) in the form of replicated secret sharing. Contributions of additional operations and placements are more than welcome.
-
-The implementation is documented on [docs.rs](https://docs.rs/moose/) and the cryptographic protocols are documented in our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper).
-
-Moose is a community driven, open source project. Moose was created at Cape.
+Moose is a community driven open source project and contributions are more than welcome. Moose was created at Cape.
 
 ## Example
 
-The following is a simple example using the Python bindings to express and evaluate an encrypted computation using replicated secret sharing:
+The following is a simple example using the Python eDSL and bindings to express and evaluate an encrypted computation using replicated secret sharing.
 
 ```python
 import numpy as np
@@ -66,13 +62,12 @@ comet --identity localhost:50002 --port 50002
 
 In this example the inputs are provided by the Python script but Moose also supports loading data locally from e.g. NumPy files.
 
-Please see the [examples](./examples/) directory for more.
 
 ## Installation
 
-Moose is packaged in two ways: the Python bindings and the CLI tools. In a typical use case you might want to install the Python bindings on your laptop and the CLI tools on the servers running in the distributed cluster (or use the [Docker image](https://hub.docker.com/r/tfencrypted/moose)).
+Moose is packaged in two ways: the Python eDSL and bindings, and the CLI tools. In a typical use case you might want to install the Python bindings on your laptop and the CLI tools on the servers running in the distributed cluster (or use the [Docker image](https://hub.docker.com/r/tfencrypted/moose)).
 
-Install the Python bindings using:
+Install the Python eDSL and bindings using:
 
 ```sh
 pip install moose-python
