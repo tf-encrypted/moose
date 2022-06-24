@@ -1,6 +1,7 @@
-Pymoose: Python bindings to the Elk compiler and Moose Runtime
-===============
-### Installation & Testing
+# PyMoose: Python bindings for Moose and Elk
+
+## Installation & Testing
+
 ```
 pip install -r requirements-dev.txt
 pip install -e .
