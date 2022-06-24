@@ -2,11 +2,11 @@ import abc
 import json
 
 import pymoose as pm
-from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor
 from pymoose.predictors import predictor_utils as utils
 
 
-class DecisionTreeRegressor(aes_predictor.AesPredictor):
+class DecisionTreeRegressor(predictor.Predictor):
     def __init__(self, weights, children, split_conditions, split_indices):
         super().__init__()
         self.weights = weights
@@ -62,7 +62,7 @@ class DecisionTreeRegressor(aes_predictor.AesPredictor):
             return self.fixedpoint_constant(leaf_weights[node], self.carole)
 
 
-class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
+class TreeEnsemble(predictor.Predictor, metaclass=abc.ABCMeta):
     def __init__(self, trees, n_features, base_score, learning_rate):
         super().__init__()
         self.n_features = n_features
@@ -79,7 +79,7 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
     def post_transform(self, tree_scores, fixedpoint_dtype):
         pass
 
-    def forest_fn(self, x, fixedpoint_dtype):
+    def predictor_fn(self, x, fixedpoint_dtype):
         forest_scores = [
             tree(
                 x,
@@ -96,26 +96,8 @@ class TreeEnsemble(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         # it's a bit ugly, but it works for now.
         return list(map(pm.identity, forest_scores))
 
-    def aes_predictor_factory(self, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
-        # TODO[jason] make it more ergonomic for pm.computation to bind args during
-        #   tracing w/ pm.trace
-        @pm.computation
-        def predictor(
-            aes_data: pm.Argument(
-                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
-            ),
-            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
-        ):
-            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            with self.replicated:
-                tree_scores = self.forest_fn(x, fixedpoint_dtype=fixedpoint_dtype)
-                y = self.post_transform(tree_scores, fixedpoint_dtype=fixedpoint_dtype)
-            return self.handle_output(y, prediction_handler=self.bob)
-
-        return predictor
-
     def __call__(self, x, fixedpoint_dtype=utils.DEFAULT_FIXED_DTYPE):
-        tree_scores = self.forest_fn(x, fixedpoint_dtype=fixedpoint_dtype)
+        tree_scores = self.predictor_fn(x, fixedpoint_dtype=fixedpoint_dtype)
         return self.post_transform(tree_scores, fixedpoint_dtype=fixedpoint_dtype)
 
 

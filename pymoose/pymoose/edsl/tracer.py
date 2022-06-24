@@ -45,19 +45,21 @@ class AstTracer:
         if not isinstance(expressions, (tuple, list)):
             expressions = [expressions]
         for expression in expressions:
-            output_name = self.get_fresh_name("output")
             op = self.visit(expression)
-            self.computation.add_operation(
-                ops.OutputOperation(
-                    name=output_name,
-                    inputs={"value": op.name},
-                    placement_name=op.placement_name,
-                    signature=ops.OpSignature(
-                        input_types={"value": op.return_type},
-                        return_type=op.return_type,
-                    ),
+            if not isinstance(op, ops.OutputOperation):
+                output_name = self.get_fresh_name("output")
+                self.computation.add_operation(
+                    ops.OutputOperation(
+                        name=output_name,
+                        inputs={"value": op.name},
+                        placement_name=op.placement_name,
+                        signature=ops.OpSignature(
+                            input_types={"value": op.return_type},
+                            return_type=op.return_type,
+                        ),
+                        tag=output_name,
+                    )
                 )
-            )
         return self.computation
 
     def get_fresh_name(self, prefix):
@@ -781,5 +783,23 @@ class AstTracer:
                     },
                     return_type=ty.UnitType(),
                 ),
+            )
+        )
+
+    def visit_OutputExpression(self, output_expression):
+        assert isinstance(output_expression, expr.OutputExpression)
+        (value_expression,) = output_expression.inputs
+        value_operation = self.visit(value_expression)
+        placement = self.visit_placement_expression(output_expression.placement)
+        return self.computation.add_operation(
+            ops.OutputOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("output"),
+                inputs={"value": value_operation.name},
+                signature=ops.OpSignature(
+                    input_types={"value": value_operation.return_type},
+                    return_type=value_operation.return_type,
+                ),
+                tag=output_expression.tag,
             )
         )

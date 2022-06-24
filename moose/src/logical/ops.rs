@@ -2625,6 +2625,7 @@ impl OutputOp {
     >(
         sess: &S,
         plc: &HostPlacement,
+        tag: String,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
     ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
     where
@@ -2634,9 +2635,9 @@ impl OutputOp {
     {
         use AbstractTensor::*;
         match x {
-            Bool(x) => Ok(Bool(plc.output(sess, &x))),
-            Float32(x) => Ok(Float32(plc.output(sess, &x))),
-            Float64(x) => Ok(Float64(plc.output(sess, &x))),
+            Bool(x) => Ok(Bool(plc.output(sess, tag, &x))),
+            Float32(x) => Ok(Float32(plc.output(sess, tag, &x))),
+            Float64(x) => Ok(Float64(plc.output(sess, tag, &x))),
             Fixed64(_) | Fixed128(_) | Uint64(_) => Err(Error::UnimplementedOperator(format!(
                 "Output op (host) is unsupported for {:?}.",
                 x.ty_desc()

@@ -1,10 +1,13 @@
 import argparse
 import logging
+import pathlib
 
 import numpy as np
 
 import pymoose as pm
 from pymoose.logger import get_logger
+
+_DATA_DIR = pathlib.Path(__file__).parent
 
 alice = pm.host_placement("alice")
 bob = pm.host_placement("bob")
@@ -16,16 +19,18 @@ def my_computation(
     v: pm.Argument(placement=alice, vtype=pm.TensorType(pm.float64)),
 ):
     with alice:
-        x = pm.constant(np.array([1.0, 2.0], dtype=np.float64))
+        x = pm.load(str((_DATA_DIR / "x.npy").resolve()), dtype=pm.float64)
 
     with bob:
-        y = pm.constant(np.array([3.0, 4.0], dtype=np.float64))
+        y = pm.load(str((_DATA_DIR / "y.npy").resolve()), dtype=pm.float64)
+        t = pm.constant(np.array([5.0, 6.0], dtype=np.float64))
 
     with carole:
         z = pm.add(x, y)
         w = pm.add(z, v)
+        o = pm.add(w, t)
 
-    return w
+    return o
 
 
 if __name__ == "__main__":

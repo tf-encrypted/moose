@@ -722,6 +722,7 @@ class EdslTest(parameterized.TestCase):
                         {"value": ty.TensorType(tensor_dtype)},
                         ty.TensorType(tensor_dtype),
                     ),
+                    tag="output_0",
                 ),
             },
             placements={"player0": plc.HostPlacement(name="player0")},
@@ -833,6 +834,29 @@ class EdslTest(parameterized.TestCase):
                 {"x": ty.TensorType(from_dtype)},
                 ty.TensorType(dtype),
             ),
+        )
+
+    def test_tagged_output(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            with player0:
+                x = edsl.constant(np.array([1.0]), dtype=dtypes.float64)
+                x = edsl.output("x", x)
+                return x
+
+        concrete_comp = trace(my_comp)
+        output_op = concrete_comp.operation("output_0")
+        assert output_op == ops.OutputOperation(
+            placement_name="player0",
+            name="output_0",
+            inputs={"value": "constant_0"},
+            signature=ops.OpSignature(
+                {"value": ty.TensorType(dtypes.float64)},
+                ty.TensorType(dtypes.float64),
+            ),
+            tag="x",
         )
 
 

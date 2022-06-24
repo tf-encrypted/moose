@@ -166,13 +166,14 @@ impl OutputOp {
     pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
         sess: &S,
         plc: &HostPlacement,
+        tag: String,
         x: BoolTensor<HostT, RepT>,
     ) -> Result<BoolTensor<HostT, RepT>>
     where
         HostPlacement: PlacementOutput<S, HostT, HostT>,
     {
         match x {
-            BoolTensor::Host(v) => Ok(BoolTensor::Host(plc.output(sess, &v))),
+            BoolTensor::Host(v) => Ok(BoolTensor::Host(plc.output(sess, tag, &v))),
             BoolTensor::Replicated(_) => Err(Error::UnimplementedOperator(
                 "OutputOp missing a replicated boolean tensor implementation.".to_string(),
             )),

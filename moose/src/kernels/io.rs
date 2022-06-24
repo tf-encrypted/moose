@@ -84,11 +84,11 @@ modelled_kernel! {
 }
 
 pub trait PlacementOutput<S: Session, T, O> {
-    fn output(&self, sess: &S, x: &T) -> O;
+    fn output(&self, sess: &S, tag: String, x: &T) -> O;
 }
 
 modelled_kernel! {
-    PlacementOutput::output, OutputOp,
+    PlacementOutput::output, OutputOp{tag: String},
     [
         (HostPlacement, (HostUnit) -> HostUnit => [runtime] Self::kernel),
         (HostPlacement, (HostShape) -> HostShape => [runtime] Self::kernel),

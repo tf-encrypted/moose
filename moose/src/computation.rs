@@ -952,6 +952,7 @@ pub struct InputOp {
 )]
 pub struct OutputOp {
     pub sig: Signature,
+    pub tag: String,
 }
 
 #[derive(
@@ -1978,7 +1979,7 @@ mod tests {
         decrypt_0 = Decrypt: (AesKey, AesTensor) -> Tensor<Fixed128(24, 40)> (key, x) @Replicated(player0, player1, player2)
         dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
         cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
-        output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
+        output_0 = Output{tag = "output_0"}: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
         let bytes = original.to_msgpack().unwrap();
         let read_back = Computation::from_msgpack(bytes).unwrap();
         assert_eq!(original.operations, read_back.operations);
@@ -1996,7 +1997,7 @@ mod tests {
         decrypt_0 = Decrypt: (AesKey, AesTensor) -> Tensor<Fixed128(24, 40)> (key, x) @Replicated(player0, player1, player2)
         dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (decrypt_0, cast_0) @Replicated(player0, player1, player2)
         cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
-        output_0 = Output: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
+        output_0 = Output{tag = "output_0"}: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("temp_comp.moose");
         original.write_textual(file_path.clone()).unwrap();
