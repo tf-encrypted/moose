@@ -1,4 +1,4 @@
-# PyMoose: Python bindings for Elk and Moose
+# PyMoose: Python bindings for Moose and Elk
 
 ## Installation & Testing
 
