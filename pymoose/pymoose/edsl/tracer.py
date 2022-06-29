@@ -46,9 +46,9 @@ class AstTracer:
         if not isinstance(expressions, (tuple, list)):
             expressions = [expressions]
         for expression in expressions:
-            output_name = self.get_fresh_name("output")
             op = self.visit(expression)
             if not isinstance(op, ops.OutputOperation):
+                output_name = self.get_fresh_name("output")
                 self.computation.add_operation(
                     ops.OutputOperation(
                         name=output_name,
@@ -808,7 +808,7 @@ class AstTracer:
                 inputs={"value": value_operation.name},
                 signature=ops.OpSignature(
                     input_types={"value": value_operation.return_type},
-                    return_type=ty.UnitType(),
+                    return_type=value_operation.return_type,
                 ),
                 tag=output_expression.tag,
             )

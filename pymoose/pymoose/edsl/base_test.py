@@ -939,6 +939,29 @@ class EdslTest(parameterized.TestCase):
             elif op.placement_name == "bob":
                 assert swapped.operations[op_name].placement_name == "alice"
 
+    def test_tagged_output(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            with player0:
+                x = edsl.constant(np.array([1.0]), dtype=dtypes.float64)
+                x = edsl.output("x", x)
+                return x
+
+        concrete_comp = trace(my_comp)
+        output_op = concrete_comp.operation("output_0")
+        assert output_op == ops.OutputOperation(
+            placement_name="player0",
+            name="output_0",
+            inputs={"value": "constant_0"},
+            signature=ops.OpSignature(
+                {"value": ty.TensorType(dtypes.float64)},
+                ty.TensorType(dtypes.float64),
+            ),
+            tag="x",
+        )
+
 
 def _npdtype_into_moose_dtype(npdtype):
     return edsl._NUMPY_DTYPES_MAP[npdtype]
