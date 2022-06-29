@@ -8,7 +8,7 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import utils
 from pymoose.logger import get_logger
-from pymoose.rust import moose_runtime
+from pymoose.pymoose import moose_runtime
 
 _alice = pm.host_placement(name="alice")
 _bob = pm.host_placement(name="bob")

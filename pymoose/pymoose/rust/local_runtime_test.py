@@ -5,7 +5,7 @@ from absl.testing import parameterized
 import pymoose as pm
 from pymoose.computation import types as ty
 from pymoose.computation import utils
-from pymoose.rust import moose_runtime
+from pymoose.pymoose import moose_runtime
 
 _x_owner = pm.host_placement(name="x_owner")
 _y_owner = pm.host_placement(name="y_owner")
