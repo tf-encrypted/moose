@@ -4,7 +4,7 @@ from enum import Enum
 import numpy as np
 
 import pymoose as pm
-from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor
 from pymoose.predictors import predictor_utils
 
 
@@ -15,7 +15,7 @@ class Activation(Enum):
     RELU = 4
 
 
-class NeuralNetwork(aes_predictor.AesPredictor):
+class NeuralNetwork(predictor.Predictor):
     def __init__(self, weights, biases, activations):
         super().__init__()
         self.weights = weights
@@ -53,7 +53,7 @@ class NeuralNetwork(aes_predictor.AesPredictor):
 
         return activation_output
 
-    def neural_predictor_fn(self, x, fixedpoint_dtype):
+    def predictor_fn(self, x, fixedpoint_dtype):
         num_layers = len(self.weights)
         for i in range(num_layers):
             x = self.apply_layer(x, i, fixedpoint_dtype)
@@ -62,24 +62,7 @@ class NeuralNetwork(aes_predictor.AesPredictor):
         return x
 
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        return self.neural_predictor_fn(x, fixedpoint_dtype)
-
-    def aes_predictor_factory(
-        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
-    ):
-        @pm.computation
-        def predictor(
-            aes_data: pm.Argument(
-                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
-            ),
-            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
-        ):
-            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            with self.replicated:
-                y = self.neural_predictor_fn(x, fixedpoint_dtype)
-            return self.handle_output(y, prediction_handler=self.bob)
-
-        return predictor
+        return self.predictor_fn(x, fixedpoint_dtype)
 
     @classmethod
     def from_onnx(cls, model_proto):

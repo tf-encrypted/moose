@@ -18,6 +18,7 @@ categories = ["cryptography"]
 repository = "https://github.com/tf-encrypted/moose"
 homepage = "https://github.com/tf-encrypted/moose"
 documentation = "https://docs.rs/moose"
+readme = "../README.md"
 
 [features]
 default = [

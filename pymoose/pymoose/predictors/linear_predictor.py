@@ -4,7 +4,7 @@ from enum import Enum
 import numpy as np
 
 import pymoose as pm
-from pymoose.predictors import aes_predictor
+from pymoose.predictors import predictor
 from pymoose.predictors import predictor_utils
 
 
@@ -14,7 +14,7 @@ class PostTransform(Enum):
     SOFTMAX = 3
 
 
-class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
+class LinearPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
     def __init__(self, coeffs, intercepts=None):
         super().__init__()
         self.coeffs, self.intercepts = _validate_model_args(coeffs, intercepts)
@@ -35,7 +35,7 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         reshaped_bias = pm.expand_dims(bias, 1, placement=plc)
         return pm.cast(reshaped_bias, dtype=dtype, placement=plc)
 
-    def linear_predictor_fn(self, x, fixedpoint_dtype):
+    def predictor_fn(self, x, fixedpoint_dtype):
         if self.intercepts is not None:
             w = self.fixedpoint_constant(
                 np.concatenate([self.intercepts.T, self.coeffs], axis=1).T,
@@ -53,26 +53,8 @@ class LinearPredictor(aes_predictor.AesPredictor, metaclass=abc.ABCMeta):
         y = pm.dot(x, w)
         return y
 
-    def aes_predictor_factory(
-        self, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE
-    ):
-        @pm.computation
-        def predictor(
-            aes_data: pm.Argument(
-                self.alice, vtype=pm.AesTensorType(dtype=fixedpoint_dtype)
-            ),
-            aes_key: pm.Argument(self.replicated, vtype=pm.AesKeyType()),
-        ):
-            x = self.handle_aes_input(aes_key, aes_data, decryptor=self.replicated)
-            with self.replicated:
-                y = self.linear_predictor_fn(x, fixedpoint_dtype)
-                pred = self.post_transform(y)
-            return self.handle_output(pred, prediction_handler=self.bob)
-
-        return predictor
-
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
-        y = self.linear_predictor_fn(x, fixedpoint_dtype)
+        y = self.predictor_fn(x, fixedpoint_dtype)
         return self.post_transform(y)
 
 

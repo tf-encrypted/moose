@@ -3,7 +3,7 @@
 use moose::choreography::filesystem::FilesystemChoreography;
 use moose::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
-use moose::storage::local::LocalAsyncStorage;
+use moose::storage::filesystem::AsyncFilesystemStorage;
 use moose::tokio;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         own_identity,
         opt.sessions,
         Box::new(move |session_id| manager.new_session(session_id)),
-        Box::new(|| Arc::new(LocalAsyncStorage::default())),
+        Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
     )
     .process(opt.ignore_existing, opt.no_listen)
     .await?;
