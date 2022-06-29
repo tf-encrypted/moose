@@ -22,7 +22,7 @@ def trace(abstract_computation):
         for arg_name, parameter in func_signature.parameters.items()
     ]
     expression = abstract_computation.func(*symbolic_args)
-    tracer = AstTracer()
+    tracer = AstTracer(role_map=abstract_computation.role_map)
     logical_comp = tracer.trace(expression)
     return logical_comp
 
@@ -35,11 +35,12 @@ def trace_and_compile(abstract_computation, compiler_passes=None):
 
 
 class AstTracer:
-    def __init__(self):
+    def __init__(self, role_map=None):
         self.computation = comp.Computation(operations={}, placements={})
         self.name_counters = defaultdict(int)
         self.operation_cache = dict()
         self.placement_cache = dict()
+        self.role_map = role_map
 
     def trace(self, expressions: expr.Expression) -> comp.Computation:
         if not isinstance(expressions, (tuple, list)):
@@ -83,7 +84,8 @@ class AstTracer:
 
     def visit_HostPlacementExpression(self, host_placement_expression):
         assert isinstance(host_placement_expression, expr.HostPlacementExpression)
-        placement = plc.HostPlacement(name=host_placement_expression.name)
+        plc_expr = _maybe_role_swap(self.role_map, host_placement_expression)
+        placement = plc.HostPlacement(name=plc_expr.name)
         return self.computation.add_placement(placement)
 
     def visit_ReplicatedPlacementExpression(self, replicated_placement_expression):
@@ -94,6 +96,10 @@ class AstTracer:
             self.visit_placement_expression(player_placement_expression).name
             for player_placement_expression in replicated_placement_expression.players
         ]
+        replicated_placement_expression = _maybe_role_swap(
+            self.role_map,
+            replicated_placement_expression,
+        )
         placement = plc.ReplicatedPlacement(
             name=replicated_placement_expression.name, player_names=player_placements
         )
@@ -107,6 +113,10 @@ class AstTracer:
             self.visit_placement_expression(player_placement_expression).name
             for player_placement_expression in mirrored_placement_expression.players
         ]
+        mirrored_placement_expression = _maybe_role_swap(
+            self.role_map,
+            mirrored_placement_expression,
+        )
         placement = plc.MirroredPlacement(
             name=mirrored_placement_expression.name, player_names=player_placements
         )
@@ -803,3 +813,17 @@ class AstTracer:
                 tag=output_expression.tag,
             )
         )
+
+
+def _maybe_role_swap(role_map, plc_expr):
+    if role_map is None:
+        return plc_expr
+    plc_name = plc_expr.name
+    swapped_name = role_map.get(plc_name, plc_name)
+    if isinstance(plc_expr, expr.HostPlacementExpression):
+        return expr.HostPlacementExpression(swapped_name)
+    elif isinstance(
+        plc_expr, (expr.ReplicatedPlacementExpression, expr.MirroredPlacementExpression)
+    ):
+        return plc_expr.__class__(swapped_name, plc_expr.players)
+    raise TypeError(f"Encountered unknown placement expression type {type(plc_expr)}")
