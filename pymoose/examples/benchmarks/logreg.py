@@ -1,8 +1,8 @@
+import argparse
+import sys
 import time
 
-import argparse
 import numpy as np
-import sys
 
 import pymoose as pm
 
@@ -152,6 +152,14 @@ def train(
     with repl:
         # NOTE: only share the input data once, otherwise sharing happens twice in below loop
         x_batches = [pm.identity(xb) for xb in x_batches]
+<<<<<<< HEAD
+        for xb, yb in zip(x_batches, y_batches):
+            y_hat = model(xb)
+            dy = model.loss_grad(yb, y_hat)
+            dW, db = model.backward(dy, xb, batch_size_inv)
+            weights = optimizer.step(model.weights, (dW, db))
+            model.update(weights)
+=======
         for _ in range(N_EPOCHS):
             for xb, yb in zip(x_batches, y_batches):
                 y_hat = model(xb)
@@ -159,6 +167,7 @@ def train(
                 dW, db = model.backward(dy, xb, batch_size_inv)
                 weights = optimizer.step(model.weights, (dW, db))
                 model.update(weights)
+>>>>>>> origin/dragos/dot
 
     with bob:
         W, b = from_fixedpoint(*model.weights)
