@@ -1,4 +1,5 @@
 import argparse
+import statistics
 
 import numpy as np
 
@@ -38,6 +39,7 @@ def setup_par_dot_computation(n_parallel):
 
     return dot_product_comp
 
+
 def setup_seq_dot_computation(n_seq):
     @pm.computation
     def dot_product_comp(
@@ -56,7 +58,7 @@ def setup_seq_dot_computation(n_seq):
             z_dots = [None] * n_seq
             z_dots[0] = pm.dot(x, y_rep)
             for i in range(1, n_seq):
-                z_dots[i] = pm.dot(z_dots[i-1], y_rep)
+                z_dots[i] = pm.dot(z_dots[i - 1], y_rep)
 
         with carole:
             res = pm.cast(z_dots[-1], pm.float64)
@@ -65,15 +67,15 @@ def setup_seq_dot_computation(n_seq):
 
     return dot_product_comp
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Example")
-    parser.add_argument("--verbose", action="store_true")
+    parser = argparse.ArgumentParser(description="Dot product benchmarks")
 
     parser.add_argument(
         "--c",
         dest="comp_type",
         type=str,
-        default="n_parallel",
+        default="parallel",
         help="computation type, seq or parallel",
     )
 
@@ -113,21 +115,28 @@ if __name__ == "__main__":
         carole: "localhost:50002",
     }
 
-    runtime = pm.GrpcMooseRuntime(role_map)
-    runtime.set_default()
-
-    dot_product_comp = setup_seq_dot_computation(c_arg) if comp_type == "seq" else setup_par_dot_computation(c_arg)
+    dot_product_comp = (
+        setup_seq_dot_computation(c_arg)
+        if comp_type == "seq"
+        else setup_par_dot_computation(c_arg)
+    )
 
     x = np.ones([shape, shape], dtype=np.float64)
     y = np.identity(shape, dtype=np.float64)
 
     AVG_TIME = 0
 
+    moose_timings = list()
+
     for _ in range(n_iter):
+        runtime = pm.GrpcMooseRuntime(role_map)
+        runtime.set_default()
+
         outputs, timings = runtime.evaluate_computation(
             computation=dot_product_comp, arguments={"x_arg": x, "y_arg": y}
         )
-        print(outputs)
-        AVG_TIME += max(timings.values())
+        moose_timings.append(max(timings.values()) / 1_000_000)
 
-    print(f"Dot Product with shape {shape} on {comp_type}-{c_arg} has all outputs ready in {AVG_TIME / n_iter * 0.001} ms on average")
+    print(
+        f"Dot Product with shape {shape} on {comp_type}-{c_arg} has all outputs ready in {statistics.mean(moose_timings)} ms on average"
+    )

@@ -1,4 +1,5 @@
 import argparse
+import statistics
 import sys
 import time
 
@@ -12,8 +13,7 @@ carole = pm.host_placement("carole")
 repl = pm.replicated_placement(name="rep", players=[alice, bob, carole])
 mirr = pm.mirrored_placement(name="mirr", players=[alice, bob, carole])
 
-parser = argparse.ArgumentParser(description="Example")
-parser.add_argument("--verbose", action="store_true")
+parser = argparse.ArgumentParser(description="Logistic regression training benchmarks")
 
 parser.add_argument(
     "--n_exp",
@@ -22,7 +22,6 @@ parser.add_argument(
     default="3",
     help="number of experiments to compute statistics from",
 )
-
 
 parser.add_argument(
     "--batch_size",
@@ -46,7 +45,7 @@ N_EXP = args.n_exp
 
 N_FEATURES = 100
 BATCH_SIZE = args.batch_size
-N_INSTANCES = BATCH_SIZE * args.n_iter # number of iterations
+N_INSTANCES = BATCH_SIZE * args.n_iter  # number of iterations
 N_BATCHES = N_INSTANCES // BATCH_SIZE
 LEARNING_RATE = 0.1
 MOMENTUM = 0.9
@@ -152,14 +151,6 @@ def train(
     with repl:
         # NOTE: only share the input data once, otherwise sharing happens twice in below loop
         x_batches = [pm.identity(xb) for xb in x_batches]
-<<<<<<< HEAD
-        for xb, yb in zip(x_batches, y_batches):
-            y_hat = model(xb)
-            dy = model.loss_grad(yb, y_hat)
-            dW, db = model.backward(dy, xb, batch_size_inv)
-            weights = optimizer.step(model.weights, (dW, db))
-            model.update(weights)
-=======
         for _ in range(N_EPOCHS):
             for xb, yb in zip(x_batches, y_batches):
                 y_hat = model(xb)
@@ -167,7 +158,6 @@ def train(
                 dW, db = model.backward(dy, xb, batch_size_inv)
                 weights = optimizer.step(model.weights, (dW, db))
                 model.update(weights)
->>>>>>> origin/dragos/dot
 
     with bob:
         W, b = from_fixedpoint(*model.weights)
@@ -193,31 +183,28 @@ if __name__ == "__main__":
     w_0, b_0 = init_weights(N_FEATURES, 1)
 
     role_map = {
-        alice: "172.31.15.221:50000",
-        bob: "172.31.5.202:50001",
-        carole: "172.31.12.94:50002",
+        alice: "localhost:50000",
+        bob: "localhost:50001",
+        carole: "localhost:50002",
     }
 
-    runtime = pm.GrpcMooseRuntime(role_map)
-    runtime.set_default()
-
     moose_timings = list()
+    python_timings = list()
+
     for runs in range(N_EXP):
+        runtime = pm.GrpcMooseRuntime(role_map)
+        runtime.set_default()
+
         time0 = time.time()
         result, timings = train(x, y, w_0, b_0)
+
         python_timing = time.time() - time0
-        total_seconds = max(timings.values()) / 1_000_000
-        print(f"longest session timing: {total_seconds:.3f} s")
-        print(f"python timing: {python_timing:.3f} s")
-        moose_timings.append(total_seconds)
+        moose_timing = max(timings.values()) / 1_000_000
 
+        moose_timings.append(moose_timing)
+        python_timings.append(python_timing)
 
-    import statistics
-    variance = statistics.variance(moose_timings)
-    mean = statistics.mean(moose_timings)
-    print("\n")
-
-    print(f"MIN moose timing: {min(moose_timings):.3f} s")
-    print(f"MAX moose timing: {max(moose_timings):.3f} s")
-    print(f"variance moose timing: {variance:.3f} s")
-    print(f"MEAN moose timing: {mean:.3f} s")
+    print("MIN/MAX/VARIANCE/MEAN")
+    print(
+        f"{min(moose_timings):.3f}/{max(moose_timings):.3f}/{statistics.variance(moose_timings):.3f}/{statistics.mean(moose_timings):.3f}"
+    )
