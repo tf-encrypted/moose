@@ -112,7 +112,7 @@ First compile the programs using `compile_scripts.sh` on each machine
 and then execute the `run_scripts_p0.sh` on party 0, `run_scripts_p1.sh` on party
 1 and `run_scripts_p2.sh` on party 2 and IP addresses accordingly in the HOSTS file inside MP-SPDZ.
 
-To compile logistic regression in MP-SPDZ with feature size of `100`, batch size
+To compile logistic regression in MP-SPDZ[https://github.com/data61/MP-SPDZ/blob/master/Programs/Source/logreg.mpc] with feature size of `100`, batch size
 of `128`, `50` iterations and `36` threads we ran the following command:
 
 ```
