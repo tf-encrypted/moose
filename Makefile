@@ -24,6 +24,9 @@ fmt:
 	cargo fmt
 	cd pymoose && isort .
 	cd pymoose && black .
+	cd benchmarks/pymoose && isort .
+	cd benchmarks/pymoose && black .
+
 
 .PHONY: lint
 lint:
