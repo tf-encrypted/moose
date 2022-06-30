@@ -189,7 +189,6 @@ if __name__ == "__main__":
     }
 
     moose_timings = list()
-    python_timings = list()
 
     for runs in range(N_EXP):
         runtime = pm.GrpcMooseRuntime(role_map)
@@ -198,11 +197,8 @@ if __name__ == "__main__":
         time0 = time.time()
         result, timings = train(x, y, w_0, b_0)
 
-        python_timing = time.time() - time0
         moose_timing = max(timings.values()) / 1_000_000
-
         moose_timings.append(moose_timing)
-        python_timings.append(python_timing)
 
     print("MIN/MAX/VARIANCE/MEAN")
     print(

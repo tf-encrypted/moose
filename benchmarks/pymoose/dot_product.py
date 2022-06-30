@@ -124,8 +124,6 @@ if __name__ == "__main__":
     x = np.ones([shape, shape], dtype=np.float64)
     y = np.identity(shape, dtype=np.float64)
 
-    AVG_TIME = 0
-
     moose_timings = list()
 
     for _ in range(n_iter):
