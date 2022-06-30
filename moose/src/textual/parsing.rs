@@ -1,4 +1,5 @@
 use super::*;
+use std::fmt::Write as _;
 
 impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
@@ -1560,7 +1561,7 @@ impl<T: std::fmt::Debug> ToTextual for ArcArrayD<T> {
                         if !first_col {
                             buffer.push_str(", ");
                         }
-                        buffer += &format!("{:?}", self[[r, c]]);
+                        let _ = write!(buffer, "{:?}", self[[r, c]]);
                         first_col = false;
                     }
                     buffer.push(']');
@@ -1671,7 +1672,7 @@ impl ToTextual for [u8] {
     fn to_textual(&self) -> String {
         let mut s = String::new();
         for &byte in self {
-            s.push_str(&format!("{:02x}", byte));
+            let _ = write!(s, "{:02x}", byte);
         }
         s
     }
