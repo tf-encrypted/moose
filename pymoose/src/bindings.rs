@@ -194,8 +194,7 @@ impl LocalRuntime {
     ) -> PyResult<()> {
         let identity = Identity::from(identity);
         let value_to_store = pyobj_to_value(py, &value)?;
-        let _result = self
-            .runtime
+        self.runtime
             .write_value_to_storage(identity, key, value_to_store)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
