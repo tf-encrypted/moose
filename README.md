@@ -1,5 +1,12 @@
 # Moose
 
+[![crate][crate-image]][crate-link]
+[![Docs][docs-image]][docs-link]
+[![Build Status][build-image]][build-link]
+[![Apache2 License 2.0][license-image]][license-link]
+[![Minimum rustc version][rustc-image]][rustc-link]
+[![Downloads][downloads-image]][crate-link]
+
 Moose is a secure distributed dataflow framework consisting of a compiler, runtime, and Python eDSL and bindings. It is suitable for, but not limited to, encrypted machine learning and data processing. It production ready and written primarily in Rust.
 
 Computations are expressed using either the eDSL or by programming against the Rust API. Each operation in the dataflow graphs are pinned to a placement which represents either a physical machine or one of several kinds of virtual execution units. Moose currently includes support for simpler machine learning models, and a virtual placement backed by secure multi-party computation (MPC) in the form of replicated secret sharing. Please see [docs.rs](https://docs.rs/moose/), the [examples](https://github.com/tf-encrypted/moose/tree/main/examples), or our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper) for more details.
@@ -90,3 +97,19 @@ Alternatively, you can install from the source code as described in [DEVELOP.md]
 ## License
 
 Moose is distributed under the terms of Apache License (Version 2.0). Copyright as specified in [NOTICE](./NOTICE).
+
+
+[//]: # (badges)
+
+
+[crate-image]: https://img.shields.io/crates/v/moose.svg
+[crate-link]: https://crates.io/crates/moose
+[docs-image]: https://docs.rs/moose/badge.svg
+[docs-link]: https://docs.rs/moose
+[build-image]: https://github.com/tf-encrypted/moose/workflows/CI/badge.svg
+[build-link]: https://github.com/tf-encrypted/moose/actions
+[license-image]: https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat
+[license-link]: https://www.apache.org/licenses/LICENSE-2.0
+[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg
+[rustc-link]: https://github.com/tf-encrypted/moose#rust-version-requirements
+[downloads-image]: https://img.shields.io/crates/d/moose.svg
