@@ -1,3 +1,4 @@
+import functools as ft
 import inspect
 from dataclasses import dataclass
 from typing import List
@@ -1134,13 +1135,26 @@ def output(tag, value, placement=None):
     )
 
 
-def computation(func):
-    return AbstractComputation(func)
+def computation(func=None, role_map=None):
+    if func is None:
+        return ft.partial(computation, role_map=role_map)
+    return AbstractComputation(func, role_map)
 
 
 class AbstractComputation:
-    def __init__(self, func):
+    def __init__(self, func, role_map):
+        if not callable(func):
+            raise TypeError(
+                f"Argument `func` should be a callable, but found {type(func)}."
+            )
         self.func = func
+
+        if role_map is not None and not isinstance(role_map, dict):
+            raise TypeError(
+                "Argument `role_map` should be map of placement names to placement "
+                f"names, found {type(role_map)}."
+            )
+        self.role_map = role_map
 
     def __call__(self, *args, **kwargs):
         func_signature = inspect.signature(self.func)
@@ -1184,6 +1198,9 @@ class AbstractComputation:
             raise RuntimeError("No default runtime found")
 
         return runtime.evaluate_computation(self, arguments)
+
+    def with_role_map(self, role_map):
+        return self.__class__(self.func, role_map)
 
 
 def _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name):

@@ -1,3 +1,4 @@
+import itertools
 import pathlib
 
 import numpy as np
@@ -5,8 +6,11 @@ import onnx
 from absl.testing import parameterized
 
 import pymoose as pm
+from pymoose import elk_compiler
 from pymoose import runtime as rt
+from pymoose.computation import utils as comp_utils
 from pymoose.predictors import linear_predictor
+from pymoose.predictors import predictor
 from pymoose.predictors import predictor_utils
 
 _SK_REGRESSION_MODELS = [
@@ -49,11 +53,15 @@ _SK_CLASSIFIER_MODELS = [
 
 
 class LinearPredictorTest(parameterized.TestCase):
-    def _build_linear_predictor(self, onnx_fixture, predictor_cls):
+    def _build_linear_predictor(self, onnx_fixture, predictor_cls, aes_predictor=False):
         root_path = pathlib.Path(__file__).parent.absolute()
         fixture_path = root_path / "fixtures" / f"{onnx_fixture}.onnx"
         with open(fixture_path, "rb") as model_fixture:
             lr_onnx = onnx.load_model(model_fixture)
+
+        if aes_predictor:
+            predictor_cls = predictor.AesWrapper(predictor_cls)
+
         linear_model = predictor_cls.from_onnx(lr_onnx)
         return linear_model
 
@@ -105,3 +113,24 @@ class LinearPredictorTest(parameterized.TestCase):
         # TODO multiple divisions seems to lose significant amount of precision
         # (hence decimal=2 here)
         np.testing.assert_almost_equal(actual_result, expected_result, decimal=2)
+
+    @parameterized.parameters(
+        *zip(
+            map(lambda x: x[0], _SK_REGRESSION_MODELS),
+            itertools.repeat(linear_predictor.LinearRegressor),
+        ),
+        *zip(
+            map(lambda x: x[0], _SK_CLASSIFIER_MODELS),
+            itertools.repeat(linear_predictor.LinearClassifier),
+        ),
+    )
+    def test_serde(self, model_name, predictor_cls):
+        aes_regressor = self._build_linear_predictor(
+            model_name, predictor_cls, aes_predictor=True
+        )
+        aes_predictor = aes_regressor()
+        traced_predictor = pm.trace(aes_predictor)
+        serialized = comp_utils.serialize_computation(traced_predictor)
+        logical_comp_rustref = elk_compiler.compile_computation(serialized, [])
+        logical_comp_rustbytes = logical_comp_rustref.to_bytes()
+        pm.MooseComputation.from_bytes(logical_comp_rustbytes)

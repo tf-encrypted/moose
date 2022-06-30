@@ -194,8 +194,7 @@ impl LocalRuntime {
     ) -> PyResult<()> {
         let identity = Identity::from(identity);
         let value_to_store = pyobj_to_value(py, &value)?;
-        let _result = self
-            .runtime
+        self.runtime
             .write_value_to_storage(identity, key, value_to_store)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
@@ -430,7 +429,7 @@ fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[pymodule]
-#[pyo3(name = "_rust")]
+#[pyo3(name = "pymoose")]
 fn pymoose_bindings(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pymodule!(elk_compiler))?;
     m.add_wrapped(wrap_pymodule!(moose_runtime))?;

@@ -12,17 +12,9 @@ pydep-upgrade:
 	pip-compile --output-file=pymoose/requirements-dev.txt pymoose/requirements.in
 	pip install -r pymoose/requirements-dev.txt
 
-.PHONY: pylib-release
-pylib-release:
-	cd pymoose && python setup.py install
-	cd pymoose && python setup.py bdist_wheel
-
-.PHONY: install-release
-install-release: pydep pylib-release
-
 .PHONY: pylib
 pylib:
-	cd pymoose && python setup.py develop
+	cd pymoose && maturin develop
 
 .PHONY: install
 install: pydep pylib

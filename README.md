@@ -1,234 +1,115 @@
 # Moose
 
-Moose is a framework for secure multi-party computation, written in Rust.
+[![crate][crate-image]][crate-link]
+[![Docs][docs-image]][docs-link]
+[![Build Status][build-image]][build-link]
+[![Apache2 License 2.0][license-image]][license-link]
+[![Minimum rustc version][rustc-image]][rustc-link]
+[![Downloads][downloads-image]][crate-link]
 
-Moose includes an API, a compiler, and a runtime. It’s designed to be secure, fast, scalable, and extensible. Moose is production ready and secure by default.
+Moose is a secure distributed dataflow framework consisting of a compiler, runtime, and Python eDSL and bindings. It is suitable for, but not limited to, encrypted machine learning and data processing. It production ready and written primarily in Rust.
 
-### Components
+Computations are expressed using either the eDSL or by programming against the Rust API. Each operation in the dataflow graphs are pinned to a placement which represents either a physical machine or one of several kinds of virtual execution units. Moose currently includes support for simpler machine learning models, and a virtual placement backed by secure multi-party computation (MPC) in the form of replicated secret sharing. Please see [docs.rs](https://docs.rs/moose/), the [examples](https://github.com/tf-encrypted/moose/tree/main/examples), or our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper) for more details.
 
-- The `Moose eDSL` is an easy-to-use language for expressing programs of algebraic operations on `n`-dimensional arrays, which may contain inputs from one or more parties. Moose programs can be written in Python ([PyMoose](/pymoose)) or directly in Rust ([examples](/moose/examples)).
-- The `Moose Compiler` builds, type checks, and optimizes the operations into a distributed data flow graph. We call this encrypted data flow.
-- The `Moose Runtime` securely and efficiently executes the graph across a network of (potentially untrusted) compute clusters while protecting the secrecy of the inputs.
+Moose is a community driven open source project and contributions are more than welcome. Moose was created at Cape.
 
-Moose contains the mathematical primitives to compose machine learning and deep learning models.
+## Example
 
-Moose is designed to support many different secure multi-party computation protocols. Initially, replicated secret sharing is supported. Contributions of additional protocols are welcome.
+The following is a simple example using the Python eDSL and bindings to express and evaluate an encrypted computation using replicated secret sharing.
 
-### Community
+```python
+import numpy as np
+import pymoose as pm
 
-Moose is a community driven, open source project. Moose was created at Cape.
+alice = pm.host_placement("alice")
+bob = pm.host_placement("bob")
+carole = pm.host_placement("carole")
+replicated = pm.replicated_placement("rep", players=[alice, bob, carole])
+
+@pm.computation
+def simple_computation(
+    x: pm.Argument(placement=alice, vtype=pm.TensorType(pm.float64)),
+    y: pm.Argument(placement=bob, vtype=pm.TensorType(pm.float64)),
+):
+    with alice:
+        x = pm.cast(x, dtype=pm.fixed(14, 23))
+
+    with bob:
+        y = pm.cast(y, dtype=pm.fixed(14, 23))
+
+    with replicated:
+        z = pm.add(x, y)
+
+    with carole:
+        v = pm.cast(z, dtype=pm.float64)
+
+    return v
+
+runtime = pm.GrpcMooseRuntime({
+    alice: "localhost:50000",
+    bob: "localhost:50001",
+    carole: "localhost:50002",
+})
+runtime.set_default()
+
+result = my_computation(
+    x=np.array([1.0, 2.0], dtype=np.float64),
+    y=np.array([3.0, 4.0], dtype=np.float64),
+)
+print(result)
+```
+
+Make sure to have three instances of Comet running before running the Python code:
+
+```sh
+comet --identity localhost:50000 --port 50000
+comet --identity localhost:50001 --port 50001
+comet --identity localhost:50002 --port 50002
+```
+
+In this example the inputs are provided by the Python script but Moose also supports loading data locally from e.g. NumPy files.
+
 
 ## Installation
 
-### Bootstrapping
+Moose is packaged in two ways: the Python eDSL and bindings, and the CLI tools. In a typical use case you might want to install the Python bindings on your laptop and the CLI tools on the servers running in the distributed cluster (or use the [Docker image](https://hub.docker.com/r/tfencrypted/moose)).
 
-**NOTE**: We are using [rust stable](https://rust-lang.github.io/rustup/concepts/channels.html) for the runtime.
-
-Install python development headers for your OS. (eg - `python3-dev` for Ubuntu, or `python38-devel` for OpenSUSE).
-
-Install OpenBLAS development headers via `libopenblas-dev` for Ubuntu.
-
-To install the library and all of its dependencies, run:
+Install the Python eDSL and bindings using:
 
 ```sh
-make install
+pip install moose-python
 ```
 
-This unwraps into two other targets, which are kept separate for purposes of caching in CI:
+Install the CLI tools using (assuming you already have [Rust installed](https://www.rust-lang.org/learn/get-started)):
 
 ```sh
-make pydep  # install dependencies
-make pylib  # install runtime Python library
+cargo install moose
 ```
 
-You will also need to compile protobuf files before running any examples that use gRPC, which you can do via:
+You will also need to have OpenBLAS installed in both cases:
 
-```sh
-make build
-```
+- Debian/Ubuntu: `sudo apt install libopenblas-dev`
 
-### Running locally for testing
+- macOS: `homebrew install openblas`
 
-```sh
-python main.py --runtime test
-```
-
-### Running with remote cluster
-
-You can start a cluster locally using the following:
-
-```sh
-cd docker/dev
-docker-compose up
-```
-
-Once done you can run the following to evaluate a computation on it:
-
-```sh
-python main.py --runtime remote
-```
-
-### Developing
-
-To ensure your changes will pass our CI, it's wise to run the following commands before committing:
-
-```sh
-make ci-ready
-
-# or, more verbosely:
-
-make fmt
-make lint
-make test-ci
-```
-
-TODO
-
-```sh
-alias elk="cargo run --bin elk --"
-alias rudolph="cargo run --bin rudolph --"
-alias comet="cargo run --bin comet --"
-alias cometctl="cargo run --bin cometctl --"
-```
-
-During development it can be useful to have `cargo watch` automatically re-launch eg reindeer on code changes. This can be achieved as follows, in this case for Rudolph:
-
-```sh
-cargo watch -c -x 'run --bin rudolph -- --identity "localhost:50000" --port 50000 --sessions ./examples' -i examples
-```
-
-Note that `-i examples` means workers are not re-launched when files in `./examples` are changed.
-
-### Logging
-
-Logging may be turned on by setting:
-
-```sh
-export RUST_LOG="moose=debug"
-```
-
-### Telemetry
-
-Moose also has basic support for Jaeger/OpenTelemetry via the `telemetry` feature, and telemetry in the reindeer can be turned on with the `--telemetry` flag.
-
-Jaeger may be launched via docker:
-
-```sh
-docker run -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
-```
-
-We encourage setting `RUST_LOG` to an appropriate value to limit the number of spans generated, in particular for large computations.
-
-### Benchmarking
-
-We have been using [heaptrack](https://github.com/KDE/heaptrack) to measure the memory consumptions of computations,
-but in order to do so it appears that you need to launch Rudolph directly, and not via `cargo run`.
-
-This can be done by first building it:
-
-```sh
-cargo build --bin rudolph
-```
-
-and then running the produced executable:
-
-```sh
-./target/debug/rudolph
-```
-
-In particular, to use heaptrack run:
-
-```sh
-heaptrack ./target/debug/rudolph
-```
-
-### Testing
-
-There are three types of testing regimes which can be found in the Makefile:
-
-```
-make test
-make test-ci
-make test-long
-```
-
-When doing local development we suggest using `make test` command. The
-`make-ci` command is used mostly for ci purposes and runs a smaller range of test cases. For
-a more extensive test suite we recommend using `make test-long` command.
-
-### Documentation
-
-To generate documentation provided by rust using the source files use:
-
-```
-cargo doc --no-deps --open
-```
-
-In order to fetch the latest documentation on the cryptographic protocols implemented in moose
-check our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper)!
-
-### Releasing
-
-Follow these steps to release a new version:
-
-0. Make sure `cargo release` is installed (`cargo install cargo-release`)
-
-1. create a new branch from `main`, eg `git checkout -b new-release`
-
-2. run `make release`
-
-3. Update the [CHANGELOG.md](CHANGELOG.md) file to include notable changes since the last release.
-
-4. if successful then `git push` to create a new PR
-
-Once your PR has been merged to `main`:
-
-1. checkout main branch: `git checkout main`
-
-2. create a new tag *matching the version* of `python-bindings`: eg `git tag v{x.y.z}`
-
-3. push tag: `git push origin v{x.y.z}`
-
-4. create a release on GitHub based on your [tag](https://github.com/tf-encrypted/runtime/tags)
-
-5. additionally tag the new versioned release with the `stable` tag, if the release is deemed stable.
-
-6. update to the next dev version with `cargo release --workspace --no-publish beta --execute` and create a PR for that
-
-If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
-
-### Rust Development
-
-You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project.
-
-We compile and test against the stable toolchain so make sure to either set the stable toolchain as the default using `rustup default stable`.
-
-We require code to be formatted according to `cargo fmt` so make sure to run this command before submitted your work. You should also run `cargo clippy` to lint your code.
-
-To ease your development we encourage you to install the following extra cargo commands:
-
-- [`cargo watch`](https://crates.io/crates/cargo-watchcargo-watch) will type check your code on every save;  `cargo watch --exec test` will run all tests on every save.
-
-- [`cargo outdated`](https://crates.io/crates/cargo-outdated) checks if your dependencies are up to date.
-
-- [`cargo audit`](https://crates.io/crates/cargo-audit) checks if any vulnerabilities have been detected for your current dependencies.
-
-- [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny) checks security advisories and licence conflicts.
-
-- [`cargo release`](https://crates.io/crates/cargo-release) automates the release cycle, including bumping versions.
-
-- [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
-
-- [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
-
-- [`cargo asm`](https://github.com/gnzlbg/cargo-asm) to dump assembly or LLVM IR (the latter via `cargo llvm-ir`).
-
-- [`cargo llvm-lines`](https://github.com/dtolnay/cargo-llvm-lines) to inspect code bloat.
-
-[Tokio Console](https://tokio.rs/blog/2021-12-announcing-tokio-console) is also interesting.
-
-To keep all of these up-to-date once installed, we recommend using [`cargo-update`](https://crates.io/crates/cargo-update).
+Alternatively, you can install from the source code as described in [DEVELOP.md](./DEVELOP.md).
 
 ## License
 
 Moose is distributed under the terms of Apache License (Version 2.0). Copyright as specified in [NOTICE](./NOTICE).
+
+
+[//]: # (badges)
+
+
+[crate-image]: https://img.shields.io/crates/v/moose.svg
+[crate-link]: https://crates.io/crates/moose
+[docs-image]: https://docs.rs/moose/badge.svg
+[docs-link]: https://docs.rs/moose
+[build-image]: https://github.com/tf-encrypted/moose/workflows/CI/badge.svg
+[build-link]: https://github.com/tf-encrypted/moose/actions
+[license-image]: https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat
+[license-link]: https://www.apache.org/licenses/LICENSE-2.0
+[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg
+[rustc-link]: https://github.com/tf-encrypted/moose#rust-version-requirements
+[downloads-image]: https://img.shields.io/crates/d/moose.svg

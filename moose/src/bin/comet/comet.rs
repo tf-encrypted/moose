@@ -3,7 +3,7 @@
 use moose::choreography::grpc::GrpcChoreography;
 use moose::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
-use moose::storage::local::LocalAsyncStorage;
+use moose::storage::filesystem::AsyncFilesystemStorage;
 use moose::tokio;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         own_identity,
         opt.choreographer,
         Box::new(move |session_id| networking.new_session(session_id)),
-        Box::new(|| Arc::new(LocalAsyncStorage::default())),
+        Box::new(|| Arc::new(AsyncFilesystemStorage::default())),
     );
 
     let mut server = Server::builder();
