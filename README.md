@@ -7,7 +7,7 @@
 [![Minimum rustc version][rustc-image]][rustc-link]
 [![Downloads][downloads-image]][crate-link]
 
-Moose is a secure distributed dataflow framework consisting of a compiler, runtime, and Python eDSL and bindings. It is suitable for, but not limited to, encrypted machine learning and data processing. It production ready and written primarily in Rust.
+Moose is a secure distributed dataflow framework consisting of a compiler, runtime, and Python eDSL and bindings. It is suitable for, but not limited to, encrypted machine learning and data processing. It's production ready and written primarily in Rust.
 
 Computations are expressed using either the eDSL or by programming against the Rust API. Each operation in the dataflow graphs are pinned to a placement which represents either a physical machine or one of several kinds of virtual execution units. Moose currently includes support for simpler machine learning models, and a virtual placement backed by secure multi-party computation (MPC) in the form of replicated secret sharing. Please see [docs.rs](https://docs.rs/moose/), the [examples](https://github.com/tf-encrypted/moose/tree/main/examples), or our [whitepaper](https://github.com/tf-encrypted/moose-whitepaper) for more details.
 
