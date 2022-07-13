@@ -172,9 +172,9 @@ fn parse_assignment<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operation, E> {
     let (input, identifier) = ws(identifier)(input)?;
     let (input, _) = tag("=")(input)?;
-    let (input, operator) = ws(parse_operator)(input)?;
+    let (input, operator) = ws(cut(context("Expecting operator name", parse_operator)))(input)?;
     let (input, args) = opt(argument_list)(input)?;
-    let (input, placement) = ws(parse_placement)(input)?;
+    let (input, placement) = ws(cut(context("Expecting a placement", parse_placement)))(input)?;
     Ok((
         input,
         Operation {
@@ -360,14 +360,13 @@ impl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>> FromTextual<'a, E>
 fn argument_list<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Vec<String>, E> {
-    context(
+    let (input, _) = tag("(")(input)?;
+    let (input, result) = cut(context(
         "Expecting comma separated list of identifiers",
-        delimited(
-            tag("("),
-            separated_list0(tag(","), map(ws(identifier), |s| s.to_string())),
-            tag(")"),
-        ),
-    )(input)
+        separated_list0(tag(","), map(ws(identifier), |s| s.to_string())),
+    ))(input)?;
+    let (input, _) = tag(")")(input)?;
+    Ok((input, result))
 }
 
 /// Parses list of attributes when there is only one attribute.
@@ -410,7 +409,26 @@ pub fn operator_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
     preceded(
         ws(tag(":")),
-        alt((fixed_arrity_signature(arg_count), variadic_signature())),
+        cut(context(
+            "Expecting a valid type signature",
+            alt((
+                empty_signature(),
+                fixed_arrity_signature(arg_count),
+                variadic_signature(),
+            )),
+        )),
+    )
+}
+
+fn empty_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
+    map(
+        tuple((
+            tag("()"),
+            ws(tag("->")),
+            ws(cut(context("Expecting a Moose return type", parse_type))),
+        )),
+        |t| Signature::nullary(t.2),
     )
 }
 
@@ -428,14 +446,18 @@ fn fixed_arrity_signature<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str
         let (input, args_types) = verify(
             delimited(
                 tag("("),
-                separated_list0(tag(","), ws(parse_type)),
+                separated_list0(
+                    tag(","),
+                    ws(cut(context("Expecting a Moose type", parse_type))),
+                ),
                 tag(")"),
             ),
             |v: &Vec<Ty>| v.len() >= arg_count,
         )(input)?;
 
         let (input, _) = ws(tag("->"))(input)?;
-        let (input, result_type) = ws(parse_type)(input)?;
+        let (input, result_type) =
+            ws(cut(context("Expecting a Moose return type", parse_type)))(input)?;
 
         match args_types.len() {
             0 => Ok((input, Signature::nullary(result_type))),
@@ -958,7 +980,7 @@ pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O, E>,
+    F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
     delimited(space0, inner, space0)
 }
