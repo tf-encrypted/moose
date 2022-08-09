@@ -27,6 +27,7 @@ pub enum Commands {
         input: PathBuf,
 
         /// Output file, stdout if not present
+        #[clap(short, long)]
         output: Option<PathBuf>,
 
         /// Computation format
@@ -227,6 +228,9 @@ fn output_computation(
         ComputationFormat::Textual => {
             if let Some(path) = output {
                 comp.write_textual(path)?;
+            } else {
+                // Use stdout only for the textual
+                println!("{}", comp.to_textual());
             }
             Ok(())
         }
