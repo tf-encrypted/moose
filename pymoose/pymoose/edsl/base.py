@@ -1,5 +1,6 @@
 import functools as ft
 import inspect
+import textwrap
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
@@ -40,11 +41,13 @@ _CURRENT_RUNTIME = None
 
 
 def get_current_runtime():
+    """Get a global runtime context."""
     global _CURRENT_RUNTIME
     return _CURRENT_RUNTIME
 
 
 def set_current_runtime(runtime):
+    """Set a global runtime context."""
     global _CURRENT_RUNTIME
     _CURRENT_RUNTIME = runtime
 
@@ -523,7 +526,55 @@ class OutputExpression(Expression):
         return id(self)
 
 
+def _docinject_placement_arg(f):
+    """Appends a ``placement`` entry to the Args section of a docstring.
+
+    Docstring must be Google style. ``placement`` should be the last keyword
+    argument, otherwise you should document it manually.
+
+    Args:
+        f: Callable whose docstring you want to amend.
+
+    Returns:
+        The function f with a modified docstring
+    """
+    docstring = f.__doc__
+    lines = docstring.split("\n")
+    in_args = False
+    for i, line in enumerate(lines):
+        if i == len(lines) - 1:
+            break
+        nextline = lines[i + 1]
+
+        dedented_line = textwrap.dedent(line)
+        line_indentation = len(line) - len(dedented_line)
+        if dedented_line.startswith("Args:"):
+            in_args = True
+            arg_indentation = line_indentation + 4
+            continue
+        if in_args and nextline == "    ":
+            placement_arg_doc = textwrap.indent(
+                "placement: An optional Placement to pin this operation to.",
+                " " * arg_indentation,
+            )
+            lines.insert(i + 1, placement_arg_doc)
+            in_args = False
+    new_docstring = "\n".join(lines)
+
+    f.__doc__ = new_docstring
+
+    return f
+
+@_docinject_placement_arg
 def add_n(arrays, placement=None):
+    """Elementwise addition of a collection of tensors.
+
+    Args:
+        arrays: Tuple or list of tensors w/ identical shape and dtype.
+
+    Returns:
+        A tensor containing the elementwise sum of all input tensors.
+    """
     placement = _materialize_placement_arg(placement)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
@@ -549,12 +600,36 @@ def add_n(arrays, placement=None):
     return AddNExpression(placement=placement, inputs=arrays, vtype=input_vtype)
 
 
+@_docinject_placement_arg
 def identity(x, placement=None):
+    """The identity operation, ``f(x) = x``.
+
+    Although the value of ``x`` is guaranteed to remain unchanged, note that its
+    placement may differ.
+
+    Args:
+        x: Input value to be returned.
+
+    Returns:
+        The unchanged value ``x``.
+    """
     placement = _materialize_placement_arg(placement)
     return IdentityExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def concatenate(arrays, axis=0, placement=None):
+    """Concatenation of a collection of tensors along a given axis/dimension.
+
+    Note the tensors must have similar dtype and shape along all dimensions but the
+    given one. The dimension must already exist in the input tensors; use
+    ``pm.expand_dims`` on inputs to create a new dimnesion for concatenating along.
+
+    Args:
+        arrays: Tuple or List of tensors to be concatenated.
+        axis: Optional integer representing the dimension to concatenate along.
+            Dimension must already exist for all input tensors.
+    """
     placement = _materialize_placement_arg(placement)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
@@ -583,7 +658,16 @@ def concatenate(arrays, axis=0, placement=None):
     )
 
 
+@_docinject_placement_arg
 def maximum(arrays, placement=None):
+    """Elementwise maximum of a collection of input tensors.
+
+    Args:
+        arrays: Tuple or list of tensors w/ identical shape and dtype.
+
+    Returns:
+        A tensor containing the elementwise max of all input tensors.
+    """
     placement = _materialize_placement_arg(placement)
     if not isinstance(arrays, (tuple, list)):
         raise ValueError(
@@ -636,7 +720,23 @@ def decrypt(key, ciphertext, placement=None):
     )
 
 
+@_docinject_placement_arg
 def constant(value, dtype=None, vtype=None, placement=None):
+    """Embed a constant of a particular type.
+
+    Args:
+        value: The Python value to embed as constant. Supported types include the Python
+            native variants of those listed in ``pymoose.computation.types``.
+            Tensors are embeddable as numpy ndarrays.
+        dtype: If given, coerces ``value`` into a Moose tensor with this dtype.
+            Otherwise, if ``value`` is an ndarray, the Moose dtype is inferred from the
+            ndarray's numpy dtype.
+        vtype: If given, coerces ``value`` into a Moose value with this vtype, i.e.
+            ValueType. Otherwise, infers the vtype from ``value``'s Python type.
+
+    Returns:
+        A Moose Value of type ``vtype`` embedded into the computation graph.
+    """
     placement = _materialize_placement_arg(placement)
     vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
 
@@ -680,7 +780,20 @@ def constant(value, dtype=None, vtype=None, placement=None):
     return ConstantExpression(placement=placement, inputs=[], value=value, vtype=vtype)
 
 
+@_docinject_placement_arg
 def add(lhs, rhs, placement=None):
+    """Add two values.
+
+    Equivalent to ``lhs + rhs`` for the two inputs.
+    If the inputs are tensors, the addition is performed elementwise.
+
+    Args:
+        lhs: First addend.
+        rhs: Second addend.
+
+    Returns:
+        Sum of the two inputs.
+    """
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -690,7 +803,21 @@ def add(lhs, rhs, placement=None):
     )
 
 
+@_docinject_placement_arg
 def sub(lhs, rhs, placement=None):
+    """Subtract two values.
+
+    Equivalent to ``lhs - rhs`` for the two inputs.
+    If the inputs are tensors, the subtraction is performed elementwise.
+
+    Args:
+        lhs: Minuend.
+        rhs: Subtrahend.
+
+    Returns:
+        Difference of the two inputs.
+    """
+
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -700,7 +827,20 @@ def sub(lhs, rhs, placement=None):
     )
 
 
+@_docinject_placement_arg
 def mul(lhs, rhs, placement=None):
+    """Multiply two values.
+
+    Equivalent to ``lhs * rhs`` for the two inputs.
+    If the inputs are tensors, the multiplication is performed elementwise.
+
+    Args:
+        lhs: First factor.
+        rhs: Second factor.
+
+    Returns:
+        Product of the two inputs.
+    """
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -710,7 +850,20 @@ def mul(lhs, rhs, placement=None):
     )
 
 
+@_docinject_placement_arg
 def dot(lhs, rhs, placement=None):
+    """Dot product of two tensors.
+
+    Tensor contraction along the second and first dimensions of the respective inputs.
+    For 1 and 2 dimensional inputs, this is equivalent to ``np.dot(lhs, rhs)``.
+
+    Args:
+        lhs: Left-hand tensor factor.
+        rhs: Right-hand tensor factor.
+
+    Returns:
+        Dot product of the two input tensors.
+    """
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -720,7 +873,21 @@ def dot(lhs, rhs, placement=None):
     )
 
 
+@_docinject_placement_arg
 def div(lhs, rhs, placement=None):
+    """Divide two tensors.
+
+    Equivalent to ``lhs / rhs`` for the two inputs.
+    If the inputs are tensors, the division is performed elementwise.
+
+    Args:
+        lhs: Dividend.
+        rhs: Divisor.
+
+    Returns:
+        Quotient of the two inputs.
+
+    """
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -730,7 +897,19 @@ def div(lhs, rhs, placement=None):
     )
 
 
+@_docinject_placement_arg
 def less(lhs, rhs, placement=None):
+    """Evaluate the boolean less-than operation, i.e. ``lhs < rhs``.
+
+    If the inputs are tensors, the comparison is performed elementwise.
+
+    Args:
+        lhs: Left-hand side of comparison.
+        rhs: Right-hand side of comparison.
+
+    Returns:
+        The comparison of the two inputs.
+    """
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -742,7 +921,19 @@ def less(lhs, rhs, placement=None):
     )
 
 
+@_docinject_placement_arg
 def greater(lhs, rhs, placement=None):
+    """Evaluate the boolean greater-than operation, i.e. ``lhs > rhs``.
+
+    If tensors, the comparison is performed elementwise.
+
+    Args:
+        lhs: Left-hand side of comparison.
+        rhs: Right-hand side of comparison.
+
+    Returns:
+        The comparison of the two inputs.
+    """
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -754,7 +945,19 @@ def greater(lhs, rhs, placement=None):
     )
 
 
+@_docinject_placement_arg
 def logical_or(lhs, rhs, placement=None):
+    """Evaluate the boolean OR operation, i.e. ``lhs | rhs``.
+
+    If tensors, the operation is performed elementwise.
+
+    Args:
+        lhs: Left-hand side of operation.
+        rhs: Right-hand side of operation.
+
+    Returns:
+        The logical union of the two inputs when treated as booleans.
+    """
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = _materialize_placement_arg(placement)
@@ -765,6 +968,14 @@ def logical_or(lhs, rhs, placement=None):
 
 
 def inverse(x, placement=None):
+    """Invert a floating-point matrix.
+
+    Args:
+        x: A 2-dimensional float tensor to invert.
+
+    Returns:
+        The matrix inverse of ``x``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     vtype = x.vtype
@@ -780,7 +991,18 @@ def inverse(x, placement=None):
     return InverseExpression(placement=placement, inputs=[x], vtype=vtype)
 
 
+@_docinject_placement_arg
 def expand_dims(x, axis, placement=None):
+    """Expand the rank of ``x`` with new singleton dimensions.
+
+    Args:
+        x: The tensor to expand.
+        axis: Index of the new dimension. If a tuple/list, should contain the indices
+            where each new dimension will be expanded.
+
+    Returns:
+        The expanded tensor, complete with new singleton dimensions.
+    """
     assert isinstance(x, Expression)
     if isinstance(axis, (tuple, list)):
         for ax in axis:
@@ -797,13 +1019,37 @@ def expand_dims(x, axis, placement=None):
     )
 
 
+@_docinject_placement_arg
 def squeeze(x, axis=None, placement=None):
+    """Reduce out any singleton dimensions of ``x``.
+
+    Args:
+        x: The tensor from which to drop singleton dimensions.
+        axis: Optional index into the shape of ``x`` denoting which singleton dimension
+            to drop. If None, drops all singleton dimensions in ``x``.
+
+    Returns:
+        The squeezed tensor with fewer singleton dimensions.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return SqueezeExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def ones(shape, dtype, placement=None):
+    """Embed a ones array into the Moose computation graph.
+
+    Equivalent to `pm.constant(np.ones(shape, dtype))` for a given ``dtype`` and
+    ``shape``.
+
+    Args:
+        shape: Shape of the ones array.
+        dtype: Dtype of the ones array.
+
+    Returns:
+        A tensor of all 1s with given shape and dtype.
+    """
     assert isinstance(shape, Expression)
     placement = _materialize_placement_arg(placement)
     if isinstance(shape, (list, tuple)):
@@ -824,7 +1070,20 @@ def ones(shape, dtype, placement=None):
     return OnesExpression(placement=placement, inputs=[shape], vtype=vtype)
 
 
+@_docinject_placement_arg
 def zeros(shape, dtype, placement=None):
+    """Embed a zeros array into the Moose computation graph.
+
+    Equivalent to `pm.constant(np.zeros(shape, dtype))` for a given ``dtype`` and
+    ``shape``.
+
+    Args:
+        shape: Shape of the zeros array.
+        dtype: Dtype of the zeros array.
+
+    Returns:
+        A tensor of all 0s with given shape and dtype.
+    """
     assert isinstance(shape, Expression)
     placement = _materialize_placement_arg(placement)
     if isinstance(shape, (list, tuple)):
@@ -845,49 +1104,143 @@ def zeros(shape, dtype, placement=None):
     return ZerosExpression(placement=placement, inputs=[shape], vtype=vtype)
 
 
+@_docinject_placement_arg
 def square(x, placement=None):
+    """Square an input value.
+
+    If the input is a tensor, the operation is performed elementwise.
+
+    Args:
+        x: A value to square.
+
+    Returns:
+        The squared input.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return mul(x, x, placement=placement)
 
 
+@_docinject_placement_arg
 def sum(x, axis=None, placement=None):
+    """Sum-reduce an input tensor.
+
+    Computes the sum of tensor elements along a particular axis, or for the entire
+    tensor if ``axis=None``.
+
+    Args:
+        x: A tensor.
+        axis: An optional dimension along which to sum-reduce the tensor.
+            If None, sum-reduces the entire tensor and outputs a scalar tensor.
+
+    Returns:
+        The summed input, with one or all dimensions reduced out.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return SumExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def mean(x, axis=None, placement=None):
+    """Mean-reduce an input tensor.
+
+    Args:
+        x: A tensor.
+        axis: An optional dimension along which to mean-reduce the tensor.
+            If None, mean-reduces the entire tensor and outputs a scalar tensor.
+
+    Returns:
+        The averaged input, with one or all dimensions reduced out.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return MeanExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def exp(x, placement=None):
+    """Apply the exponential function, ``f(x) = e^x``.
+
+    If the input is a tensor, the operation is performed elementwise.
+
+    Args:
+        x: A value.
+
+    Returns:
+        The exponentiated input.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return ExpExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def sqrt(x, placement=None):
+    """Compute the square-root of a value.
+
+    If the input is a tensor, the operation is performed elementwise.
+
+    Args:
+        x: A value.
+
+    Returns:
+        The square-root of the input.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return SqrtExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def sigmoid(x, placement=None):
+    """Apply the sigmoid function, ``f(x) = 1 / (1 - e^x)``.
+
+    If the input is a tensor, the operation is performed elementwise.
+
+    Args:
+        x: A value.
+
+    Returns:
+        The result of applying the sigmoid function to ``x``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return SigmoidExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def relu(x, placement=None):
+    """Apply the rectified-linear unit (ReLU) function, ``f(x) = max(0, x)``.
+
+    If the input is a tensor, the operation is performed elementwise.
+
+    Args:
+        x: A value.
+
+    Returns:
+        A value correspoding to ``ReLU(x)``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return ReluExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def softmax(x, axis, upmost_index, placement=None):
+    """Apply the softmax function, ``f(x_i) = e^x_i / sum_j(e^x_j)``.
+
+    Args:
+        x: A tensor.
+        axis: The dimension along which the softmax divisor's sum-reduce should be
+            computed.
+        upmost_index: The max index that should be used for computing the softmax
+            divisor's sum-reduce. Generally, this should be the size of the ``axis``
+            dimension of ``x``.
+
+    Returns:
+        Result of applying the softmax function on ``x`` along the given ``axis``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return SoftmaxExpression(
@@ -899,7 +1252,20 @@ def softmax(x, axis, upmost_index, placement=None):
     )
 
 
+@_docinject_placement_arg
 def argmax(x, axis, upmost_index, placement=None):
+    """Compute the index of the maximal element of a tensor along a given dimension.
+
+    Args:
+        x: A tensor.
+        axis: The dimension along which to compute the argmax.
+            upmost_index.
+        upmost_index: The max index that should be considered for computing the argmax.
+            Generally, this should be the size of the ``axis`` dimension of ``x``.
+    
+    Returns:
+        A dimension-reduced tensor representing the argmax of ``x`` along ``axis``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return ArgmaxExpression(
@@ -911,7 +1277,16 @@ def argmax(x, axis, upmost_index, placement=None):
     )
 
 
+@_docinject_placement_arg
 def log(x, placement=None):
+    """Compute the elementwise natural logarithm of a tensor.
+
+    Args:
+        x: A tensor.
+
+    Returns:
+        The tensor representing ``log(x)``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return LogExpression(
@@ -921,19 +1296,47 @@ def log(x, placement=None):
     )
 
 
+@_docinject_placement_arg
 def log2(x, placement=None):
+    """Compute the elementwise base-2 logarithm of a tensor.
+
+    Args:
+        x: A tensor.
+
+    Returns:
+        The tensor representing ``log_2(x)``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return Log2Expression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def shape(x, placement=None):
+    """Compute the shape of an input tensor.
+
+    Args:
+        x: A tensor.
+
+    Returns:
+        A Moose value of type ``ShapeType`` corresponding to the input tensor's shape.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return ShapeExpression(placement=placement, inputs=[x], vtype=ty.ShapeType())
 
 
+@_docinject_placement_arg
 def index_axis(x, axis, index, placement=None):
+    """Index a tensor along a given dimension.
+
+    Args:
+        x: A tensor.
+        axis: The dimension along which to index.
+
+    Returns:
+        A slice of ``x`` corresponding to the sub-tensor at ``index`` along ``axis``.
+    """
     assert isinstance(x, Expression)
     if not isinstance(axis, int) or index < 0:
         raise ValueError(
@@ -952,7 +1355,18 @@ def index_axis(x, axis, index, placement=None):
     )
 
 
+@_docinject_placement_arg
 def sliced(x, begin, end, placement=None):
+    """Compute a slice of a value.
+
+    Args:
+        x: A slice-able value, e.g. a TensorType or ShapeType.
+        begin: Index to start the slice at, e.g. 1 in ``x[1:5]``.
+        end: Non-inclusive index to end the slice at, e.g. 5 in ``x[1:5]``.
+
+    Returns:
+        The sliced value.
+    """
     assert isinstance(x, Expression)
     assert isinstance(begin, int)
     assert isinstance(end, int)
@@ -962,7 +1376,21 @@ def sliced(x, begin, end, placement=None):
     )
 
 
+# TODO(jvmncs): better docstring
+@_docinject_placement_arg
 def strided_slice(x, slices, placement=None):
+    """Compute a strided slice of a value.
+
+    This version is more general than ``sliced``, as it has support for more complex
+    variants of Python slices.
+
+    Args:
+        x: A value.
+        slices: A list/tuple of Python `slice` objects.
+
+    Returns:
+        The sliced value.
+    """
     assert isinstance(x, Expression)
     assert isinstance(slices, (tuple, list))
     placement = _materialize_placement_arg(placement)
@@ -976,7 +1404,18 @@ def strided_slice(x, slices, placement=None):
     )
 
 
+@_docinject_placement_arg
 def transpose(x, placement=None):
+    """Compute the transpose of a tensor.
+
+    This is equivalent to numpy.ndarray.T.
+
+    Args:
+        x: A tensor.
+
+    Returns:
+        The input tensor with dimensions in reverse order.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return TransposeExpression(placement=placement, inputs=[x], vtype=x.vtype)
@@ -993,7 +1432,20 @@ def atleast_2d(x, to_column_vector=False, placement=None):
     )
 
 
+@_docinject_placement_arg
 def reshape(x, shape, placement=None):
+    """Reshape a tensor.
+
+    Broadcasting is not allowed; the new shape must have the same total number of
+    elements.
+
+    Args:
+        x: A tensor.
+        shape: A list, tuple, or Shape dictating the new shape of the tensor.
+    
+    Returns:
+        The reshaped tensor.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     if isinstance(shape, (list, tuple)):
@@ -1013,14 +1465,40 @@ def reshape(x, shape, placement=None):
     assert isinstance(shape, Expression)
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
 
-
+@_docinject_placement_arg
 def abs(x, placement=None):
+    """Compute the absolute value.
+
+    If the input is a tensor. the operation is performed elementwise.
+
+    Args:
+        x: A value
+
+    Returns:
+        The absolute value of ``x``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
     return AbsExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
+@_docinject_placement_arg
 def mux(selector, x, y, placement=None):
+    """Multiplex two tensors according to some condition.
+
+    This op allows for static control-flow of elements coming from two tensors.
+    For boolean tensor ``s`` and arbitrary tensors ``x`` and ``y``, the operation
+    is equivalent to ``s * (x - y) + y``.
+
+    Args:
+        selector: Boolean tensor representing the control-flow condition.
+        x: A tensor to fill from when the selector condition is 1.
+        y: A tensor to fill from when the selector condition is 0.
+
+    Result:
+        A tensor with elements of ``x`` and ``y`` multiplexed according to the condition
+        given by ``selector``.
+    """
     assert isinstance(selector, Expression)
     assert isinstance(selector.vtype, ty.TensorType)
     assert selector.vtype.dtype.is_boolean, selector.vtype.dtype
@@ -1036,7 +1514,17 @@ def mux(selector, x, y, placement=None):
     return MuxExpression(placement=placement, inputs=[selector, x, y], vtype=vtype)
 
 
+@_docinject_placement_arg
 def cast(x, dtype, placement=None):
+    """Cast a tensor to a new dtype.
+
+    Args:
+        x: A tensor.
+        dtype: A DType.
+
+    Returns:
+        The tensor ``x`` converted to ``dtype``.
+    """
     assert isinstance(x, Expression)
     placement = _materialize_placement_arg(placement)
 
@@ -1076,7 +1564,25 @@ def cast(x, dtype, placement=None):
     )
 
 
+@_docinject_placement_arg
 def load(key, query="", dtype=None, vtype=None, placement=None):
+    """Load a value from placement storage.
+
+    The underlying key-value store implementation is runtime-specific. Generally, assume
+    that each HostPlacement can be using a different storage implementation in its Moose
+    worker/executor.
+
+    Args:
+        key: A string or Moose String corresponding to the value that should be loaded.
+        query: An optional query string/String to provide to executor storage.
+            Most common storage implementations ignore this.
+        dtype: If value should be loaded as a tensor, the DType to coerce the tensor to.
+            If None, inferred from the value's numpy dtype.
+        vtype: The Moose type to coerce the loaded value into. If None, inferred from the 
+
+    Returns:
+        The loaded value, as provided by the worker backing the HostPlacement.
+    """
     placement = _materialize_placement_arg(placement)
     vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
     if isinstance(key, str):
@@ -1108,7 +1614,21 @@ def load(key, query="", dtype=None, vtype=None, placement=None):
     return LoadExpression(placement=placement, inputs=[key, query], vtype=vtype)
 
 
+@_docinject_placement_arg
 def save(key, value, placement=None):
+    """Save a key-value pair to placement storage.
+
+    The underlying key-value store implementation is runtime-specific. Generally, assume
+    that each HostPlacement can be using a different storage implementation in its Moose
+    worker/executor.
+
+    Args:
+        key: A string or Moose String.
+        value: A Moose Value.
+    
+    Returns:
+        A Moose Value of type Unit.
+    """
     assert isinstance(value, Expression)
     placement = _materialize_placement_arg(placement)
     if isinstance(key, str):
@@ -1126,7 +1646,23 @@ def save(key, value, placement=None):
     return SaveExpression(placement=placement, inputs=[key, value], vtype=None)
 
 
+@_docinject_placement_arg
 def output(tag, value, placement=None):
+    """Tag an output of a computation.
+
+    This op is similar to ``identity``, but additionally tags its value. It can be used
+    to pin an output to a particular placement without writing it to placement storage.
+    It's also useful for maintaining the ordering of computation outputs in PyMoose,
+    since Moose compilation generally doesn't preserve output order.
+
+    Args:
+        tag: A tag to associate with the output, useful for reconstructing the original
+            order of outputs.
+        value: The Moose value to output.
+
+    Returns:
+        The tagged value.
+    """
     assert isinstance(value, Expression)
     assert isinstance(tag, str)
     placement = _materialize_placement_arg(placement)
@@ -1136,6 +1672,16 @@ def output(tag, value, placement=None):
 
 
 def computation(func=None, role_map=None):
+    """Annotates a Python function as a Moose computation.
+
+    Args:
+        func: A Callable.
+        role_map: A map of abstract placements to identities in the current runtime
+            context.
+    
+    Returns:
+        An abstract Moose computation that can be invoked in a runtime context.
+    """
     if func is None:
         return ft.partial(computation, role_map=role_map)
     return AbstractComputation(func, role_map)
