@@ -12,32 +12,33 @@ from pymoose.pymoose import moose_runtime
 
 
 class LocalMooseRuntime(moose_runtime.LocalRuntime):
-    """Locally-simulated Moose runtime."""
+    """Locally-simulated Moose runtime.
+
+    Creates a local runtime with several virtual hosts and optional storage for each.
+
+    Example:
+        runtime = LocalMooseRuntime(
+            ["alice", "bob", "carole"],
+            storage_mapping={
+                "alice": {
+                    "alice_array": np.ones((3, 3)),
+                    "alice_string": "hello i'm alice",
+                    "alice_number": 42,
+                },
+            },
+        )
+
+    Args:
+        identities: A list of names of identities for virtual hosts.
+        storage_mapping: A dictionary mapping Identities to storage dictionaries.
+            Storage dictionaries are dicts/named tuples of Python objects that
+            correspond to valid PyMoose Values (e.g. native Python numbers,
+            ndarrays, strings, etc.).
+    """
 
     def __new__(
         cls, identities: List[str], storage_mapping: Optional[Dict[str, Dict]] = None
     ):
-        """Creates a local runtime with several virtual hosts and optional storage for each.
-
-        Args:
-            identities: A list of names of identities for virtual hosts.
-            storage_mapping: A dictionary mapping Identities to storage dictionaries.
-                Storage dictionaries are dicts/named tuples of Python objects that
-                correspond to valid PyMoose Values (e.g. native Python numbers,
-                ndarrays, strings, etc.).
-
-        Example:
-            runtime = LocalMooseRuntime(
-                ["alice", "bob", "carole"],
-                storage_mapping={
-                    "alice": {
-                        "alice_array": np.ones((3, 3)),
-                        "alice_string": "hello i'm alice",
-                        "alice_number": 42,
-                    },
-                },
-            )
-        """
         storage_mapping = storage_mapping or {}
         for identity in storage_mapping:
             if identity not in identities:
@@ -78,16 +79,16 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
 
 
 class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
-    """Moose runtime backed by gRPC choreography."""
+    """Moose runtime backed by gRPC choreography.
+
+    Creates a Moose runtime backed by a fixed set of gRPC servers.
+
+    Args:
+        identities: Mapping of identities (e.g. host placement identifiers) to gRPC
+            host addresses.
+    """
 
     def __new__(cls, identities: Dict):
-        """Creates a runtime with a fixed cluster of gRPC servers.
-
-        Args:
-            identities: Mapping of identities (e.g. host placement identifiers) to gRPC
-                host addresses.
-        """
-
         identities = {
             role.name if isinstance(role, HostPlacementExpression) else role: addr
             for role, addr in identities.items()

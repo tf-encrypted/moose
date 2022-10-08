@@ -6,6 +6,23 @@ from pymoose.predictors import tree_ensemble
 
 
 def from_onnx(model_proto):
+    """Attempt to infer and construct a Moose predictor type from a given ONNX Model.
+
+    Args:
+        model_proto: An ONNX ModelProto containing nodes sufficient to construct some
+            Moose predictor.
+
+    Returns:
+        A Moose predictor, inferred from the structure and contents of the ONNX model.
+
+    Raises:
+        ValueError if the Predictor type cannot be inferred, or if the ONNX graph is
+            malformed for the inferred Predictor type.
+        RuntimeError if LinearClassifier constructor throws an error due to unrecognized
+            post_transform attribute.
+
+
+    """
     if model_proto.producer_name == "pytorch" or model_proto.producer_name == "tf2onnx":
         model_type = "NeuralNetwork"
     else:
@@ -17,13 +34,13 @@ def from_onnx(model_proto):
         ]
 
         recognized_ops = []
-        unrocognized_ops = []
+        unrecognized_ops = []
         for node in model_proto.graph.node:
             node_type = node.op_type
             if node_type in supported_op_type:
                 recognized_ops.append(node_type)
             else:
-                unrocognized_ops.append(node_type)
+                unrecognized_ops.append(node_type)
 
         number_of_coefficients = len(
             predictor_utils.find_parameters_in_model_proto(
@@ -56,7 +73,7 @@ def from_onnx(model_proto):
                 "graph must contain a LinearRegressor "
                 "or LinearClassifier or TreeEnsembleRegressor "
                 "or TreeEnsembleClassifier "
-                f"node, found: {unrocognized_ops}"
+                f"node, found: {unrecognized_ops}"
             )
 
     if model_type == "LinearRegressor":

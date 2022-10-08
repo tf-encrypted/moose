@@ -1,5 +1,4 @@
 import abc
-import json
 
 import pymoose as pm
 from pymoose.predictors import predictor
@@ -102,6 +101,26 @@ class TreeEnsemble(predictor.Predictor, metaclass=abc.ABCMeta):
 
 
 class TreeEnsembleClassifier(TreeEnsemble):
+    """Tree ensemble classification Predictor for GBTs and Random Forests.
+
+    This class can be used for binary, multiclass, or multilabel classification. Support
+    for multiclass classification uses the one-vs-rest method.
+
+    Args:
+        trees: Nested collection of :class:`~DecisionTreeRegressor`s.
+        n_features: Number of features expected for input data.
+        n_classes: Number of output classes.
+        base_score: The base score for the underlying tree ensemble model, similar to a
+            bias/intercept term.
+        learning_rate: Learning rate parameter used to re-scale leaf weights in the
+            model trees.
+        transform_output: Boolean determining whether a softmax should be applied to
+            derive probabilities from the tree ensemble output.
+        tree_class_map: Dictionary mapping ``trees`` indices to class indices. Keeps
+            track of which trees in ``trees`` correspond to each class in the
+            one-vs-rest formulation of multiclass classification.
+    """
+
     def __init__(
         self,
         trees,
@@ -119,6 +138,18 @@ class TreeEnsembleClassifier(TreeEnsemble):
 
     @classmethod
     def from_onnx(cls, model_proto):
+        """Construct a TreeEnsembleClassifier from a parsed ONNX model.
+
+        Args:
+            model_proto: An ONNX ModelProto containing a TreeEnsembleClassifier node.
+
+        Returns:
+            A TreeEnsembleClassifier built from the parameters and configuration of the
+            given ONNX model.
+
+        Raises:
+            ValueError if ONNX graph is missing expected nodes.
+        """
         (
             forest_node,
             (nodes_treeids, left, right, split_conditions, split_indices),
@@ -278,13 +309,31 @@ class TreeEnsembleClassifier(TreeEnsemble):
 
 
 class TreeEnsembleRegressor(TreeEnsemble):
-    @classmethod
-    def from_json(cls, model_json):
-        forest_args = cls._unbundle_forest(model_json)
-        return cls(*forest_args)
+    """Tree ensemble regression Predictor, accommodating both GBTs and Random Forests.
+
+    Args:
+        trees: Nested collection of :class:`~DecisionTreeRegressor`s.
+        n_features: Number of features expected for input data.
+        base_score: The base score for the underlying tree ensemble model, similar to a
+            bias/intercept term.
+        learning_rate: Learning rate parameter used to re-scale leaf weights in the
+            model trees.
+    """
 
     @classmethod
     def from_onnx(cls, model_proto):
+        """Construct a TreeEnsembleRegressor from a parsed ONNX model.
+
+        Args:
+            model_proto: An ONNX ModelProto containing a TreeEnsembleRegressor node.
+
+        Returns:
+            A TreeEnsembleRegressor built from the parameters and configuration of the
+            given ONNX model.
+
+        Raises:
+            ValueError if ONNX graph is missing expected nodes.
+        """
         (
             forest_node,
             (nodes_treeids, left, right, split_conditions, split_indices),
@@ -341,24 +390,6 @@ class TreeEnsembleRegressor(TreeEnsemble):
         )
         penultimate_score = pm.add_n(tree_scores)
         return pm.add(base_score, penultimate_score)
-
-    @classmethod
-    def _unbundle_forest(cls, model_json):
-        n_features, base_score, learning_rate = cls._unbundle_forest_params(model_json)
-        trees = [
-            DecisionTreeRegressor.from_json(tree)
-            for tree in model_json["learner"]["gradient_booster"]["model"]["trees"]
-        ]
-        return trees, n_features, base_score, learning_rate
-
-    @classmethod
-    def _unbundle_forest_params(cls, model_json):
-        n_features = int(model_json["learner"]["learner_model_param"]["num_feature"])
-        base_score = float(model_json["learner"]["learner_model_param"]["base_score"])
-        learning_rate = json.loads(model_json["learner"]["attributes"]["scikit_learn"])[
-            "learning_rate"
-        ]
-        return n_features, base_score, learning_rate
 
 
 def _map_json_to_onnx_leaves(json_leaves):

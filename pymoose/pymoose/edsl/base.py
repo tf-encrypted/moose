@@ -106,6 +106,23 @@ def get_current_placement():
 
 @dataclass(init=False)
 class Argument:
+    """A type annotation Arguments to Moose computations.
+
+    This class is used for annotating the parameters of Moose computations with extra
+    information needed to identify their graph Values in the compiler, and eventually to
+    materialize those values at runtime.
+
+    Args:
+        placement: A placement to pin this Argument to. The corresponding InputOp for
+            the argument will be pinned to this placement.
+        dtype: If the Value is a Tensor, specify its ``dtype``. Using this argument is
+            equivalent to specifying ``vtype=TensorType(dtype=dtype)``.
+        vtype: The Moose Value type for the Argument. This type information is used
+            during compilation to check correctness of the computation and to lower the
+            computation graph into one that is runtime-ready. The type information of
+            arguments is also checked at runtime.
+    """
+
     placement: PlacementExpression
     dtype: Optional[dtypes.DType] = None
     vtype: Optional[ty.ValueType] = None
@@ -564,6 +581,7 @@ def _docinject_placement_arg(f):
     f.__doc__ = new_docstring
 
     return f
+
 
 @_docinject_placement_arg
 def add_n(arrays, placement=None):
@@ -1262,7 +1280,7 @@ def argmax(x, axis, upmost_index, placement=None):
             upmost_index.
         upmost_index: The max index that should be considered for computing the argmax.
             Generally, this should be the size of the ``axis`` dimension of ``x``.
-    
+
     Returns:
         A dimension-reduced tensor representing the argmax of ``x`` along ``axis``.
     """
@@ -1442,7 +1460,7 @@ def reshape(x, shape, placement=None):
     Args:
         x: A tensor.
         shape: A list, tuple, or Shape dictating the new shape of the tensor.
-    
+
     Returns:
         The reshaped tensor.
     """
@@ -1464,6 +1482,7 @@ def reshape(x, shape, placement=None):
 
     assert isinstance(shape, Expression)
     return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
+
 
 @_docinject_placement_arg
 def abs(x, placement=None):
@@ -1578,7 +1597,9 @@ def load(key, query="", dtype=None, vtype=None, placement=None):
             Most common storage implementations ignore this.
         dtype: If value should be loaded as a tensor, the DType to coerce the tensor to.
             If None, inferred from the value's numpy dtype.
-        vtype: The Moose type to coerce the loaded value into. If None, inferred from the 
+        vtype: The Moose type to coerce the loaded value into. If None, will be traced
+            as :class:`~pymoose.computation.types.UnknownType` and  the compiler will
+            attempt to fill it in during its initial Typing pass.
 
     Returns:
         The loaded value, as provided by the worker backing the HostPlacement.
@@ -1625,7 +1646,7 @@ def save(key, value, placement=None):
     Args:
         key: A string or Moose String.
         value: A Moose Value.
-    
+
     Returns:
         A Moose Value of type Unit.
     """
@@ -1678,7 +1699,7 @@ def computation(func=None, role_map=None):
         func: A Callable.
         role_map: A map of abstract placements to identities in the current runtime
             context.
-    
+
     Returns:
         An abstract Moose computation that can be invoked in a runtime context.
     """

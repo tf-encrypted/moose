@@ -1,9 +1,10 @@
+"""PyMoose implementation of Moose DType."""
 import abc
 
 import numpy as np
 
 
-class DType:
+class _BaseDType:
     @abc.abstractmethod
     def __hash__(self):
         pass
@@ -37,7 +38,9 @@ class DType:
         pass
 
 
-class _ConcreteDType(DType):
+class DType(_BaseDType):
+    """Generic implementation of Moose DType"""
+
     def __init__(
         self,
         name,
@@ -78,7 +81,7 @@ class _ConcreteDType(DType):
         return self._short
 
     def __eq__(self, other):
-        if isinstance(other, _ConcreteDType):
+        if isinstance(other, DType):
             return hash(self) == hash(other)
         return False
 
@@ -118,7 +121,7 @@ class _ConcreteDType(DType):
         return self._is_boolean
 
 
-int32 = _ConcreteDType(
+int32 = DType(
     "int32",
     "i32",
     numpy_dtype=np.int32,
@@ -129,7 +132,7 @@ int32 = _ConcreteDType(
     is_signed=True,
     is_boolean=False,
 )
-int64 = _ConcreteDType(
+int64 = DType(
     "int64",
     "i64",
     numpy_dtype=np.int64,
@@ -140,7 +143,7 @@ int64 = _ConcreteDType(
     is_signed=True,
     is_boolean=False,
 )
-uint32 = _ConcreteDType(
+uint32 = DType(
     "uint32",
     "u32",
     numpy_dtype=np.uint32,
@@ -151,7 +154,7 @@ uint32 = _ConcreteDType(
     is_signed=False,
     is_boolean=False,
 )
-uint64 = _ConcreteDType(
+uint64 = DType(
     "uint64",
     "u64",
     numpy_dtype=np.uint64,
@@ -162,7 +165,7 @@ uint64 = _ConcreteDType(
     is_signed=False,
     is_boolean=False,
 )
-float32 = _ConcreteDType(
+float32 = DType(
     "float32",
     "f32",
     numpy_dtype=np.float32,
@@ -173,7 +176,7 @@ float32 = _ConcreteDType(
     is_signed=True,
     is_boolean=False,
 )
-float64 = _ConcreteDType(
+float64 = DType(
     "float64",
     "f64",
     numpy_dtype=np.float64,
@@ -184,7 +187,7 @@ float64 = _ConcreteDType(
     is_signed=True,
     is_boolean=False,
 )
-bool_ = _ConcreteDType(
+bool_ = DType(
     "bool_",
     "bool",
     numpy_dtype=np.bool_,
@@ -195,7 +198,7 @@ bool_ = _ConcreteDType(
     is_signed=False,
     is_boolean=True,
 )
-ring64 = _ConcreteDType(
+ring64 = DType(
     "ring64",
     "ring64",
     numpy_dtype=None,
@@ -209,10 +212,11 @@ ring64 = _ConcreteDType(
 
 
 def fixed(integ, frac):
+    """Factory function for creating a fixedpoint DType."""
     for p in (integ, frac):
         if not isinstance(p, int):
             raise TypeError("Fixed-point dtype expects integers for its bounds.")
-    return _ConcreteDType(
+    return DType(
         f"fixed{integ}_{frac}",
         f"q{integ}.{frac}",
         numpy_dtype=None,
