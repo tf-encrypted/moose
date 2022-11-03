@@ -7,7 +7,7 @@ use moose::tokio;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
-use structopt::StructOpt;
+use clap::StructOpt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -42,7 +42,7 @@ fn init_tracer() {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_tracer();
     tracing::info!("starting up");
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let hosts: HashMap<String, String> = serde_json::from_str(&opt.hosts)?;
 

@@ -8,7 +8,7 @@ use moose::tokio;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::sync::Arc;
-use structopt::StructOpt;
+use clap::StructOpt;
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(about = "Run computation locally by simulating all roles as seperate identities")]
@@ -25,7 +25,7 @@ pub struct Opt {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let computation = {
         let comp_path = &opt.computation;

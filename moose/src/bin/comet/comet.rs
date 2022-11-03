@@ -6,7 +6,7 @@ use moose::prelude::*;
 use moose::storage::filesystem::AsyncFilesystemStorage;
 use moose::tokio;
 use std::sync::Arc;
-use structopt::StructOpt;
+use clap::StructOpt;
 use tonic::transport::Server;
 
 #[derive(Debug, StructOpt, Clone)]
@@ -34,7 +34,7 @@ pub struct Opt {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     if !opt.telemetry {
         tracing_subscriber::fmt::init();
     } else {
