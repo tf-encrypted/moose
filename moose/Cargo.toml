@@ -68,7 +68,7 @@ opentelemetry-jaeger = { version = "0.16", optional = true }
 parking_lot = "~0.12"
 paste = "~1.0"
 petgraph = "~0.6"
-prost = "0.9"
+prost = "~0.11"
 rand = { version = "~0.8", features = ["std", "std_rng"] }
 rayon = "~1.5"
 rmp-serde = "~1.0"
@@ -79,7 +79,7 @@ structopt = "0.3"
 thiserror = "~1.0"
 tokio = { version = "~1.17", features = ["full"] }
 toml = "0.5"
-tonic = { version = "~0.6", features = ["tls"] }
+tonic = { version = "~0.8", features = ["tls"] }
 tracing = { version = "~0.1", features = ["log"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-opentelemetry = { version = "0.17", optional = true }
@@ -87,7 +87,7 @@ nom = { version = "~7.1" }
 x509-parser = "~0.13"
 
 [build-dependencies]
-tonic-build = "~0.6"
+tonic-build = "~0.8"
 
 [dev-dependencies]
 aes = "~0.8"
