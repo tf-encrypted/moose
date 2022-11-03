@@ -528,7 +528,7 @@ pub struct PyComputation {
 
 impl PyComputation {
     pub fn from_read(computation: &[u8]) -> anyhow::Result<Self> {
-        let py_comp: PyComputation = rmp_serde::from_read_ref(&computation)?;
+        let py_comp: PyComputation = rmp_serde::from_slice(computation)?;
         Ok(py_comp)
     }
 }

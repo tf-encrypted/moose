@@ -1791,8 +1791,8 @@ pub struct OperationIndex {
 
 impl NamedComputation {
     #[tracing::instrument(skip(bytes))]
-    pub fn from_msgpack<B: AsRef<[u8]>>(bytes: B) -> Result<Self> {
-        rmp_serde::from_read_ref(&bytes).map_err(|e| Error::SerializationError(e.to_string()))
+    pub fn from_msgpack(bytes: &[u8]) -> Result<Self> {
+        rmp_serde::from_slice(bytes).map_err(|e| Error::SerializationError(e.to_string()))
     }
 
     #[tracing::instrument(skip(self))]
@@ -1981,7 +1981,7 @@ mod tests {
         cast_1 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player1)
         output_0 = Output{tag = "output_0"}: (Tensor<Float64>) -> Tensor<Float64> (cast_1) @Host(player1)"#.try_into().unwrap();
         let bytes = original.to_msgpack().unwrap();
-        let read_back = Computation::from_msgpack(bytes).unwrap();
+        let read_back = Computation::from_msgpack(&bytes).unwrap();
         assert_eq!(original.operations, read_back.operations);
     }
 

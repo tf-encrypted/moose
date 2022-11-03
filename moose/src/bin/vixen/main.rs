@@ -1,3 +1,4 @@
+use clap::Parser;
 use moose::computation::Role;
 use moose::execution::Identity;
 use moose::networking::tcpstream::TcpStreamNetworking;
@@ -7,11 +8,10 @@ use moose::tokio;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
-use clap::StructOpt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-#[derive(Debug, StructOpt, Clone)]
+#[derive(Debug, Parser, Clone)]
 pub struct Opt {
     #[structopt(long)]
     comp: String,
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let computation_bytes = std::fs::read(&opt.comp)?;
 
-    let computation = Computation::from_msgpack(computation_bytes)?;
+    let computation = Computation::from_msgpack(&computation_bytes)?;
 
     let storage = Arc::new(LocalAsyncStorage::default());
 
