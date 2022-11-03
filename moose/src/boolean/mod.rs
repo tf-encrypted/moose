@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 /// Boolean tensor abstracting over host and replicated values
 // TODO(Dragos) perhaps we can unify BoolTensor with FixedTensor
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BoolTensor<HostT, RepT> {
     Host(HostT),
     Replicated(RepT),

@@ -52,31 +52,31 @@ where
         use GateKind::*;
         match gate.kind {
             Xor => {
-                let x_wire = *gate.input_wires.get(0).unwrap();
+                let x_wire = *gate.input_wires.first().unwrap();
                 let y_wire = *gate.input_wires.get(1).unwrap();
                 let x = wires.get(x_wire).unwrap().clone().unwrap();
                 let y = wires.get(y_wire).unwrap().clone().unwrap();
 
                 let z = plc.xor(sess, &x, &y);
-                let z_wire = *gate.output_wires.get(0).unwrap();
+                let z_wire = *gate.output_wires.first().unwrap();
                 *wires.get_mut(z_wire).unwrap() = Some(z);
             }
             And => {
-                let x_wire = *gate.input_wires.get(0).unwrap();
+                let x_wire = *gate.input_wires.first().unwrap();
                 let y_wire = *gate.input_wires.get(1).unwrap();
                 let x = wires.get(x_wire).unwrap().clone().unwrap();
                 let y = wires.get(y_wire).unwrap().clone().unwrap();
 
                 let z = plc.and(sess, &x, &y);
-                let z_wire = *gate.output_wires.get(0).unwrap();
+                let z_wire = *gate.output_wires.first().unwrap();
                 *wires.get_mut(z_wire).unwrap() = Some(z);
             }
             Inv => {
-                let x_wire = *gate.input_wires.get(0).unwrap();
+                let x_wire = *gate.input_wires.first().unwrap();
                 let x = wires.get(x_wire).unwrap().clone().unwrap();
 
                 let y = plc.neg(sess, &x);
-                let y_wire = *gate.output_wires.get(0).unwrap();
+                let y_wire = *gate.output_wires.first().unwrap();
                 *wires.get_mut(y_wire).unwrap() = Some(y);
             }
         }

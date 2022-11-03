@@ -591,7 +591,7 @@ values![
 ];
 
 // HostUnit is still special. Placed unit is just a host placement.
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct HostUnit(pub HostPlacement);
 
 #[cfg(feature = "compile")]
@@ -1643,7 +1643,7 @@ pub trait Placed {
     fn placement(&self) -> std::result::Result<Self::Placement, Error>;
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Operation {
     pub name: String,
     pub kind: Operator,
@@ -1651,19 +1651,19 @@ pub struct Operation {
     pub placement: Placement,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct NamedComputation {
     pub operations: Vec<Operation>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct IndexedOperation {
     pub operator: usize,
     pub inputs: Vec<usize>,
     pub placement: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct IndexedComputation {
     pub operations: Vec<IndexedOperation>,
     pub operators: Vec<Operator>,

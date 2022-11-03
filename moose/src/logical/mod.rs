@@ -68,7 +68,7 @@ impl HasShortName for TensorShape {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T> {
     Fixed64(Fixed64T),
     Fixed128(Fixed128T),
@@ -78,7 +78,7 @@ pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>
     Uint64(Uint64T),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum AbstractShape<HostS, RepS> {
     Host(HostS),
     Replicated(RepS),

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 mod ops;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FloatTensor<HostTenT, Mir3TenT> {
     Host(HostTenT),
     Mirrored3(Mir3TenT),
