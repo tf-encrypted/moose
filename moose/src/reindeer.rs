@@ -1,4 +1,4 @@
-//! Common library (helper functions) for the reindeers.
+//! Common library (helper functions) for the reindeer.
 
 use tonic::transport::{Certificate, ClientTlsConfig, Identity, ServerTlsConfig};
 
@@ -10,7 +10,7 @@ pub fn setup_tracing(identity: &str, service_name: &str) -> Result<(), Box<dyn s
     use opentelemetry::KeyValue;
     use tracing_subscriber::{prelude::*, EnvFilter};
 
-    let tracer = opentelemetry_jaeger::new_pipeline()
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
         .with_service_name(service_name)
         .with_trace_config(
             Config::default().with_resource(Resource::new(vec![KeyValue::new(
