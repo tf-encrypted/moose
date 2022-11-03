@@ -27,7 +27,7 @@ jobs:
 
       - name: Install build dependencies.
         run: |
-          sudo apt install -y make clang libpython3-dev
+          sudo apt install -y make clang libpython3-dev protobuf-compiler
 
       - uses: Swatinem/rust-cache@v1
 
