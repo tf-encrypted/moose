@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Wrapper for values used in `SymbolicSession`s
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Symbolic<T: Placed> {
     /// The value is really symbolic
     ///
@@ -85,7 +85,7 @@ where
 }
 
 /// Handle to value produced by operation.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SymbolicHandle<P> {
     pub(crate) op: String,
     // NOTE if we had a handle to the graph we

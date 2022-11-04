@@ -1533,7 +1533,7 @@ impl RingInjectOp {
             x.0.data
                 .iter()
                 .map(|ai| {
-                    let bit = if *ai { 1 } else { 0 };
+                    let bit = u8::from(*ai);
                     Wrapping(T::from(bit)) << bit_idx
                 })
                 .collect();

@@ -2,7 +2,7 @@ use super::*;
 use crate::additive::{AdditivePlacement, AdtTensor, TruncPrProvider};
 use crate::mirrored::MirFixedTensor;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct RepFixedTensor<RepRingT> {
     pub tensor: RepRingT,
     pub fractional_precision: u32,

@@ -236,7 +236,7 @@ modelled_kernel! {
                     Self::logical_host_kernel::<_, Float64Tensor, _, _>(sess, plc, shape).map(AbstractTensor::Float64)
                 })),
                 other => {
-                    return Err(Error::UnimplementedOperator(
+                    Err(Error::UnimplementedOperator(
                         format!("Cannot build ones of type {:?}", other)))
                 },
             }
@@ -268,7 +268,7 @@ modelled_kernel! {
                     Self::logical_host_kernel::<_, Float64Tensor, _, _>(sess, plc, shape).map(AbstractTensor::Float64)
                 })),
                 other => {
-                    return Err(Error::UnimplementedOperator(
+                    Err(Error::UnimplementedOperator(
                         format!("Cannot build zeros of type {:?}", other)))
                 },
             }

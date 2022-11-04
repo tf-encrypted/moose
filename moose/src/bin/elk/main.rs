@@ -1,6 +1,6 @@
 //! CLI tool for the Moose compiler.
 
-use clap::{ArgEnum, Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use moose::compilation::compile;
 use moose::prelude::Computation;
 use moose::textual::ToTextual;
@@ -31,11 +31,11 @@ pub enum Commands {
         output: Option<PathBuf>,
 
         /// Computation format
-        #[clap(arg_enum, short, long, default_value = "textual")]
+        #[clap(value_enum, short, long, default_value = "textual")]
         input_format: ComputationFormat,
 
         /// Computation format
-        #[clap(arg_enum, short, long, default_value = "textual")]
+        #[clap(value_enum, short, long, default_value = "textual")]
         output_format: ComputationFormat,
 
         /// Comma-separated list of passes to apply in-order; default to all passes
@@ -56,7 +56,7 @@ pub enum StatsCommands {
         input: PathBuf,
 
         /// Computation format
-        #[clap(arg_enum, short, long, default_value = "textual")]
+        #[clap(value_enum, short, long, default_value = "textual")]
         input_format: ComputationFormat,
 
         /// Include placement in the category
@@ -70,7 +70,7 @@ pub enum StatsCommands {
         input: PathBuf,
 
         /// Computation format
-        #[clap(arg_enum, short, long, default_value = "textual")]
+        #[clap(value_enum, short, long, default_value = "textual")]
         input_format: ComputationFormat,
 
         /// Include placement in the category
@@ -84,7 +84,7 @@ pub enum StatsCommands {
         input: PathBuf,
 
         /// Computation format
-        #[clap(arg_enum, short, long, default_value = "textual")]
+        #[clap(value_enum, short, long, default_value = "textual")]
         input_format: ComputationFormat,
 
         /// Include operator in the category
@@ -93,7 +93,7 @@ pub enum StatsCommands {
     },
 }
 
-#[derive(Clone, Debug, ArgEnum)]
+#[derive(Clone, Debug, ValueEnum)]
 pub enum ComputationFormat {
     Bincode,
     Msgpack,
@@ -208,7 +208,7 @@ fn input_computation(input: &Path, format: &ComputationFormat) -> anyhow::Result
         }
         ComputationFormat::Msgpack => {
             let comp_raw = std::fs::read(input)?;
-            Computation::from_msgpack(comp_raw)
+            Computation::from_msgpack(&comp_raw)
                 .map_err(|e| anyhow::anyhow!("Failed to parse the input computation due to {}", e))
         }
         ComputationFormat::Bincode => {

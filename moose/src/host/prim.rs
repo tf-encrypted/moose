@@ -6,10 +6,10 @@ use aes_prng::{AesRng, RngSeed, SEED_SIZE};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct RawSeed(pub [u8; 16]);
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct HostSeed(pub RawSeed, pub HostPlacement);
 
 impl Placed for HostSeed {
@@ -33,7 +33,7 @@ impl<S: Session> PlacementPlace<S, HostSeed> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct RawPrfKey(pub [u8; 16]);
 
 impl RawPrfKey {
@@ -42,7 +42,7 @@ impl RawPrfKey {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct HostPrfKey(pub RawPrfKey, pub HostPlacement);
 
 impl Placed for HostPrfKey {

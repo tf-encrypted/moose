@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 mod ops;
 
 /// Uint64 Tensor abstracting over host and replicated values
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AbstractUint64Tensor<HostT, RepT> {
     Host(HostT),
     Replicated(RepT),

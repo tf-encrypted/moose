@@ -734,11 +734,10 @@ impl AsyncTestRuntime {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
         let val = rt.block_on(async {
-            let val = self.runtime_storage[&identity]
+            self.runtime_storage[&identity]
                 .load(&key, &SessionId::try_from("foobar").unwrap(), None, "")
                 .await
-                .unwrap();
-            val
+                .unwrap()
         });
 
         Ok(val)

@@ -4,13 +4,14 @@ build:
 
 .PHONY: pydep
 pydep:
-	pip install -r pymoose/requirements-dev.txt
+	pip install -r pymoose/requirements/base.txt -r pymoose/requirements/dev.txt
 
 .PHONY: pydep-upgrade
 pydep-upgrade:
 	pip install -U pip-tools
-	pip-compile --output-file=pymoose/requirements-dev.txt pymoose/requirements.in
-	pip install -r pymoose/requirements-dev.txt
+	CUSTOM_COMPILE_COMMAND="make pydep-upgrade" pip-compile --output-file=pymoose/requirements/base.txt pymoose/requirements/base.in
+	CUSTOM_COMPILE_COMMAND="make pydep-upgrade" pip-compile --output-file=pymoose/requirements/dev.txt pymoose/requirements/dev.in
+	pip install -r pymoose/requirements/base.txt -r pymoose/requirements/dev.txt
 
 .PHONY: pylib
 pylib:

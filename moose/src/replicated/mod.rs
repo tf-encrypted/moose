@@ -71,7 +71,7 @@ impl<R: Into<Role>> From<[R; 3]> for ReplicatedPlacement {
 }
 
 /// Secret tensor used by replicated placements
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepTensor<HostRingT> {
     pub(crate) shares: [[HostRingT; 2]; 3],
 }
@@ -141,7 +141,7 @@ impl<HostRingT> MirroredCounterpart for RepTensor<HostRingT> {
     type MirroredType = Mir3Tensor<HostRingT>;
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct RepUintTensor<RepRingT> {
     pub tensor: RepRingT,
 }
@@ -174,7 +174,7 @@ where
 }
 
 /// Public shape for replicated placements
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepShape<HostShapeT> {
     pub shapes: [HostShapeT; 3],
 }
@@ -200,7 +200,7 @@ where
 }
 
 /// Replicated bit array of fixed size
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepBitArray<RepBitTensorT, N>(RepBitTensorT, PhantomData<N>);
 
 impl<RepBitTensorT, N: Const> BitArray for RepBitArray<RepBitTensorT, N> {
