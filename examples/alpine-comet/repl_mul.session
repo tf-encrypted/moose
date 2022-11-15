@@ -1,0 +1,15 @@
+[computation]
+path = "./examples/alpine-comet/repl_mul.moose"
+format = "textual"
+
+[[roles]]
+name = "alice"
+endpoint = "70.23.34.58:50000"
+
+[[roles]]
+name = "bob"
+endpoint = "70.23.34.58:50001"
+
+[[roles]]
+name = "nitrogen"
+endpoint = "ec2-54-91-199-105.compute-1.amazonaws.com:5000"

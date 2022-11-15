@@ -1,0 +1,7 @@
+FROM rust:alpine
+
+RUN apk update && apk add --no-cache openblas-dev alpine-sdk protoc
+# g++ make musl-dev binutils autoconf automake libtool pkgconfig check-dev file patch
+RUN rustup component add rustfmt
+ENV LD_LIBRARY_PATH=/usr/lib
+RUN cargo install moose --bin comet
