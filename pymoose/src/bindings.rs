@@ -416,7 +416,6 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             compile(computation, passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })
     }
-
     Ok(())
 }
 

@@ -1,6 +1,6 @@
-op_0 = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor () @Host(alice)
+op_0 = Constant{value = HostFloat32Tensor([1.0])}: () -> HostFloat32Tensor () @Replicated(alice)
 op_1 = Constant{value = HostFloat32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> HostFloat32Tensor () @Host(alice)
 op_2 = Mul: (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor (op_0, op_1) @Host(alice)
 send_0 = Send{rendezvous_key = 00000000000000000000000000000000, receiver = "bob"}: (HostFloat32Tensor) -> HostUnit (op_2) @Host(alice)
 receive_0 = Receive{rendezvous_key = 00000000000000000000000000000000, sender = "alice"}: () -> HostFloat32Tensor () @Host(bob)
-op_3 = Output: (HostFloat32Tensor) -> HostFloat32Tensor (receive_0) @Host(bob)
+op_3 = Output{tag = "bob_mul"}: (HostFloat32Tensor) -> HostFloat32Tensor (receive_0) @Host(bob)
