@@ -204,7 +204,7 @@ To ease your development we encourage you to install the following cargo subcomm
 
 - [`expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
 
-- [`asm`](https://github.com/gnzlbg/cargo-asm) to dump assembly or LLVM IR (the latter via `cargo llvm-ir`).
+- [`asm`](https://crates.io/crates/cargo-show-asm) to dump assembly, LLVM IR, MIR or Wasm.
 
 - [`llvm-lines`](https://github.com/dtolnay/cargo-llvm-lines) to inspect code bloat.
 
