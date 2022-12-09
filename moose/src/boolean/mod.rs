@@ -204,6 +204,30 @@ impl OrOp {
     }
 }
 
+impl AndOp {
+    pub(crate) fn bool_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+        y: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementOr<S, HostT, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = match y {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        Ok(BoolTensor::Host(plc.or(sess, &x, &y)))
+    }
+}
+
+
 impl ExpandDimsOp {
     pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
         sess: &S,

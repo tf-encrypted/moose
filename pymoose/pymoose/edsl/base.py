@@ -298,6 +298,14 @@ class ConstantExpression(Expression):
 
 
 @dataclass
+class BinaryAndExpression(Expression):
+    op_name: str
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class BinaryOpExpression(Expression):
     op_name: str
 
@@ -499,6 +507,12 @@ class LessExpression(Expression):
 
 @dataclass
 class GreaterExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class BitwiseAndExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -753,6 +767,14 @@ def greater(lhs, rhs, placement=None):
         vtype=ty.TensorType(dtype=dtypes.bool_),
     )
 
+def logical_and(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = _materialize_placement_arg(placement)
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "and")
+    return BinaryOpExpression(
+        op_name="and", placement=placement, inputs=[lhs, rhs], vtype=vtype
+    )
 
 def logical_or(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)

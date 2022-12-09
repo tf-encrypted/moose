@@ -3035,6 +3035,44 @@ impl OrOp {
     }
 }
 
+impl AndOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementAnd<S, BoolT, BoolT, BoolT>,
+    {
+        use AbstractTensor::*;
+        match (&x, &y) {
+            (Bool(x), Bool(y)) => {
+                let result = plc.and(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed64(_), _)
+            | (Fixed128(_), _)
+            | (Float32(_), _)
+            | (Float64(_), _)
+            | (Uint64(_), _)
+            | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
+                "Missing host less op for {:?} and {:?}",
+                x.ty_desc(),
+                y.ty_desc()
+            ))),
+        }
+    }
+}
+
 impl MaximumOp {
     pub(crate) fn rep_logical_kernel<
         S: Session,

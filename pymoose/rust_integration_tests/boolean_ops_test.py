@@ -40,6 +40,7 @@ class BooleanLogicExample(parameterized.TestCase):
             with alice:
                 zl_alice = pm.logical_or(z_less, z_less)
                 zg_alice = pm.logical_or(z_greater, z_greater)
+                zl_alice = pm.logical_and(zl_alice, zl_alice)
                 zm_alice = pm.cast(z_mux, dtype=pm.float64)
 
                 y_alice = pm.load(ya_uri, dtype=pm.float64)

@@ -37,6 +37,7 @@ from pymoose.edsl.base import less
 from pymoose.edsl.base import load
 from pymoose.edsl.base import log
 from pymoose.edsl.base import log2
+from pymoose.edsl.base import logical_and
 from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import maximum
 from pymoose.edsl.base import mean
@@ -108,6 +109,7 @@ __all__ = [
     LocalMooseRuntime,
     log,
     log2,
+    logical_and,
     logical_or,
     maximum,
     mean,

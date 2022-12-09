@@ -233,6 +233,10 @@ class StridedSliceOperation(Operation):
 class BitwiseOrOperation(Operation):
     pass
 
+@dataclass
+class BitwiseAndOperation(Operation):
+    pass
+
 
 @dataclass
 class MuxOperation(Operation):

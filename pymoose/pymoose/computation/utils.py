@@ -18,6 +18,7 @@ SUPPORTED_TYPES = [
     ops.AddOperation,
     ops.ArgmaxOperation,
     ops.AtLeast2DOperation,
+    ops.BitwiseAndOperation,
     ops.BitwiseOrOperation,
     ops.CastOperation,
     ops.ConcatenateOperation,

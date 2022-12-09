@@ -278,6 +278,7 @@ class AstTracer:
             "mul": ops.MulOperation,
             "div": ops.DivOperation,
             "dot": ops.DotOperation,
+            "and": ops.BitwiseAndOperation,
             "or": ops.BitwiseOrOperation,
             "less": ops.LessOperation,
             "greater": ops.GreaterOperation,
