@@ -767,6 +767,7 @@ def greater(lhs, rhs, placement=None):
         vtype=ty.TensorType(dtype=dtypes.bool_),
     )
 
+
 def logical_and(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
@@ -775,6 +776,7 @@ def logical_and(lhs, rhs, placement=None):
     return BinaryOpExpression(
         op_name="and", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
+
 
 def logical_or(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)

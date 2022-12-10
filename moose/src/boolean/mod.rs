@@ -251,7 +251,6 @@ impl AndOp {
     }
 }
 
-
 impl ExpandDimsOp {
     pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
         sess: &S,

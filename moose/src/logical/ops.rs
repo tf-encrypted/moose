@@ -3035,8 +3035,8 @@ impl OrOp {
     }
 }
 
-    impl AndOp {
-        pub(crate) fn logical_rep_kernel<
+impl AndOp {
+    pub(crate) fn logical_rep_kernel<
         S: Session,
         Fixed64T,
         Fixed128T,
@@ -3055,7 +3055,7 @@ impl OrOp {
     {
         use AbstractTensor::*;
         match (&x, &y) {
-            (Bool(x), Bool(y) )=> {
+            (Bool(x), Bool(y)) => {
                 let result = plc.and(sess, x, y);
                 Ok(Bool(result))
             }

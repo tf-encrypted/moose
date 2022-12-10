@@ -38,7 +38,7 @@ def psi_and_agg():
 
     with rep:
         # Aggregation: average ratio between x_a_sub & x_b_sub
-        res  = pm.div(pm.sum(x_a_sub, axis=0), pm.sum(x_b_sub, axis=0))
+        res = pm.div(pm.sum(x_a_sub, axis=0), pm.sum(x_b_sub, axis=0))
 
     with alice:
         res = pm.cast(res, dtype=pm.float64)

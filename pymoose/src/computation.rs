@@ -219,7 +219,6 @@ struct PyBitwiseAndOperation {
     signature: PyOpSignature,
 }
 
-
 #[derive(Deserialize, Debug)]
 struct PyBitwiseOrOperation {
     name: String,
