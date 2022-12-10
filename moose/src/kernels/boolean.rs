@@ -48,10 +48,12 @@ modelled_kernel! {
     PlacementAnd::and, AndOp,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::logical_host_kernel),
-        (HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [concrete] Self::bool_kernel),
+        (HostPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [concrete] Self::bool_host_kernel),
         (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::host_kernel),
         (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),
         (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::host_ring_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [concrete] Self::logical_rep_kernel),
+        (ReplicatedPlacement, (BooleanTensor, BooleanTensor) -> BooleanTensor => [concrete] Self::bool_rep_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => [transparent] Self::rep_kernel),
     ]
 }

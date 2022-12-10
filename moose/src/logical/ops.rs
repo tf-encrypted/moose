@@ -3035,7 +3035,43 @@ impl OrOp {
     }
 }
 
-impl AndOp {
+    impl AndOp {
+        pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementAnd<S, BoolT, BoolT, BoolT>,
+    {
+        use AbstractTensor::*;
+        match (&x, &y) {
+            (Bool(x), Bool(y) )=> {
+                let result = plc.and(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed64(_), _)
+            | (Fixed128(_), _)
+            | (Float32(_), _)
+            | (Float64(_), _)
+            | (Uint64(_), _)
+            | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated logical and op for {:?} and {:?}",
+                x.ty_desc(),
+                y.ty_desc(),
+            ))),
+        }
+    }
+
     pub(crate) fn logical_host_kernel<
         S: Session,
         Fixed64T,
@@ -3065,7 +3101,7 @@ impl AndOp {
             | (Float64(_), _)
             | (Uint64(_), _)
             | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
-                "Missing host less op for {:?} and {:?}",
+                "Missing host for lgical and op for {:?} and {:?}",
                 x.ty_desc(),
                 y.ty_desc()
             ))),
