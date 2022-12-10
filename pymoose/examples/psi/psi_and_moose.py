@@ -17,23 +17,26 @@ def psi_and_agg():
     with alice:
         x_a = pm.load("x_a", dtype=pm.float64)
         x_a = pm.cast(x_a, dtype=FIXED)
-        in_this_db_a = pm.load("in_this_db_a", dtype=pm.bool_)
+        user_id_available_a = pm.load("user_id_available_a", dtype=pm.bool_)
 
     with bob:
         x_b = pm.load("x_b", dtype=pm.float64)
-        in_this_db_b = pm.load("in_this_db_b", dtype=pm.bool_)
+        user_id_available_b = pm.load("user_id_available_b", dtype=pm.bool_)
 
-        # Check if the key is in both Alice and Bob's datasets
+        # Compute logical And between user_id_available from Alice and Bob.
+        # If it returns 1, it means the User ID was in Alice and Bob's datasets
         # TODO implemented logical_and on host
-        intersect_bool = pm.logical_and(in_this_db_a, in_this_db_b)
+        exist_in_alice_and_bob_bool = pm.logical_and(
+            user_id_available_a, user_id_available_b
+        )
 
-        # Extract data subset from Bob's data based on intersected keys
-        x_b_sub = pm.index_axis(x_b, axis=0, index=intersect_bool)
+        # Filter Bob's feature to keep only records where exist_in_alice_and_bob_bool returned 1
+        x_b_sub = pm.index_axis(x_b, axis=0, index=exist_in_alice_and_bob_bool)
         x_b_sub = pm.cast(x_b_sub, dtype=FIXED)
 
     with alice:
-        # Extract data subsets from Alice's data based on intersected keys
-        x_a_sub = pm.index_axis(x_b, axis=0, index=intersect_bool)
+        # Filter Alice's feature to keep only records where exist_in_alice_and_bob_bool returned 1
+        x_a_sub = pm.index_axis(x_b, axis=0, index=exist_in_alice_and_bob_bool)
         x_a_sub = pm.cast(x_a_sub, dtype=FIXED)
 
     with rep:
@@ -52,13 +55,13 @@ if __name__ == "__main__":
 
     x_a = np.load(_DATA_DIR / "x_a.npy")
     x_b = np.load(_DATA_DIR / "x_b.npy")
-    in_this_db_a = np.load(_DATA_DIR / "in_this_db_a.npy")
-    in_this_db_b = np.load(_DATA_DIR / "in_this_db_b.npy")
+    user_id_available_a = np.load(_DATA_DIR / "user_id_available_a.npy")
+    user_id_available_b = np.load(_DATA_DIR / "user_id_available_b.npy")
 
     executors_storage = {
-        "alice": {"x_a": x_a, "in_this_db_a": in_this_db_a},
-        "bob": {"x_b": x_b, "in_this_db_b": in_this_db_b},
-    }
+    "alice": {"x_a": x_a, "user_id_available_a": user_id_available_a},
+    "bob": {"x_b": x_b, "user_id_available_b": user_id_available_b},
+}
 
     runtime = pm.LocalMooseRuntime(
         identities=["alice", "bob", " carole"],
