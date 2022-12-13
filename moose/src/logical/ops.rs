@@ -1865,6 +1865,46 @@ impl IndexAxisOp {
     }
 }
 
+impl SelectOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementSelect<S, BoolT, Float32T, Float32T>,
+        HostPlacement: PlacementSelect<S, BoolT, Float64T, Float64T>,
+        // HostPlacement: PlacementIndexAxis<S, Fixed64T, Fixed64T>,
+        // HostPlacement: PlacementIndexAxis<S, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementIndexAxis<S, BoolT, BoolT>,
+    {
+        use AbstractTensor::*;
+        match (index, x) {
+            (Bool(index), Float32(x)) => {
+                let z = plc.select(sess, axis, &index, &x);
+                Ok(AbstractTensor::Float32(z))
+            }
+            (Bool(index), Float64(x)) => {
+                let z = plc.select(sess, axis, &index, &x);
+                Ok(AbstractTensor::Float64(z))
+            }
+            (_, _) => Err(Error::UnimplementedOperator(format!(
+                "Select op (host) is unsupported."
+            ))),
+        }
+    }
+}
+
 impl ConcatOp {
     pub(crate) fn logical_host_kernel<
         S: Session,

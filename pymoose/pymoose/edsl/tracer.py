@@ -673,6 +673,29 @@ class AstTracer:
             )
         )
 
+    def visit_SelectExpression(self, select_expression):
+        assert isinstance(select_expression, expr.SelectExpression)
+        x_expression, index_expression = select_expression.inputs
+        x_operation = self.visit(x_expression)
+        index_operation = self.visit(index_expression)
+
+        placement = self.visit_placement_expression(select_expression.placement)
+        return self.computation.add_operation(
+            ops.SelectOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("select"),
+                axis=select_expression.axis,
+                inputs={"x": x_operation.name, "index": index_operation.name},
+                signature=ops.OpSignature(
+                    input_types={
+                        "x": x_operation.return_type,
+                        "index": index_operation.return_type,
+                    },
+                    return_type=select_expression.vtype,
+                ),
+            )
+        )
+
     def visit_SliceExpression(self, slice_expression):
         assert isinstance(slice_expression, expr.SliceExpression)
         (x_expression,) = slice_expression.inputs

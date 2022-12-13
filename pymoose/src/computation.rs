@@ -32,6 +32,7 @@ enum PyOperation {
     ReshapeOperation(PyReshapeOperation),
     ShapeOperation(PyShapeOperation),
     IndexAxisOperation(PyIndexAxisOperation),
+    SelectOperation(PySelectOperation),
     SliceOperation(PySliceOperation),
     StridedSliceOperation(PyStridedSliceOperation),
     SqueezeOperation(PySqueezeOperation),
@@ -260,6 +261,15 @@ struct PyIndexAxisOperation {
     signature: PyOpSignature,
     axis: usize,
     index: usize,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySelectOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    signature: PyOpSignature,
+    axis: usize,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1031,6 +1041,22 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    SelectOperation(op) => Ok(Operation {
+                        kind: SelectOp {
+                            sig: map_signature(
+                                &op.signature,
+                                &placements,
+                                &op.placement_name,
+                                &["index", "x"],
+                            )?,
+                            axis: op.axis,
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["index", "x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,

@@ -1209,6 +1209,7 @@ impl ToTextual for Operator {
             Softmax(op) => op.to_textual(),
             AtLeast2D(op) => op.to_textual(),
             IndexAxis(op) => op.to_textual(),
+            Select(op) => op.to_textual(),
             Slice(op) => op.to_textual(),
             Ones(op) => op.to_textual(),
             Zeros(op) => op.to_textual(),

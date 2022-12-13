@@ -483,6 +483,14 @@ class IndexAxisExpression(Expression):
 
 
 @dataclass
+class SelectExpression(Expression):
+    axis: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SliceExpression(Expression):
     begin: int
     end: int
@@ -973,6 +981,21 @@ def index_axis(x, axis, index, placement=None):
     placement = _materialize_placement_arg(placement)
     return IndexAxisExpression(
         placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
+    )
+
+
+def select(x, axis, index, placement=None):
+    assert isinstance(x, Expression)
+    assert isinstance(index, Expression)
+    if not isinstance(axis, int):
+        raise ValueError(
+            "`axis` argument must be int greater or equal to 0, found "
+            f"{axis} of type {type(axis)}"
+        )
+
+    placement = _materialize_placement_arg(placement)
+    return SelectExpression(
+        placement=placement, inputs=[x, index], axis=axis, vtype=x.vtype
     )
 
 

@@ -219,6 +219,11 @@ class IndexAxisOperation(Operation):
 
 
 @dataclass
+class SelectOperation(Operation):
+    axis: int
+
+
+@dataclass
 class SliceOperation(Operation):
     begin: int
     end: int

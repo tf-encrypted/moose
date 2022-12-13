@@ -46,6 +46,7 @@ SUPPORTED_TYPES = [
     ops.OutputOperation,
     ops.SigmoidOperation,
     ops.ReluOperation,
+    ops.SelectOperation,
     ops.SoftmaxOperation,
     ops.ReshapeOperation,
     ops.SaveOperation,

@@ -50,6 +50,7 @@ from pymoose.edsl.base import relu
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
+from pymoose.edsl.base import select
 from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
 from pymoose.edsl.base import sliced
@@ -125,6 +126,7 @@ __all__ = [
     reshape,
     ring64,
     save,
+    select,
     shape,
     sliced,
     softmax,

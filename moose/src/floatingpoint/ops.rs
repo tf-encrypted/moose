@@ -465,6 +465,33 @@ impl IndexAxisOp {
     }
 }
 
+impl SelectOp {
+    pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: BoolTensor<HostT, RepT>,
+        x: FloatTensor<HostFloatT, MirroredT>,
+    ) -> Result<FloatTensor<HostFloatT, MirroredT>>
+    where
+        HostPlacement: PlacementSelect<S, HostT, HostFloatT, HostFloatT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+            FloatTensor::Mirrored3(_v) => unimplemented!(),
+        };
+
+        let index = match index {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+
+        let z = plc.select(sess, axis, &index, &x);
+        Ok(FloatTensor::Host(z))
+    }
+}
+
 impl ExpandDimsOp {
     pub(crate) fn float_host_kernel<S: Session, HostFloatT, MirroredT>(
         sess: &S,
