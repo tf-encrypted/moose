@@ -862,6 +862,7 @@ operators![
     RingFixedpointMean,
     Sample,
     SampleSeeded,
+    Select,
     Send,
     Save,
     Shape,
@@ -1009,6 +1010,14 @@ pub struct IndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(
+    Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug, ShortName, ToTextual, FromTextual,
+)]
+pub struct SelectOp {
+    pub sig: Signature,
+    pub axis: usize,
 }
 
 #[derive(

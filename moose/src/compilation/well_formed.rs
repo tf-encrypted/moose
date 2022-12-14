@@ -101,6 +101,7 @@ pub fn well_formed(comp: Computation) -> anyhow::Result<Computation> {
             Greater(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             IndexAxis(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Index(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
+            Select(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Sigmoid(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Maximum(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),
             Softmax(op) => DispatchKernel::<SymbolicSession, _>::compile(op, plc).err(),

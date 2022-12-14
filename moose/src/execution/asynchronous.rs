@@ -429,6 +429,7 @@ impl DispatchKernel<AsyncSession, Value> for Operator {
             RingInject(op) => DispatchKernel::compile(op, plc),
             Sample(op) => DispatchKernel::compile(op, plc),
             SampleSeeded(op) => DispatchKernel::compile(op, plc),
+            Select(op) => DispatchKernel::compile(op, plc),
             Shape(op) => DispatchKernel::compile(op, plc),
             Share(op) => DispatchKernel::compile(op, plc),
             Shl(op) => DispatchKernel::compile(op, plc),

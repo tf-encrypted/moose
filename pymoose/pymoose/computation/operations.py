@@ -219,6 +219,11 @@ class IndexAxisOperation(Operation):
 
 
 @dataclass
+class SelectOperation(Operation):
+    axis: int
+
+
+@dataclass
 class SliceOperation(Operation):
     begin: int
     end: int
@@ -231,6 +236,11 @@ class StridedSliceOperation(Operation):
 
 @dataclass
 class BitwiseOrOperation(Operation):
+    pass
+
+
+@dataclass
+class BitwiseAndOperation(Operation):
     pass
 
 

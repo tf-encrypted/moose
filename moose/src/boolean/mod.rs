@@ -204,6 +204,53 @@ impl OrOp {
     }
 }
 
+impl AndOp {
+    pub(crate) fn bool_host_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: BoolTensor<HostT, RepT>,
+        y: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        HostPlacement: PlacementAnd<S, HostT, HostT, HostT>,
+        HostPlacement: PlacementReveal<S, RepT, HostT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        let y = match y {
+            BoolTensor::Host(v) => v,
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+        };
+        Ok(BoolTensor::Host(plc.and(sess, &x, &y)))
+    }
+
+    pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: BoolTensor<HostT, RepT>,
+        y: BoolTensor<HostT, RepT>,
+    ) -> Result<BoolTensor<HostT, RepT>>
+    where
+        ReplicatedPlacement: PlacementAnd<S, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementShare<S, HostT, RepT>,
+    {
+        let x = match x {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+
+        let y = match y {
+            BoolTensor::Host(v) => plc.share(sess, &v),
+            BoolTensor::Replicated(v) => v,
+        };
+
+        let result = plc.and(sess, &x, &y);
+        Ok(BoolTensor::Replicated(result))
+    }
+}
+
 impl ExpandDimsOp {
     pub(crate) fn bool_rep_kernel<S: Session, HostT, RepT>(
         sess: &S,
