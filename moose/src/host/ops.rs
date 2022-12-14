@@ -628,33 +628,6 @@ impl<T: LinalgScalar> HostTensor<T> {
     }
 }
 
-impl<T: LinalgScalar> HostRingTensor<T> {
-    fn select(&self, axis: usize, index: HostBitTensor) -> Result<HostRingTensor<T>> {
-        if axis >= self.0.ndim() {
-            return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
-                self.0.ndim()
-            )));
-        }
-
-        let axis = Axis(axis);
-        let index_bool = index.0.data;
-        let mut index = Vec::new();
-
-        for (idx, val) in index_bool.iter().enumerate() {
-            if *val {
-                index.push(idx)
-            }
-        }
-        let result = self.0.select(axis, index.as_slice());
-        Ok(HostRingTensor(
-            result.to_owned().into_shared(),
-            self.1.clone(),
-        ))
-    }
-}
-
 impl<T: Clone> HostTensor<T> {
     fn slice(&self, info: SliceInfo) -> Result<HostTensor<T>> {
         if info.0.len() != self.0.ndim() {
@@ -689,6 +662,33 @@ impl<T: Clone> HostRingTensor<T> {
         let axis = Axis(axis);
         let result = self.0.index_axis(axis, index);
         Ok(HostRingTensor(result.to_owned().into_shared(), self.1))
+    }
+}
+
+impl<T: LinalgScalar> HostRingTensor<T> {
+    fn select(&self, axis: usize, index: HostBitTensor) -> Result<HostRingTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+
+        let axis = Axis(axis);
+        let index_bool = index.0.data;
+        let mut index = Vec::new();
+
+        for (idx, val) in index_bool.iter().enumerate() {
+            if *val {
+                index.push(idx)
+            }
+        }
+        let result = self.0.select(axis, index.as_slice());
+        Ok(HostRingTensor(
+            result.to_owned().into_shared(),
+            self.1.clone(),
+        ))
     }
 }
 
