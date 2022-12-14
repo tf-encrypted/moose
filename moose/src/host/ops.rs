@@ -628,6 +628,30 @@ impl<T: LinalgScalar> HostTensor<T> {
     }
 }
 
+impl<T: LinalgScalar> HostRingTensor<T> {
+    fn select(&self, axis: usize, index: HostBitTensor) -> Result<HostRingTensor<T>> {
+        if axis >= self.0.ndim() {
+            return Err(Error::InvalidArgument(format!(
+                "axis too large in index axis, used axis {} with dimension {}",
+                axis,
+                self.0.ndim()
+            )));
+        }
+
+        let axis = Axis(axis);
+        let index_bool = index.0.data;
+        let mut index = Vec::new();
+
+        for (idx, val) in index_bool.iter().enumerate() {
+            if *val {
+                index.push(idx)
+            }
+        }
+        let result = self.0.select(axis, index.as_slice());
+        Ok(HostRingTensor(result.to_owned().into_shared(), self.1.clone()))
+    }
+}
+
 impl<T: Clone> HostTensor<T> {
     fn slice(&self, info: SliceInfo) -> Result<HostTensor<T>> {
         if info.0.len() != self.0.ndim() {
@@ -774,6 +798,23 @@ impl SelectOp {
     ) -> Result<HostTensor<T>>
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostBitTensor>,
+    {
+        let x = plc.place(sess, x);
+        let index = plc.place(sess, index);
+
+        x.select(axis, index)
+    }
+
+    pub(crate) fn host_ring_kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: HostBitTensor,
+        x: HostRingTensor<T>,
+    ) -> Result<HostRingTensor<T>>
+    where
+        HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
         HostPlacement: PlacementPlace<S, HostBitTensor>,
     {
         let x = plc.place(sess, x);
