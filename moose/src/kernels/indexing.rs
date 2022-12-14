@@ -57,14 +57,12 @@ pub trait PlacementSelect<S: Session, I, T, O> {
 modelled_kernel! {
     PlacementSelect::select, SelectOp{axis: usize},
     [
-        // (HostPlacement, (BooleanTensor,BooleanTensor) -> BooleanTensor => [concrete] Self::bool_host_kernel),
         (HostPlacement, (BooleanTensor, Float32Tensor) -> Float32Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (BooleanTensor, Float64Tensor) -> Float64Tensor => [concrete] Self::float_host_kernel),
         (HostPlacement, (BooleanTensor, Fixed64Tensor) -> Fixed64Tensor => [concrete] Self::fixed_host_kernel),
         (HostPlacement, (BooleanTensor, Fixed128Tensor) -> Fixed128Tensor => [concrete] Self::fixed_host_kernel),
         (HostPlacement, (HostBitTensor, HostFixed64Tensor) -> HostFixed64Tensor => [hybrid]  Self::hostfixed_kernel),
         (HostPlacement, (HostBitTensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
-        // (HostPlacement, (BooleanTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::host_bit_kernel),
         (HostPlacement, (HostBitTensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::host_float_kernel),
         (HostPlacement, (HostBitTensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::host_float_kernel),
         (HostPlacement, (HostBitTensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::host_ring_kernel),

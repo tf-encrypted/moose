@@ -648,7 +648,10 @@ impl<T: LinalgScalar> HostRingTensor<T> {
             }
         }
         let result = self.0.select(axis, index.as_slice());
-        Ok(HostRingTensor(result.to_owned().into_shared(), self.1.clone()))
+        Ok(HostRingTensor(
+            result.to_owned().into_shared(),
+            self.1.clone(),
+        ))
     }
 }
 
