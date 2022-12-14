@@ -985,6 +985,8 @@ def index_axis(x, axis, index, placement=None):
 
 
 def select(x, axis, index, placement=None):
+    # TODO (Yann) extend kernels to support tuple of ints for axis
+    # and multiple index
     assert isinstance(x, Expression)
     assert isinstance(index, Expression)
     if not isinstance(axis, int):
