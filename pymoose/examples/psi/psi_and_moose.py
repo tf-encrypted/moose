@@ -28,12 +28,14 @@ def psi_and_agg():
             user_id_available_a, user_id_available_b
         )
 
-        # # Filter Bob's feature to keep only records where exist_in_alice_and_bob_bool returned 1
+        # Filter Bob's feature to keep only records where exist_in_alice_and_bob_bool
+        # returned 1
         x_b_sub = pm.select(x_b, axis=0, index=exist_in_alice_and_bob_bool)
         x_b_sub = pm.cast(x_b_sub, dtype=FIXED)
 
     with alice:
-        # Filter Alice's feature to keep only records where exist_in_alice_and_bob_bool returned 1
+        # Filter Alice's feature to keep only records where exist_in_alice_and_bob_bool
+        # returned 1
         x_a_sub = pm.select(x_a, axis=0, index=exist_in_alice_and_bob_bool)
         x_a_sub = pm.cast(x_a_sub, dtype=FIXED)
 
