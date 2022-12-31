@@ -7,6 +7,6 @@ isort
 maturin
 msgpack
 numpy
-onnx~=1.10.0
+onnx~=1.13
 pytest
-wheel~=0.36.2
+wheel

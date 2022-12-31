@@ -18,7 +18,7 @@ classifiers = [
 urls = {repository = "https://github.com/tf-encrypted/moose"}
 dependencies = [
     "numpy",
-    "msgpack-python",
+    "msgpack",
 ]
 
 [build-system]
