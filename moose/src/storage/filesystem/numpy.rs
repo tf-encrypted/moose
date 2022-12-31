@@ -249,11 +249,7 @@ fn descr_to_dtype(descr: &[char]) -> Result<Ty> {
     }
 
     // we can ignore byte order marks to get the dtype
-    let dtype_start = if descr[0] == '<' || descr[0] == '>' {
-        1
-    } else {
-        0
-    };
+    let dtype_start = usize::from(descr[0] == '<' || descr[0] == '>');
 
     let letter_code = descr
         .get(dtype_start)

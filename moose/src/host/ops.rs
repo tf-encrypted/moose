@@ -982,7 +982,6 @@ impl SumOp {
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        let axis = axis.map(|a| a as usize);
         let x = plc.place(sess, x);
         x.sum(axis)
     }
@@ -999,7 +998,6 @@ impl SumOp {
         Wrapping<T>: std::ops::Add<Wrapping<T>, Output = Wrapping<T>>,
         HostPlacement: PlacementPlace<S, HostRingTensor<T>>,
     {
-        let axis = axis.map(|a| a as usize);
         let x = plc.place(sess, x);
         x.sum(axis)
     }
@@ -1533,7 +1531,7 @@ impl RingInjectOp {
             x.0.data
                 .iter()
                 .map(|ai| {
-                    let bit = if *ai { 1 } else { 0 };
+                    let bit = u8::from(*ai);
                     Wrapping(T::from(bit)) << bit_idx
                 })
                 .collect();

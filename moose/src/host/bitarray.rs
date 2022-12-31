@@ -24,7 +24,7 @@ fn do_collapse_axis<D: Dimension>(dims: &mut D, strides: &D, axis: usize, index:
         *dims
     );
     dims.slice_mut()[axis] = 1;
-    (index as isize * (stride as isize)) as isize
+    index as isize * stride as isize
 }
 
 impl BitArrayRepr {

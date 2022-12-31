@@ -224,7 +224,7 @@ pub fn parse_session_config_file_with_computation(
             }
             ComputationFormat::Bincode => {
                 let comp_raw = std::fs::read(comp_path)?;
-                Computation::from_bincode(&comp_raw)?
+                Computation::from_bincode(comp_raw)?
             }
         }
     };

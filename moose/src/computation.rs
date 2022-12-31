@@ -1841,7 +1841,7 @@ impl NamedComputation {
 
     #[deprecated]
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
-        Self::from_msgpack(&bytes)
+        Self::from_msgpack(bytes)
     }
 
     #[deprecated]
