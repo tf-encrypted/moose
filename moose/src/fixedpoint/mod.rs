@@ -114,7 +114,7 @@ where
 
         // Exclude coefficients under precision
         for coeff in coeffs.iter().rev() {
-            if *coeff < 2f64.powi(-(x.fractional_precision() as i32 + 1)) as f64 {
+            if *coeff < 2f64.powi(-(x.fractional_precision() as i32 + 1)) {
                 degree -= 1
             } else {
                 break;

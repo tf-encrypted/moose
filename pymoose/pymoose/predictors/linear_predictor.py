@@ -9,6 +9,8 @@ from pymoose.predictors import predictor_utils
 
 
 class PostTransform(Enum):
+    """Variants of output processing for linear classification."""
+
     NONE = 1
     SIGMOID = 2
     SOFTMAX = 3
@@ -30,12 +32,14 @@ class LinearPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
 
     @classmethod
     def bias_trick(cls, x, plc, dtype):
+        """Construct a vector of 1s broadcastable to an input matrix ``x``."""
         bias_shape = pm.shape(x, placement=plc)[0:1]
         bias = pm.ones(bias_shape, dtype=pm.float64, placement=plc)
         reshaped_bias = pm.expand_dims(bias, 1, placement=plc)
         return pm.cast(reshaped_bias, dtype=dtype, placement=plc)
 
     def predictor_fn(self, x, fixedpoint_dtype):
+        """Compute the core logic of a linear predictor function."""
         if self.intercepts is not None:
             w = self.fixedpoint_constant(
                 np.concatenate([self.intercepts.T, self.coeffs], axis=1).T,
@@ -54,17 +58,36 @@ class LinearPredictor(predictor.Predictor, metaclass=abc.ABCMeta):
         return y
 
     def __call__(self, x, fixedpoint_dtype=predictor_utils.DEFAULT_FIXED_DTYPE):
+        """Compute a single pass of the linear model."""
         y = self.predictor_fn(x, fixedpoint_dtype)
         return self.post_transform(y)
 
 
 class LinearRegressor(LinearPredictor):
+    """Linear regression predictor interface.
+
+    Args:
+        coeffs: Array-like convertible to a (n_outputs, n_weights)-shaped ndarray.
+        intercepts: Optional array-like convertible to a vector.
+    """
+
     def post_transform(self, y):
-        # no-op for linear regression models
+        """Applies no-op to linear predictor function output."""
         return y
 
     @classmethod
     def from_onnx(cls, model_proto):
+        """Construct LinearRegressor from a parsed ONNX model.
+
+        Args:
+            model_proto: An ONNX ModelProto containing a LinearRegressor operator node.
+
+        Returns:
+            A LinearRegressor with weighhts and bias terms loaded from the ONNX model.
+
+        Raises:
+            ValueError if ONNX graph is missing expected nodes.
+        """
         lr_node = predictor_utils.find_node_in_model_proto(
             model_proto, "LinearRegressor", enforce=False
         )
@@ -125,9 +148,16 @@ class LinearRegressor(LinearPredictor):
 
 
 class LinearClassifier(LinearPredictor):
-    def __init__(
-        self, coeffs, intercepts=None, post_transform=None, transform_output=True
-    ):
+    """Linear classifier predictor interface.
+
+    Args:
+        coeffs: Array-like convertible to a (n_outputs, n_weights)-shaped ndarray.
+        intercepts: Optional array-like convertible to a vector.
+        post_transform: a PostTransform enum variant describing how to convert the raw
+            linear model scores into probabilistic classification outputs.
+    """
+
+    def __init__(self, coeffs, intercepts=None, post_transform=None):
         super().__init__(coeffs, intercepts)
         n_classes = self.coeffs.shape[0]
         # infer post_transform
@@ -146,7 +176,20 @@ class LinearClassifier(LinearPredictor):
 
     @classmethod
     def from_onnx(cls, model_proto):
-        # parse LinearClassifier node
+        """Construct LinearClassifier from a parsed ONNX model.
+
+        Args:
+            model_proto: An ONNX ModelProto containing a LinearClassifier operator node.
+
+        Returns:
+            A LinearClassifier with parameters and model configuration loaded from the
+            ONNX model.
+
+        Raises:
+            ValueError if ONNX graph is missing expected nodes.
+            RuntimeError if ONNX LinearClassifier node has an unsupported post-transform
+                function attribute.
+        """
         lc_node = predictor_utils.find_node_in_model_proto(
             model_proto, "LinearClassifier", enforce=False
         )
@@ -235,9 +278,24 @@ class LinearClassifier(LinearPredictor):
         )
 
     def post_transform(self, y):
+        """Applies the classifier's post transform function to a tensor.
+
+        Actual function used depends on value of ``PostTransform`` and number of classes
+        provided at instantiation.
+
+        Args:
+            y: A tensor
+
+        Returns:
+            A tensor.
+        """
         return self._post_transform(y)
 
     def _normalized_sigmoid(self, x, axis):
+        """
+        For some sklearn linear classifiers, this is used to get values that sum to one
+        instead of the usual softmax.
+        """
         y = pm.sigmoid(x)
         y_sum = pm.expand_dims(pm.sum(y, axis), axis)
         return pm.div(y, y_sum)

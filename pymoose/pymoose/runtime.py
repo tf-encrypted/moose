@@ -79,16 +79,16 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
 
 
 class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
-    """Moose runtime backed by gRPC choreography."""
+    """Moose runtime backed by gRPC choreography.
+
+    Creates a Moose runtime backed by a fixed set of gRPC servers.
+
+    Args:
+        identities: Mapping of identities (e.g. host placement identifiers) to gRPC
+            host addresses.
+    """
 
     def __new__(cls, identities: Dict):
-        """Creates a runtime with a fixed cluster of gRPC servers.
-
-        Args:
-            identities: Mapping of identities (e.g. host placement identifiers) to gRPC
-                host addresses.
-        """
-
         identities = {
             role.name if isinstance(role, HostPlacementExpression) else role: addr
             for role, addr in identities.items()

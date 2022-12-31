@@ -610,17 +610,14 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 
 fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
     match constant_value {
-        PyConstant::ShapeConstant { value } => {
-            Ok(RawShape(value.iter().map(|i| *i as usize).collect()).into())
-        }
+        PyConstant::ShapeConstant { value } => Ok(RawShape(value.clone()).into()),
         PyConstant::StringConstant { value } => Ok(Constant::String(String::from(value))),
         PyConstant::TensorConstant { value } => match value {
             PyNdarray::float32 {
                 ref items,
                 ref shape,
             } => {
-                let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let tensor = ArrayD::from_shape_vec(shape.clone(), items.clone())?;
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostFloat32Tensor(plc.from_raw(tensor)))
             }
@@ -628,8 +625,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 ref items,
                 ref shape,
             } => {
-                let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let tensor = ArrayD::from_shape_vec(shape.clone(), items.clone())?;
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostFloat64Tensor(plc.from_raw(tensor)))
             }
@@ -637,8 +633,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
                 ref items,
                 ref shape,
             } => {
-                let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                let tensor = ArrayD::from_shape_vec(shape.clone(), items.clone())?;
                 let plc = HostPlacement::from("TODO");
                 Ok(Constant::HostUint64Tensor(plc.from_raw(tensor)))
             }
@@ -648,7 +643,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
             } => {
                 use ::moose::host::BitArrayRepr;
                 use ::moose::host::HostBitTensor;
-                let shape: RawShape = RawShape(shape.iter().map(|i| *i as usize).collect());
+                let shape: RawShape = RawShape(shape.clone());
                 let items: Vec<u8> = items.iter().map(|x| *x as u8).collect();
                 let tensor = BitArrayRepr::from_vec(items, &shape);
                 let plc = HostPlacement::from("TODO");
