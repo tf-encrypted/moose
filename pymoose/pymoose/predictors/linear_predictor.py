@@ -280,7 +280,8 @@ class LinearClassifier(LinearPredictor):
     def post_transform(self, y):
         """Applies the classifier's post transform function to a tensor.
 
-        Depending on
+        Actual function used depends on value of ``PostTransform`` and number of classes
+        provided at instantiation.
 
         Args:
             y: A tensor
@@ -291,6 +292,10 @@ class LinearClassifier(LinearPredictor):
         return self._post_transform(y)
 
     def _normalized_sigmoid(self, x, axis):
+        """
+        For some sklearn linear classifiers, this is used to get values that sum to one
+        instead of the usual softmax.
+        """
         y = pm.sigmoid(x)
         y_sum = pm.expand_dims(pm.sum(y, axis), axis)
         return pm.div(y, y_sum)
