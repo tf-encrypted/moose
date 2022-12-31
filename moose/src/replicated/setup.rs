@@ -2,7 +2,7 @@
 
 use super::*;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RepSetup<PrfKeyT> {
     pub keys: [[PrfKeyT; 2]; 3],
 }

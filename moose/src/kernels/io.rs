@@ -164,7 +164,7 @@ modelled_kernel! {
                     Self::logical_kernel::<_, Uint64Tensor>(sess, plc, key, query).map(AbstractTensor::Uint64)
                 })),
                 other => {
-                    return Err(Error::UnimplementedOperator(
+                    Err(Error::UnimplementedOperator(
                         format!("Cannot load tensor of type {:?}", other)))
                 },
             }

@@ -190,7 +190,7 @@ To ease your development we encourage you to install the following cargo subcomm
 
 - [`install-update`](https://crates.io/crates/cargo-update) to keep cargo subcommands up-to-date.
 
-- [`watch`](https://crates.io/crates/cargo-watchcargo-watch) to type check your code on every save; `cargo watch --exec test` will run all tests on every save.
+- [`watch`](https://crates.io/crates/cargo-watch) to type check your code on every save; `cargo watch --exec test` will run all tests on every save.
 
 - [`outdated`](https://crates.io/crates/cargo-outdated) to check if your dependencies are up to date.
 

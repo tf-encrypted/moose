@@ -318,6 +318,14 @@ class ConstantExpression(Expression):
 
 
 @dataclass
+class BinaryAndExpression(Expression):
+    op_name: str
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class BinaryOpExpression(Expression):
     op_name: str
 
@@ -495,6 +503,14 @@ class IndexAxisExpression(Expression):
 
 
 @dataclass
+class SelectExpression(Expression):
+    axis: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SliceExpression(Expression):
     begin: int
     end: int
@@ -519,6 +535,12 @@ class LessExpression(Expression):
 
 @dataclass
 class GreaterExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class BitwiseAndExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -964,6 +986,28 @@ def greater(lhs, rhs, placement=None):
 
 
 @_docinject_placement_arg
+def logical_and(lhs, rhs, placement=None):
+    """Evaluate the boolean AND operation, i.e. ``lhs & rhs``.
+
+    If tensors, the operation is performed elementwise.
+
+    Args:
+        lhs: Left-hand side of operation.
+        rhs: Right-hand side of operation.
+
+    Returns:
+        The logical intersection of the two inputs when treated as booleans.
+    """
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = _materialize_placement_arg(placement)
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "and")
+    return BinaryOpExpression(
+        op_name="and", placement=placement, inputs=[lhs, rhs], vtype=vtype
+    )
+
+
+@_docinject_placement_arg
 def logical_or(lhs, rhs, placement=None):
     """Evaluate the boolean OR operation, i.e. ``lhs | rhs``.
 
@@ -1370,6 +1414,35 @@ def index_axis(x, axis, index, placement=None):
     placement = _materialize_placement_arg(placement)
     return IndexAxisExpression(
         placement=placement, inputs=[x], axis=axis, index=index, vtype=x.vtype
+    )
+
+
+@_docinject_placement_arg
+def select(x, axis, index, placement=None):
+    """Select elements along some axis of a tensor according to some index tensor.
+
+    Args:
+        x: A tensor.
+        axis: The dimension along which to index.
+        index: A 1-d boolean tensor such that ``len(index) == x.shape[axis]``.
+
+    Returns:
+        The tensor ``x``, with the values along `axis` filtered such that
+        ``x[..., i, ...]`` is kept iff ``index[i] == 1``.
+    """
+    # TODO (Yann) extend kernels to support tuple of ints for axis
+    # and multiple index
+    assert isinstance(x, Expression)
+    assert isinstance(index, Expression)
+    if not isinstance(axis, int):
+        raise ValueError(
+            "`axis` argument must be int greater or equal to 0, found "
+            f"{axis} of type {type(axis)}"
+        )
+
+    placement = _materialize_placement_arg(placement)
+    return SelectExpression(
+        placement=placement, inputs=[x, index], axis=axis, vtype=x.vtype
     )
 
 

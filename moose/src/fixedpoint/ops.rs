@@ -1161,6 +1161,60 @@ impl IndexAxisOp {
     }
 }
 
+impl SelectOp {
+    pub(crate) fn fixed_host_kernel<
+        S: Session,
+        HostFixedT,
+        MirFixedT,
+        RepFixedT,
+        HostBitT,
+        RepBitT,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: BoolTensor<HostBitT, RepBitT>,
+        x: FixedTensor<HostFixedT, MirFixedT, RepFixedT>,
+    ) -> Result<FixedTensor<HostFixedT, MirFixedT, RepFixedT>>
+    where
+        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
+        HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
+        HostPlacement: PlacementDemirror<S, MirFixedT, HostFixedT>,
+        HostPlacement: PlacementSelect<S, HostBitT, HostFixedT, HostFixedT>,
+    {
+        let x = match x {
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
+            FixedTensor::Mirrored3(v) => plc.demirror(sess, &v),
+            FixedTensor::Host(v) => v,
+        };
+        let index = match index {
+            BoolTensor::Replicated(v) => plc.reveal(sess, &v),
+            BoolTensor::Host(v) => v,
+        };
+        let z = plc.select(sess, axis, &index, &x);
+        Ok(FixedTensor::Host(z))
+    }
+
+    pub(crate) fn hostfixed_kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: m!(HostBitTensor),
+        x: HostFixedTensor<HostRingT>,
+    ) -> Result<HostFixedTensor<HostRingT>>
+    where
+        HostBitTensor: KnownType<S>,
+        HostPlacement: PlacementSelect<S, m!(HostBitTensor), HostRingT, HostRingT>,
+    {
+        let y = plc.select(sess, axis, &index, &x.tensor);
+        Ok(HostFixedTensor {
+            tensor: y,
+            fractional_precision: x.fractional_precision,
+            integral_precision: x.integral_precision,
+        })
+    }
+}
+
 impl ReshapeOp {
     pub(crate) fn fixed_rep_kernel<S: Session, HostFixedT, MirFixedT, RepFixedT, RepShapeT>(
         sess: &S,

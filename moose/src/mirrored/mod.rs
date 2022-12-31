@@ -43,7 +43,7 @@ impl Mirrored3Placement {
 }
 
 /// Base tensor for mirroring across three hosts
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Mir3Tensor<HostTenT> {
     pub values: [HostTenT; 3],
 }
@@ -98,7 +98,7 @@ impl<HostRingT> Underlying for Mir3Tensor<HostRingT> {
     type TensorType = HostRingT;
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct MirFixedTensor<MirRingT> {
     pub tensor: MirRingT,
     pub fractional_precision: u32,

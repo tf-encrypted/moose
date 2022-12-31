@@ -3,7 +3,7 @@ use crate::computation::Placed;
 use crate::error::Result;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct RepAesKey<RepBitArrayT>(pub(crate) RepBitArrayT);
 
 impl<RepBitArrayT> Placed for RepAesKey<RepBitArrayT>

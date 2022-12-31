@@ -1,15 +1,15 @@
 //! Reindeer using gRPC choreography and gRPC networking.
 
+use clap::Parser;
 use moose::choreography::grpc::GrpcChoreography;
 use moose::networking::grpc::GrpcNetworkingManager;
 use moose::prelude::*;
 use moose::storage::filesystem::AsyncFilesystemStorage;
 use moose::tokio;
 use std::sync::Arc;
-use structopt::StructOpt;
 use tonic::transport::Server;
 
-#[derive(Debug, StructOpt, Clone)]
+#[derive(Debug, Parser, Clone)]
 pub struct Opt {
     #[structopt(env, long)]
     /// Own identity in sessions
@@ -34,7 +34,7 @@ pub struct Opt {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     if !opt.telemetry {
         tracing_subscriber::fmt::init();
     } else {

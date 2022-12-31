@@ -399,7 +399,7 @@ mod tests {
     use super::*;
     use crate::prelude::*;
     use aes::cipher::generic_array::sequence::Concat;
-    use aes_gcm::{aead::NewAead, AeadInPlace};
+    use aes_gcm::{AeadInPlace, Aes128Gcm, KeyInit, Nonce};
     use ndarray::prelude::*;
 
     #[test]
@@ -409,13 +409,12 @@ mod tests {
         let raw_plaintext = [132; 16];
 
         let expected_ciphertext = {
-            let key = aes_gcm::Key::from_slice(&raw_key);
-            let nonce = aes_gcm::Nonce::from_slice(&raw_nonce);
+            let nonce = Nonce::from_slice(&raw_nonce);
 
             // plaintext initially, then ciphertext
             let mut buffer = raw_plaintext;
 
-            let cipher = aes_gcm::Aes128Gcm::new(key);
+            let cipher = Aes128Gcm::new_from_slice(&raw_key).unwrap();
             let associated_data = vec![];
             let _tag = cipher
                 .encrypt_in_place_detached(nonce, &associated_data, buffer.as_mut())
@@ -463,13 +462,12 @@ mod tests {
         let sess = SyncSession::default();
 
         let ciphertext: HostFixed128AesTensor = {
-            let key = aes_gcm::Key::from_slice(&raw_key);
-            let nonce = aes_gcm::Nonce::from_slice(&raw_nonce);
+            let nonce = Nonce::from_slice(&raw_nonce);
 
             // plaintext initially, then ciphertext
             let mut buffer = raw_plaintext;
 
-            let cipher = aes_gcm::Aes128Gcm::new(key);
+            let cipher = Aes128Gcm::new_from_slice(&raw_key).unwrap();
             let associated_data = vec![];
             let _tag = cipher
                 .encrypt_in_place_detached(nonce, &associated_data, buffer.as_mut())
@@ -515,13 +513,12 @@ mod tests {
         let sess = SyncSession::default();
 
         let ciphertext: HostFixed128AesTensor = {
-            let key = aes_gcm::Key::from_slice(&raw_key);
-            let nonce = aes_gcm::Nonce::from_slice(&raw_nonce);
+            let nonce = Nonce::from_slice(&raw_nonce);
 
             // plaintext initially, then ciphertext
             let mut buffer = raw_plaintext;
 
-            let cipher = aes_gcm::Aes128Gcm::new(key);
+            let cipher = Aes128Gcm::new_from_slice(&raw_key).unwrap();
             let associated_data = vec![];
             let _tag = cipher
                 .encrypt_in_place_detached(nonce, &associated_data, buffer.as_mut())

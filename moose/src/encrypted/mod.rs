@@ -10,7 +10,7 @@ mod ops;
 ///
 /// This abstracts over an AES key that either lives on a host or
 /// replicated placement.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AbstractAesKey<HostKeyT, RepKeyT> {
     Host(HostKeyT),
     Replicated(RepKeyT),
@@ -34,7 +34,7 @@ where
 }
 
 /// AES encrypted logical tensor
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AbstractAesTensor<Fixed128AesT> {
     Fixed128(Fixed128AesT),
 }
@@ -54,7 +54,7 @@ where
 }
 
 /// AES encrypted fixed-point tensor
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FixedAesTensor<HostFixedAesT> {
     Host(HostFixedAesT),
 }

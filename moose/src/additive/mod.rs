@@ -44,7 +44,7 @@ impl AdditivePlacement {
 /// Secret tensor used by additive placements
 ///
 /// Values are shared using additive secret sharing.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AdtTensor<HostTensorT> {
     pub(crate) shares: [HostTensorT; 2],
 }
@@ -86,7 +86,7 @@ where
 }
 
 /// Plaintext shape used by additive placements
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AdtShape<HostShapeT> {
     pub(crate) shapes: [HostShapeT; 2],
 }

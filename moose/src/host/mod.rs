@@ -52,7 +52,7 @@ impl<S: Session> PlacementPlace<S, HostUnit> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct HostString(pub String, pub HostPlacement);
 
 impl Placed for HostString {
@@ -76,7 +76,7 @@ impl<S: Session> PlacementPlace<S, HostString> for HostPlacement {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Hash, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
 
 impl RawShape {
@@ -113,7 +113,7 @@ impl RawShape {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
 pub struct HostShape(pub RawShape, pub HostPlacement);
 
 impl Placed for HostShape {
@@ -164,7 +164,7 @@ impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, 
     }
 }
 
-#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq, Eq)]
 pub struct HostTensor<T>(pub ArcArrayD<T>, pub HostPlacement);
 
 impl<T> Placed for HostTensor<T> {
@@ -201,7 +201,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Hash, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, PartialEq, Eq)]
 pub struct HostBitTensor(pub BitArrayRepr, pub HostPlacement);
 
 impl std::fmt::Debug for HostBitTensor {
@@ -260,7 +260,7 @@ impl HostBitTensor {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HostBitArray<HostBitTensorT, N>(pub HostBitTensorT, pub PhantomData<N>);
 
 impl<HostBitT: CanonicalType, N> CanonicalType for HostBitArray<HostBitT, N> {
@@ -317,7 +317,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct AbstractHostAesKey<HostBitArrayT>(pub(crate) HostBitArrayT);
 
 impl<HostBitArrayT: Placed<Placement = HostPlacement>> Placed
@@ -330,7 +330,7 @@ impl<HostBitArrayT: Placed<Placement = HostPlacement>> Placed
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HostFixedAesTensor<HostBitArrayT> {
     pub tensor: HostBitArrayT,
     pub integral_precision: u32,
@@ -348,7 +348,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct HostFixedTensor<HostRingT> {
     pub tensor: HostRingT,
     pub fractional_precision: u32,
@@ -384,7 +384,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Hash, Clone, Debug, PartialEq, Eq)]
 pub struct HostRingTensor<T>(pub ArcArrayD<Wrapping<T>>, pub HostPlacement);
 
 impl Ring for HostRing64Tensor {

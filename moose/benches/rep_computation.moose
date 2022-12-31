@@ -19042,4 +19042,4 @@ op_25 = Mul: (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor (op_19,
 op_24 = Mul: (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor (op_19, op_9) @Host(carole)
 op_0 = Constant{value = HostString("y_uri")}: () -> HostString () @Host(alice)
 op_19043 = Save: (HostString, HostFloat64Tensor) -> Unit (op_0, op_19042) @Host(alice)
-op_19044 = Output: (Unit) -> Unit (op_19043) @Host(alice)
+op_19044 = Output{tag = "x"}: (Unit) -> Unit (op_19043) @Host(alice)

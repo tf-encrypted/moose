@@ -1865,6 +1865,55 @@ impl IndexAxisOp {
     }
 }
 
+impl SelectOp {
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementSelect<S, BoolT, Float32T, Float32T>,
+        HostPlacement: PlacementSelect<S, BoolT, Float64T, Float64T>,
+        HostPlacement: PlacementSelect<S, BoolT, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementSelect<S, BoolT, Fixed128T, Fixed128T>,
+    {
+        use AbstractTensor::*;
+        match (&index, &x) {
+            (Bool(index), Float32(x)) => {
+                let z = plc.select(sess, axis, index, x);
+                Ok(AbstractTensor::Float32(z))
+            }
+            (Bool(index), Float64(x)) => {
+                let z = plc.select(sess, axis, index, x);
+                Ok(AbstractTensor::Float64(z))
+            }
+            (Bool(index), Fixed64(x)) => {
+                let z = plc.select(sess, axis, index, x);
+                Ok(AbstractTensor::Fixed64(z))
+            }
+            (Bool(index), Fixed128(x)) => {
+                let z = plc.select(sess, axis, index, x);
+                Ok(AbstractTensor::Fixed128(z))
+            }
+            (_, _) => Err(Error::UnimplementedOperator(format!(
+                "Missing host select op for {:?} and {:?}",
+                index.ty_desc(),
+                x.ty_desc()
+            ))),
+        }
+    }
+}
+
 impl ConcatOp {
     pub(crate) fn logical_host_kernel<
         S: Session,
@@ -3028,6 +3077,80 @@ impl OrOp {
             | (Uint64(_), _)
             | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
                 "Missing host less op for {:?} and {:?}",
+                x.ty_desc(),
+                y.ty_desc()
+            ))),
+        }
+    }
+}
+
+impl AndOp {
+    pub(crate) fn logical_rep_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        ReplicatedPlacement: PlacementAnd<S, BoolT, BoolT, BoolT>,
+    {
+        use AbstractTensor::*;
+        match (&x, &y) {
+            (Bool(x), Bool(y)) => {
+                let result = plc.and(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed64(_), _)
+            | (Fixed128(_), _)
+            | (Float32(_), _)
+            | (Float64(_), _)
+            | (Uint64(_), _)
+            | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
+                "Missing replicated logical and op for {:?} and {:?}",
+                x.ty_desc(),
+                y.ty_desc(),
+            ))),
+        }
+    }
+
+    pub(crate) fn logical_host_kernel<
+        S: Session,
+        Fixed64T,
+        Fixed128T,
+        Float32T,
+        Float64T,
+        BoolT,
+        Uint64T,
+    >(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>,
+    ) -> Result<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T, BoolT, Uint64T>>
+    where
+        HostPlacement: PlacementAnd<S, BoolT, BoolT, BoolT>,
+    {
+        use AbstractTensor::*;
+        match (&x, &y) {
+            (Bool(x), Bool(y)) => {
+                let result = plc.and(sess, x, y);
+                Ok(Bool(result))
+            }
+            (Fixed64(_), _)
+            | (Fixed128(_), _)
+            | (Float32(_), _)
+            | (Float64(_), _)
+            | (Uint64(_), _)
+            | (Bool(_), _) => Err(Error::UnimplementedOperator(format!(
+                "Missing host for lgical and op for {:?} and {:?}",
                 x.ty_desc(),
                 y.ty_desc()
             ))),

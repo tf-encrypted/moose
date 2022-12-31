@@ -37,6 +37,7 @@ from pymoose.edsl.base import less
 from pymoose.edsl.base import load
 from pymoose.edsl.base import log
 from pymoose.edsl.base import log2
+from pymoose.edsl.base import logical_and
 from pymoose.edsl.base import logical_or
 from pymoose.edsl.base import maximum
 from pymoose.edsl.base import mean
@@ -49,6 +50,7 @@ from pymoose.edsl.base import relu
 from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
+from pymoose.edsl.base import select
 from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
 from pymoose.edsl.base import sliced
@@ -108,6 +110,7 @@ __all__ = [
     LocalMooseRuntime,
     log,
     log2,
+    logical_and,
     logical_or,
     maximum,
     mean,
@@ -123,6 +126,7 @@ __all__ = [
     reshape,
     ring64,
     save,
+    select,
     shape,
     sliced,
     softmax,

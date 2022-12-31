@@ -2,7 +2,7 @@ PyMoose: Python bindings for Moose
 ===============
 ### Installation & Testing
 ```
-pip install -r requirements-dev.txt
+pip install -r requirements/base.txt -r requirements/dev.txt
 maturin develop
 pytest -m "not slow" .
 ```

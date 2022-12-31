@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 mod ops;
 
 /// Abstract fixed-point tensor.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FixedTensor<HostFixedT, MirFixedT, RepFixedT> {
     Host(HostFixedT),
     Mirrored3(MirFixedT),

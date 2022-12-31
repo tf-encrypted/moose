@@ -19,7 +19,7 @@ use std::convert::TryInto;
 type PyGrpcOutputs = (HashMap<String, PyObject>, Option<HashMap<String, PyObject>>);
 
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
-    let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
+    let comp: PyComputation = rmp_serde::from_slice(&computation).unwrap();
     let rust_comp: Computation = comp.try_into().unwrap();
     // TODO(Morten) we should not call toposort here
     toposort::toposort(rust_comp).unwrap()
@@ -357,7 +357,7 @@ impl MooseComputation {
     #[classmethod]
     pub fn from_bytes(_cls: &PyType, py: Python, bytes: &PyBytes) -> PyResult<Py<Self>> {
         let mybytes: Vec<u8> = bytes.extract()?;
-        let computation = Computation::from_msgpack(mybytes)
+        let computation = Computation::from_msgpack(&mybytes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let moose_comp = MooseComputation { computation };
         Py::new(py, moose_comp)

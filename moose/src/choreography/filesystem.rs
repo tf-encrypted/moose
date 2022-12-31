@@ -216,7 +216,7 @@ pub fn parse_session_config_file_with_computation(
         match session_config.computation.format {
             ComputationFormat::Binary => {
                 let comp_raw = std::fs::read(comp_path)?;
-                Computation::from_msgpack(comp_raw)?
+                Computation::from_msgpack(&comp_raw)?
             }
             ComputationFormat::Textual => {
                 let comp_raw = std::fs::read_to_string(comp_path)?;
