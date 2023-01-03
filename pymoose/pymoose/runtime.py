@@ -16,7 +16,10 @@ class LocalMooseRuntime(moose_runtime.LocalRuntime):
 
     Creates a local runtime with several virtual hosts and optional storage for each.
 
-    Example:
+    **Example**
+
+    ::
+
         runtime = LocalMooseRuntime(
             ["alice", "bob", "carole"],
             storage_mapping={
@@ -82,6 +85,18 @@ class GrpcMooseRuntime(moose_runtime.GrpcRuntime):
     """Moose runtime backed by gRPC choreography.
 
     Creates a Moose runtime backed by a fixed set of gRPC servers.
+
+    **Example**
+
+    ::
+
+        runtime = GrpcMooseRuntime(
+            identities={
+                "alice": "172.16.254.1:50001",
+                "bob": "172.16.254.2:50002",
+                "carole": "172.16.254.3:50003",
+            },
+        )
 
     Args:
         identities: Mapping of identities (e.g. host placement identifiers) to gRPC

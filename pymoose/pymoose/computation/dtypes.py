@@ -39,7 +39,7 @@ class _BaseDType:
 
 
 class DType(_BaseDType):
-    """Generic implementation of Moose DType"""
+    """Generic implementation of a Moose DType"""
 
     def __init__(
         self,
@@ -121,6 +121,7 @@ class DType(_BaseDType):
         return self._is_boolean
 
 
+#: 32-bit integer DType
 int32 = DType(
     "int32",
     "i32",
@@ -132,6 +133,7 @@ int32 = DType(
     is_signed=True,
     is_boolean=False,
 )
+#: 64-bit integer DType
 int64 = DType(
     "int64",
     "i64",
@@ -143,6 +145,7 @@ int64 = DType(
     is_signed=True,
     is_boolean=False,
 )
+#: 32-bit unsigned integer DType
 uint32 = DType(
     "uint32",
     "u32",
@@ -154,6 +157,7 @@ uint32 = DType(
     is_signed=False,
     is_boolean=False,
 )
+#: 64-bit unsigned integer DType
 uint64 = DType(
     "uint64",
     "u64",
@@ -165,6 +169,7 @@ uint64 = DType(
     is_signed=False,
     is_boolean=False,
 )
+#: 32-bit float DType
 float32 = DType(
     "float32",
     "f32",
@@ -176,6 +181,7 @@ float32 = DType(
     is_signed=True,
     is_boolean=False,
 )
+#: 64-bit float DType
 float64 = DType(
     "float64",
     "f64",
@@ -187,6 +193,7 @@ float64 = DType(
     is_signed=True,
     is_boolean=False,
 )
+#: Boolean DType
 bool_ = DType(
     "bool_",
     "bool",
@@ -198,6 +205,7 @@ bool_ = DType(
     is_signed=False,
     is_boolean=True,
 )
+#: 64-bit ring integer DType
 ring64 = DType(
     "ring64",
     "ring64",
@@ -212,7 +220,18 @@ ring64 = DType(
 
 
 def fixed(integ, frac):
-    """Factory function for creating a fixedpoint DType."""
+    """Factory function for creating a fixedpoint DType.
+
+    Args:
+        integ: Integral precision; number of bits to reserve for the integral part of
+            the number.
+        frac: Fractional precision; number of bits to reserve for the fractional part of
+            the number.
+    
+    Returns:
+        :class:`DType` object representing a fixedpoint number w/ a particular integral
+        and fractional precision.
+    """
     for p in (integ, frac):
         if not isinstance(p, int):
             raise TypeError("Fixed-point dtype expects integers for its bounds.")
@@ -236,3 +255,16 @@ def fixed(integ, frac):
 #    e.g. tf.as_dtype("float32") or tf.as_dtype(np.float32)
 #  - jax has a good system -- inherits all of numpy's types and then adds its own new
 #    ones (bfloat16)
+
+__all__ = [
+    "bool_",
+    "DType",
+    "fixed",
+    "float32",
+    "float64",
+    "int32",
+    "int64",
+    "ring64",
+    "uint32",
+    "uint64",
+]
