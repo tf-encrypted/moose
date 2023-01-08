@@ -105,7 +105,17 @@ eDSL Functions
    transpose
    zeros
 
-Moose bindings
+PyMoose Context
+----------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   get_current_placement
+   get_current_runtime
+   set_current_runtime
+
+Moose Bindings
 ---------------
 
 .. autosummary::

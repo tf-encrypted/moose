@@ -9,10 +9,13 @@ from pymoose.computation.dtypes import ring64
 from pymoose.computation.dtypes import uint64
 from pymoose.computation.types import AesKeyType
 from pymoose.computation.types import AesTensorType
+from pymoose.computation.types import BytesType
 from pymoose.computation.types import FloatType
 from pymoose.computation.types import IntType
+from pymoose.computation.types import ShapeType
 from pymoose.computation.types import StringType
 from pymoose.computation.types import TensorType
+from pymoose.computation.types import UnitType
 from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
@@ -28,6 +31,8 @@ from pymoose.edsl.base import div
 from pymoose.edsl.base import dot
 from pymoose.edsl.base import exp
 from pymoose.edsl.base import expand_dims
+from pymoose.edsl.base import get_current_placement
+from pymoose.edsl.base import get_current_runtime
 from pymoose.edsl.base import greater
 from pymoose.edsl.base import host_placement
 from pymoose.edsl.base import identity
@@ -51,6 +56,7 @@ from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
 from pymoose.edsl.base import select
+from pymoose.edsl.base import set_current_runtime
 from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
 from pymoose.edsl.base import sliced
@@ -82,6 +88,7 @@ __all__ = [
     "AesTensorType",
     "Argument",
     "bool_",
+    "BytesType",
     "cast",
     "computation",
     "concatenate",
@@ -97,6 +104,8 @@ __all__ = [
     "float64",
     "FloatType",
     "host_placement",
+    "get_current_placement",
+    "get_current_runtime",
     "greater",
     "GrpcMooseRuntime",
     "identity",
@@ -107,11 +116,11 @@ __all__ = [
     "IntType",
     "less",
     "load",
-    "LocalMooseRuntime",
     "log",
     "log2",
     "logical_and",
     "logical_or",
+    "LocalMooseRuntime",
     "maximum",
     "mean",
     "mirrored_placement",
@@ -127,21 +136,24 @@ __all__ = [
     "ring64",
     "save",
     "select",
+    "set_current_runtime",
     "shape",
+    "ShapeType",
+    "sigmoid",
     "sliced",
     "softmax",
+    "sqrt",
     "square",
     "squeeze",
     "strided_slice",
-    "sigmoid",
+    "StringType",
     "sub",
     "sum",
-    "sqrt",
-    "uint64",
-    "transpose",
+    "TensorType",
     "trace",
     "trace_and_compile",
-    "TensorType",
-    "StringType",
+    "transpose",
+    "uint64",
+    "UnitType",
     "zeros",
 ]
