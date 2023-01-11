@@ -95,7 +95,7 @@ docs-prep:
 	cp tutorials/scientific-computing-multiple-players.ipynb pymoose/docs/source/ && \
 	cp tutorials/ml-inference-with-onnx.ipynb pymoose/docs/source/ && \
 	cp tutorials/interfacing-moose-with-pymoose.ipynb pymoose/docs/source/ && \
-	cp -r tutorials/_static/ pymoose/docs/source/_static/
+	cp -r tutorials/_static/ pymoose/docs/source/
 
 .PHONY: docs
 docs: docs-prep
