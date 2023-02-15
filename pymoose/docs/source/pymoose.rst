@@ -121,7 +121,7 @@ Moose Bindings
 .. autosummary::
    :toctree: _autosummary
    
-   computation
+   ~pymoose.edsl.base.computation
    elk_compiler
    GrpcMooseRuntime
    LocalMooseRuntime

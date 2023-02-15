@@ -77,6 +77,8 @@ release: ci-ready
 .PHONY: install-docs
 install-docs:
 	pip install -r pymoose/docs/requirements.txt
+	# extra deps for onnx inference notebook
+	pip install onnxmltools==1.11.0 scikit-learn==1.0.2 skl2onnx==1.11.2
 
 .PHONY: docs-clean
 docs-clean:
