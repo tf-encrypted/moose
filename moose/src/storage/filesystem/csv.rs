@@ -16,18 +16,17 @@ pub(crate) async fn read_csv(
     let include_columns: HashSet<&String> = columns.iter().collect();
 
     let mut reader = csv::Reader::from_path(filename)
-        .map_err(|e| Error::Storage(format!("could not open file: {}: {}", filename, e)))?;
+        .map_err(|e| Error::Storage(format!("could not open file: {filename}: {e}")))?;
 
     let headers: Vec<String> = reader
         .headers()
-        .map_err(|e| Error::Storage(format!("could not get headers from: {}: {}", filename, e)))?
+        .map_err(|e| Error::Storage(format!("could not get headers from: {filename}: {e}")))?
         .into_iter()
         .map(|header| header.to_string())
         .collect();
     if headers.is_empty() {
         return Err(Error::Storage(format!(
-            "no columns found for file: {}",
-            filename
+            "no columns found for file: {filename}"
         )));
     }
 
@@ -36,9 +35,8 @@ pub(crate) async fn read_csv(
     let mut ncols = 0;
     for record in reader.records() {
         nrows += 1;
-        let record = record.map_err(|e| {
-            Error::Storage(format!("could not get record from: {}: {}", filename, e))
-        })?;
+        let record = record
+            .map_err(|e| Error::Storage(format!("could not get record from: {filename}: {e}")))?;
         for (header, value) in headers.iter().zip(record.iter()) {
             if include_columns.contains(header) || include_columns.is_empty() {
                 if nrows == 1 {
@@ -46,7 +44,7 @@ pub(crate) async fn read_csv(
                     ncols += 1;
                 }
                 let value = value.parse::<f64>().map_err(|e| {
-                    Error::Storage(format!("could not parse '{}' to f64: {}", value, e))
+                    Error::Storage(format!("could not parse '{value}' to f64: {e}"))
                 })?;
                 matrix.push(value);
             }
@@ -54,8 +52,7 @@ pub(crate) async fn read_csv(
     }
     let ndarr: Array2<f64> = Array2::from_shape_vec((nrows, ncols), matrix).map_err(|e| {
         Error::Storage(format!(
-            "could not convert data from: {} to matrix: {}",
-            filename, e
+            "could not convert data from: {filename} to matrix: {e}"
         ))
     })?;
     let tensor: HostFloat64Tensor = placement.from_raw(ndarr);
@@ -68,8 +65,7 @@ pub(crate) async fn write_csv(filename: &str, data: &Value) -> Result<()> {
         Value::HostFloat64Tensor(t) => {
             write_array_to_csv(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}"
                 ))
             })?;
         }
@@ -77,47 +73,41 @@ pub(crate) async fn write_csv(filename: &str, data: &Value) -> Result<()> {
         Value::HostFloat32Tensor(t) => {
             write_array_to_csv(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}"
                 ))
             })?;
         }
         Value::HostUint32Tensor(t) => {
             write_array_to_csv(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}"
                 ))
             })?;
         }
         Value::HostUint64Tensor(t) => {
             write_array_to_csv(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}"
                 ))
             })?;
         }
         Value::HostInt32Tensor(t) => {
             write_array_to_csv(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}"
                 ))
             })?;
         }
         Value::HostInt64Tensor(t) => {
             write_array_to_csv(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}"
                 ))
             })?;
         }
         _ => {
             return Err(Error::Storage(format!(
-                "cannot write unsupported tensor to csv file: {}",
-                filename
+                "cannot write unsupported tensor to csv file: {filename}"
             )))
         }
     }
@@ -132,7 +122,7 @@ where
     T: std::fmt::Display,
 {
     let file = File::create(filename)
-        .map_err(|e| Error::Storage(format!("failed to open file: '{}': {}", filename, e)))?;
+        .map_err(|e| Error::Storage(format!("failed to open file: '{filename}': {e}")))?;
 
     let mut writer = WriterBuilder::new().has_headers(false).from_writer(file);
     let shape = array.shape();
@@ -145,21 +135,15 @@ where
                 .chunks(ncols);
 
             let header = (0..ncols)
-                .map(|i| format!("col_{}", i))
+                .map(|i| format!("col_{i}"))
                 .collect::<Vec<String>>();
             writer.write_record(&header).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to write record to file: '{}': {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to write record to file: '{filename}': {e}"))
             })?;
             for row in chunks {
                 let row_vec: Vec<String> = row.iter().map(|item| item.to_string()).collect();
                 writer.write_record(row_vec).map_err(|e| {
-                    Error::Storage(format!(
-                        "failed to write record to file: '{}': {}",
-                        filename, e
-                    ))
+                    Error::Storage(format!("failed to write record to file: '{filename}': {e}"))
                 })?
             }
             Ok(())
@@ -167,26 +151,19 @@ where
         1 => {
             let header = vec!["col_0"];
             writer.write_record(&header).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to write record to file: '{}': {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to write record to file: '{filename}': {e}"))
             })?;
 
             for row in array.iter() {
                 let str_row = row.to_string();
                 writer.write_record(&[str_row]).map_err(|e| {
-                    Error::Storage(format!(
-                        "failed to write record to file: '{}': {}",
-                        filename, e
-                    ))
+                    Error::Storage(format!("failed to write record to file: '{filename}': {e}"))
                 })?;
             }
             Ok(())
         }
         _ => Err(Error::Storage(format!(
-            "can only save tensors of 1 or 2 dimensions to csv, got shape: {:?}",
-            shape
+            "can only save tensors of 1 or 2 dimensions to csv, got shape: {shape:?}"
         ))),
     }
 }

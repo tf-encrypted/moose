@@ -113,8 +113,7 @@ impl AsyncSession {
     ) -> Result<()> {
         let tasks_guard = session_tasks.lock().map_err(|e| {
             Error::MalformedEnvironment(format!(
-                "Failed to obtain a lock to the tasks in the session. {}",
-                e
+                "Failed to obtain a lock to the tasks in the session. {e}"
             ))
         })?;
         tasks_guard
@@ -134,8 +133,7 @@ impl AsyncSession {
     pub fn into_handle(self) -> Result<AsyncSessionHandle> {
         let mut tasks_guard = self.tasks.lock().map_err(|e| {
             Error::MalformedEnvironment(format!(
-                "Failed to obtain a lock to the tasks in the session. {}",
-                e
+                "Failed to obtain a lock to the tasks in the session. {e}"
             ))
         })?;
         let tasks = tasks_guard.take().ok_or_else(|| {
@@ -552,7 +550,7 @@ impl RuntimeSession for AsyncSession {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
         self.role_assignments
             .get(role)
-            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {}", role)))
+            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {role}")))
     }
 }
 
@@ -618,7 +616,7 @@ impl AsyncExecutor {
             let value = session
                 .execute(&op.kind, &op.placement, operands)
                 .map_err(|e| {
-                    Error::KernelError(format!("AsyncSession failed due to an error: {:?}", e,))
+                    Error::KernelError(format!("AsyncSession failed due to an error: {e:?}"))
                 })?;
             if let Operator::Output(output_op) = &op.kind {
                 // If it is an output, we need to make sure we capture it for returning.

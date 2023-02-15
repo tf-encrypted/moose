@@ -593,7 +593,9 @@ def _docinject_placement_arg(f):
             continue
         if in_args and nextline == "":
             placement_arg_doc = textwrap.indent(
-                "placement: An optional :class:`~pymoose.computation.placements.Placement` to pin this operation to.",
+                "placement: An optional "
+                ":class:`~pymoose.computation.placements.Placement` "
+                "to pin this operation to.",
                 " " * arg_indentation,
             )
             lines.insert(i + 1, placement_arg_doc)
@@ -1239,7 +1241,7 @@ def exp(x, placement=None):
 
 @_docinject_placement_arg
 def sqrt(x, placement=None):
-    """Compute the square-root of a value :math:`\sqrt{x}`.
+    """Compute the square-root of a value :math:`\\sqrt{x}`.
 
     If the input is a tensor, the operation is performed elementwise.
 

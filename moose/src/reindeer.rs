@@ -67,11 +67,11 @@ fn load_identity_and_ca(
     my_cert_name: &str,
     certs_dir: &str,
 ) -> Result<(Identity, Certificate), Box<dyn std::error::Error>> {
-    let my_cert_raw = std::fs::read(format!("{}/{}.crt", certs_dir, my_cert_name))?;
-    let my_key_raw = std::fs::read(format!("{}/{}.key", certs_dir, my_cert_name))?;
+    let my_cert_raw = std::fs::read(format!("{certs_dir}/{my_cert_name}.crt"))?;
+    let my_key_raw = std::fs::read(format!("{certs_dir}/{my_cert_name}.key"))?;
     let identity = Identity::from_pem(my_cert_raw, my_key_raw);
 
-    let ca_cert_raw = std::fs::read(format!("{}/{}.crt", certs_dir, CA_NAME))?;
+    let ca_cert_raw = std::fs::read(format!("{certs_dir}/{CA_NAME}.crt"))?;
     let ca_cert = Certificate::from_pem(ca_cert_raw);
 
     Ok((identity, ca_cert))

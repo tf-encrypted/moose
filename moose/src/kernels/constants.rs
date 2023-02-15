@@ -135,7 +135,7 @@ modelled_kernel! {
                         format!("Cannot fill from {:?} into a ReplicatedBitTensor", op.value.ty()))),
                 };
                 if value != 0 && value != 1 {
-                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
+                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {value}")));
                 }
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::rep_bit_kernel(sess, rep, value, rep_shape)
@@ -150,7 +150,7 @@ modelled_kernel! {
                         format!("Cannot fill from {:?} into a Mirrored3BitTensor", op.value.ty()))),
                 };
                 if value != 0 && value != 1 {
-                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {}", value)));
+                    return Err(Error::InvalidArgument(format!("Could only support 0 and 1 for the bit tensor fill, got {value}")));
                 }
                 Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::mir_bit_kernel(sess, rep, value, rep_shape)
@@ -237,7 +237,7 @@ modelled_kernel! {
                 })),
                 other => {
                     Err(Error::UnimplementedOperator(
-                        format!("Cannot build ones of type {:?}", other)))
+                        format!("Cannot build ones of type {other:?}")))
                 },
             }
         }),
@@ -269,7 +269,7 @@ modelled_kernel! {
                 })),
                 other => {
                     Err(Error::UnimplementedOperator(
-                        format!("Cannot build zeros of type {:?}", other)))
+                        format!("Cannot build zeros of type {other:?}")))
                 },
             }
         }),

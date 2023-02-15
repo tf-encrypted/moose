@@ -227,7 +227,7 @@ def fixed(integ, frac):
             the number.
         frac: Fractional precision; number of bits to reserve for the fractional part of
             the number.
-    
+
     Returns:
         :class:`DType` object representing a fixedpoint number w/ a particular integral
         and fractional precision.

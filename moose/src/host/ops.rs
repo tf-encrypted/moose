@@ -470,8 +470,7 @@ impl AtLeast2DOp {
             }
             2 => Ok(x),
             otherwise => Err(Error::InvalidArgument(format!(
-                "Tensor input for `at_least_2d` must have rank <= 2, found rank {:?}.",
-                otherwise
+                "Tensor input for `at_least_2d` must have rank <= 2, found rank {otherwise:?}."
             ))),
         }
     }
@@ -586,15 +585,13 @@ impl<T: LinalgScalar> HostTensor<T> {
     fn index_axis(&self, axis: usize, index: usize) -> Result<HostTensor<T>> {
         if axis >= self.0.ndim() {
             return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
+                "axis too large in index axis, used axis {axis} with dimension {}",
                 self.0.ndim()
             )));
         }
         if index >= self.0.shape()[axis] {
             return Err(Error::InvalidArgument(format!(
-                "index too large in index axis, used index {} in shape {:?}",
-                index,
+                "index too large in index axis, used index {index} in shape {:?}",
                 self.0.shape()
             )));
         }
@@ -608,8 +605,7 @@ impl<T: LinalgScalar> HostTensor<T> {
     fn select(&self, axis: usize, index: HostBitTensor) -> Result<HostTensor<T>> {
         if axis >= self.0.ndim() {
             return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
+                "axis too large in index axis, used axis {axis} with dimension {}",
                 self.0.ndim()
             )));
         }
@@ -647,15 +643,13 @@ impl<T: Clone> HostRingTensor<T> {
     fn index_axis(self, axis: usize, index: usize) -> Result<HostRingTensor<T>> {
         if axis >= self.0.ndim() {
             return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
+                "axis too large in index axis, used axis {axis} with dimension {}",
                 self.0.ndim()
             )));
         }
         if index >= self.0.shape()[axis] {
             return Err(Error::InvalidArgument(format!(
-                "index too large in index axis, used index {} in shape {:?}",
-                index,
+                "index too large in index axis, used index {index} in shape {:?}",
                 self.0.shape()
             )));
         }
@@ -669,8 +663,7 @@ impl<T: LinalgScalar> HostRingTensor<T> {
     fn select(&self, axis: usize, index: HostBitTensor) -> Result<HostRingTensor<T>> {
         if axis >= self.0.ndim() {
             return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
+                "axis too large in index axis, used axis {axis} with dimension {}",
                 self.0.ndim()
             )));
         }
@@ -714,15 +707,13 @@ impl HostBitTensor {
     fn index_axis(self, axis: usize, index: usize) -> Result<HostBitTensor> {
         if axis >= self.0.ndim() {
             return Err(Error::InvalidArgument(format!(
-                "axis too large in index axis, used axis {} with dimension {}",
-                axis,
+                "axis too large in index axis, used axis {axis} with dimension {}",
                 self.0.ndim()
             )));
         }
         if index >= self.0.shape()[axis] {
             return Err(Error::InvalidArgument(format!(
-                "index too large in index axis, used index {} in shape {:?}",
-                index,
+                "index too large in index axis, used index {index} in shape {:?}",
                 self.0.shape()
             )));
         }
@@ -1684,8 +1675,7 @@ impl BroadcastOp {
         match x.0.broadcast(s.clone().0 .0) {
             Some(y) => Ok(HostRingTensor(y.to_owned().into_shared(), plc.clone())),
             None => Err(Error::KernelError(format!(
-                "Tensor {:?} not broadcastable to shape {:?}.",
-                x, s
+                "Tensor {x:?} not broadcastable to shape {s:?}."
             ))),
         }
     }
@@ -1701,8 +1691,7 @@ impl BroadcastOp {
         let new_len = dim.size();
         if new_len < old_len || new_len % old_len != 0 {
             return Err(Error::KernelError(format!(
-                "Tensor {:?} not broadcastable to shape {:?}.",
-                x, s
+                "Tensor {x:?} not broadcastable to shape {s:?}."
             )));
         }
         use bitvec::prelude::*;
@@ -1799,8 +1788,7 @@ where
                     Ok(HostRingTensor(res.into_shared(), self.1))
                 }
                 other => Err(Error::KernelError(format!(
-                    "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
-                    other
+                    "Dot<HostRingTensor> cannot handle argument of rank {other:?}"
                 ))),
             },
             2 => match rhs.0.ndim() {
@@ -1835,13 +1823,11 @@ where
                     Ok(HostRingTensor(res.into_shared(), self.1))
                 }
                 other => Err(Error::KernelError(format!(
-                    "Dot<HostRingTensor> cannot handle argument of rank {:?} ",
-                    other
+                    "Dot<HostRingTensor> cannot handle argument of rank {other:?} "
                 ))),
             },
             other => Err(Error::KernelError(format!(
-                "Dot<HostRingTensor> not implemented for tensors of rank {:?}",
-                other
+                "Dot<HostRingTensor> not implemented for tensors of rank {other:?}"
             ))),
         }
     }
@@ -2317,8 +2303,7 @@ impl CastOp {
                 .map(|v| {
                     num_traits::cast(*v).ok_or_else(|| {
                         crate::error::Error::KernelError(format!(
-                            "Conversion error from tensor {:?} into type {}",
-                            x,
+                            "Conversion error from tensor {x:?} into type {}",
                             <HostTensor::<T2> as KnownType<S>>::TY
                         ))
                     })
@@ -2340,8 +2325,7 @@ impl CastOp {
     {
         let std_ndarray: ArrayD<T> = x.0.into_array().map_err(|e| {
             Error::KernelError(format!(
-                "Could not convert BitArrayRepr into ndarray: {:?}",
-                e
+                "Could not convert BitArrayRepr into ndarray: {e:?}"
             ))
         })?;
         Ok(HostTensor::<T>(std_ndarray.into(), plc.clone()))

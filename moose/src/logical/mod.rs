@@ -16,12 +16,12 @@ mod ops;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Copy, Clone, Debug, Display)]
 pub enum TensorDType {
-    #[display(fmt = "Fixed64({}, {})", integral_precision, fractional_precision)]
+    #[display(fmt = "Fixed64({integral_precision}, {fractional_precision})")]
     Fixed64 {
         integral_precision: u32,
         fractional_precision: u32,
     },
-    #[display(fmt = "Fixed128({}, {})", integral_precision, fractional_precision)]
+    #[display(fmt = "Fixed128({integral_precision}, {fractional_precision})")]
     Fixed128 {
         integral_precision: u32,
         fractional_precision: u32,

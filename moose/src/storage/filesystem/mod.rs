@@ -21,13 +21,12 @@ impl AsyncStorage for AsyncFilesystemStorage {
         let path = Path::new(key);
         let extension = path
             .extension()
-            .ok_or_else(|| Error::Storage(format!("failed to get extension from key: {}", key)))?;
+            .ok_or_else(|| Error::Storage(format!("failed to get extension from key: {key}")))?;
         match extension.to_str() {
             Some("csv") => write_csv(key, val).await,
             Some("npy") => write_numpy(key, val).await,
             _ => Err(Error::Storage(format!(
-                "key must provide an extension of either '.csv' or '.npy', got: {}",
-                key
+                "key must provide an extension of either '.csv' or '.npy', got: {key}"
             ))),
         }
     }
@@ -42,7 +41,7 @@ impl AsyncStorage for AsyncFilesystemStorage {
         let path = Path::new(key);
         let extension = path
             .extension()
-            .ok_or_else(|| Error::Storage(format!("failed to get extension from key: {}", key)))?;
+            .ok_or_else(|| Error::Storage(format!("failed to get extension from key: {key}")))?;
         let plc = HostPlacement::from("host");
         match extension.to_str() {
             Some("csv") => {
@@ -51,8 +50,7 @@ impl AsyncStorage for AsyncFilesystemStorage {
             }
             Some("npy") => read_numpy(key, &plc, type_hint).await,
             _ => Err(Error::Storage(format!(
-                "key must provide an extension of either '.csv' or '.npy', got: {}",
-                key
+                "key must provide an extension of either '.csv' or '.npy', got: {key}"
             ))),
         }
     }
@@ -63,7 +61,7 @@ fn parse_columns(query: &str) -> Result<Vec<String>> {
         "" => Ok(Vec::new()),
         query_str => {
             let jsn: serde_json::Value = serde_json::from_str(query_str)
-                .map_err(|e| Error::Storage(format!("failed to parse query as json: {}", e)))?;
+                .map_err(|e| Error::Storage(format!("failed to parse query as json: {e}")))?;
             let as_vec = match &jsn.get("select_columns") {
                 Some(serde_json::Value::Array(v)) => v.to_vec(),
                 _ => Vec::new(),

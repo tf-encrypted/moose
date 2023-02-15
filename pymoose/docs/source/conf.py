@@ -6,9 +6,9 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'PyMoose'
-copyright = '2023, TF Encrypted Authors'
-author = 'TF Encrypted Authors'
+project = "PyMoose"
+copyright = "2023, TF Encrypted Authors"
+author = "TF Encrypted Authors"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -28,11 +28,10 @@ extensions = [
 autosummary_generate = True
 napoleon_include_init_with_doc = True
 myst_heading_anchors = 3
-myst_enable_extensions = ['dollarmath']
+myst_enable_extensions = ["dollarmath"]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
-
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -48,6 +47,5 @@ html_theme_options = {
     "use_edit_page_button": True,
 }
 
-html_static_path = ['_static']
+html_static_path = ["_static"]
 remove_from_toctrees = ["_autosummary/*"]
-

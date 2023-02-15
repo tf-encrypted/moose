@@ -165,7 +165,7 @@ modelled_kernel! {
                 })),
                 other => {
                     Err(Error::UnimplementedOperator(
-                        format!("Cannot load tensor of type {:?}", other)))
+                        format!("Cannot load tensor of type {other:?}")))
                 },
             }
         }),

@@ -1556,7 +1556,7 @@ impl ToTextual for Constant {
             Constant::Fixed(FixedpointConstant { value, precision }) => {
                 format!("{}({}, {})", self.ty().short_name(), value, precision)
             }
-            Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
+            Constant::RawShape(RawShape(x)) => format!("Shape({x:?})"),
             Constant::RawSeed(RawSeed(x)) => format!("HostSeed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("HostPrfKey({})", x.to_textual()),
             Constant::Bit(x) => format!("{}({})", self.ty().short_name(), x),
@@ -1679,11 +1679,8 @@ impl ToTextual for SliceInfo {
     fn to_textual(&self) -> String {
         match self.0.first() {
             Some(e) => {
-                let end_string = e.end.map(|v| format!(", end = {}", v)).unwrap_or_default();
-                let step_string = e
-                    .step
-                    .map(|v| format!(", step = {}", v))
-                    .unwrap_or_default();
+                let end_string = e.end.map(|v| format!(", end = {v}")).unwrap_or_default();
+                let step_string = e.step.map(|v| format!(", step = {v}")).unwrap_or_default();
                 format!("{{start = {}{}{}}}", e.start, end_string, step_string)
             }
             _ => format!("{:?}", self.0), // Fallback to debug print
@@ -1695,7 +1692,7 @@ impl ToTextual for [u8] {
     fn to_textual(&self) -> String {
         let mut s = String::new();
         for &byte in self {
-            let _ = write!(s, "{:02x}", byte);
+            let _ = write!(s, "{byte:02x}");
         }
         s
     }

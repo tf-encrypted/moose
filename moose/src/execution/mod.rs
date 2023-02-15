@@ -143,8 +143,7 @@ mod tests {
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = SampleSeeded{{}}: (HostShape, HostSeed) -> HostRing64Tensor (shape, seed) @Host(alice)",
-                    i
+                    "x{i} = SampleSeeded{{}}: (HostShape, HostSeed) -> HostRing64Tensor (shape, seed) @Host(alice)"
                 )
             })
             .join("\n");
@@ -650,15 +649,14 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let axis_str: String =
-            axis_test.map_or_else(|| "{}".to_string(), |v| format!("{{axis={}}}", v));
+            axis_test.map_or_else(|| "{}".to_string(), |v| format!("{{axis={v}}}"));
 
         let source = format!(
             r#"
             s = Constant{{value=HostFloat32Tensor([[1, 2], [3, 4]])}}: () -> HostFloat32Tensor @Host(alice)
-            r = {} {}: (HostFloat32Tensor) -> HostFloat32Tensor (s) @Host(alice)
+            r = {reduce_op_test} {axis_str}: (HostFloat32Tensor) -> HostFloat32Tensor (s) @Host(alice)
             output = Output{{tag = "output_0"}} : (HostFloat32Tensor) -> HostFloat32Tensor (r) @Host(alice)
-        "#,
-            reduce_op_test, axis_str
+        "#
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -724,10 +722,9 @@ mod tests {
         let source = format!(
             r#"
             x = Constant{{value=HostFloat64Tensor([1.0, 1.0, 1.0])}}: () -> HostFloat64Tensor @Host(alice)
-        res = AtLeast2D {{ to_column_vector = {} }} : (HostFloat64Tensor) -> HostFloat64Tensor (x) @Host(alice)
+        res = AtLeast2D {{ to_column_vector = {to_column_vector} }} : (HostFloat64Tensor) -> HostFloat64Tensor (x) @Host(alice)
         output = Output{{tag = "output_0"}} : (HostFloat64Tensor) -> HostFloat64Tensor (res) @Host(alice)
-        "#,
-            to_column_vector
+        "#
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -757,10 +754,9 @@ mod tests {
             r#"
             x =  Constant{{value=HostRing64Tensor([3])}}: () -> HostRing64Tensor @Host(alice)
             y = Constant{{value=HostRing64Tensor([2])}}: () -> HostRing64Tensor @Host(alice)
-            res = {} : (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor (x, y) @Host(alice)
+            res = {test_op} : (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor (x, y) @Host(alice)
             output = Output{{tag = "output_0"}} : (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
             "#,
-            test_op
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -825,12 +821,11 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x = Constant{{value={}}}: () -> HostRing64Tensor @Host(alice)
-        y = Constant{{value={}}}: () -> HostRing64Tensor @Host(alice)
+            r#"x = Constant{{value={x_str}}}: () -> HostRing64Tensor @Host(alice)
+        y = Constant{{value={y_str}}}: () -> HostRing64Tensor @Host(alice)
         res = Dot : (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor (x, y) @Host(alice)
         output = Output{{tag = "output_0"}} : (HostRing64Tensor) -> HostRing64Tensor (res) @Host(alice)
-        "#,
-            x_str, y_str
+        "#
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -895,12 +890,10 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"shape = Constant{{value=HostShape([{shape}])}}: () -> HostShape @Host(alice)
-        res = Fill {{value = {t}(1)}} : (HostShape) -> Host{t}Tensor (shape) @Host(alice)
-        output = Output{{tag = "output_0"}} : (Host{t}Tensor) -> Host{t}Tensor (res) @Host(alice)
-        "#,
-            t = type_str,
-            shape = shape_str,
+            r#"shape = Constant{{value=HostShape([{shape_str}])}}: () -> HostShape @Host(alice)
+        res = Fill {{value = {type_str}(1)}} : (HostShape) -> Host{type_str}Tensor (shape) @Host(alice)
+        output = Output{{tag = "output_0"}} : (Host{type_str}Tensor) -> Host{type_str}Tensor (res) @Host(alice)
+        "#
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =

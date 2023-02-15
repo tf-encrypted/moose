@@ -107,7 +107,7 @@ impl TryFrom<&[u8]> for Circuit {
     fn try_from(bytes: &[u8]) -> Result<Circuit, Self::Error> {
         parse_circuit(bytes)
             .map_err(|e| {
-                println!("{:?}", e);
+                println!("{e:?}");
                 crate::error::Error::Unexpected(None)
             })
             .map(|res| res.1)

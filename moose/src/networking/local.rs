@@ -20,9 +20,9 @@ impl SyncNetworking for LocalSyncNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
-        let key = format!("{}/{}", session_id, rendezvous_key);
+        let key = format!("{session_id}/{rendezvous_key}");
         let mut store = self.store.write().map_err(|e| {
-            tracing::error!("failed to get write lock: {:?}", e);
+            tracing::error!("failed to get write lock: {e:?}");
             Error::Unexpected(None)
         })?;
         if store.contains_key(&key) {
@@ -39,9 +39,9 @@ impl SyncNetworking for LocalSyncNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value> {
-        let key = format!("{}/{}", session_id, rendezvous_key);
+        let key = format!("{session_id}/{rendezvous_key}");
         let store = self.store.read().map_err(|e| {
-            tracing::error!("failed to get read lock: {:?}", e);
+            tracing::error!("failed to get read lock: {e:?}");
             Error::Unexpected(None)
         })?;
         store.get(&key).cloned().ok_or_else(|| {
@@ -69,8 +69,8 @@ impl AsyncNetworking for LocalAsyncNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
-        tracing::debug!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-        let key = format!("{}/{}", session_id, rendezvous_key);
+        tracing::debug!("Async sending; rdv:'{rendezvous_key}' sid:{session_id}");
+        let key = format!("{session_id}/{rendezvous_key}");
         let cell = self
             .store
             .entry(key)
@@ -87,12 +87,8 @@ impl AsyncNetworking for LocalAsyncNetworking {
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value> {
-        tracing::debug!(
-            "Async receiving; rdv:'{}', sid:{}",
-            rendezvous_key,
-            session_id
-        );
-        let key = format!("{}/{}", session_id, rendezvous_key);
+        tracing::debug!("Async receiving; rdv:'{rendezvous_key}', sid:{session_id}");
+        let key = format!("{session_id}/{rendezvous_key}");
         let cell = self
             .store
             .entry(key)

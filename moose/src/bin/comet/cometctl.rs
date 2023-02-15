@@ -120,7 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|session_id| SessionId::try_from(session_id.as_ref()))
                 .unwrap_or(Ok(default_session_id))?;
             let results = runtime.retrieve_results(&session_id).await?;
-            println!("Results: {:?}", results);
+            println!("Results: {results:?}");
         }
         Commands::Run {
             session_config,
@@ -137,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let results = runtime
                 .run_computation(&session_id, &computation, arguments)
                 .await?;
-            println!("Results: {:?}", results);
+            println!("Results: {results:?}");
         }
     }
 

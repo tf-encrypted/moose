@@ -90,7 +90,7 @@ impl NetworkingPassState {
         };
 
         let send_op = Operation {
-            name: format!("send_{}", index),
+            name: format!("send_{index}"),
             kind: SendOp {
                 sig: Signature::unary(src_op.kind.sig().ret(), Ty::HostUnit),
                 rendezvous_key: rendezvous_key.clone(),
@@ -102,7 +102,7 @@ impl NetworkingPassState {
         };
         self.extra_ops.push(send_op);
 
-        let receive_op_name = format!("receive_{}", index);
+        let receive_op_name = format!("receive_{index}");
         let receive_op = Operation {
             name: receive_op_name.clone(),
             kind: ReceiveOp {

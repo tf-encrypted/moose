@@ -35,7 +35,7 @@ fn init_tracer() {
         .with(tracing_subscriber::EnvFilter::from_default_env()) // The tracing formatter defaults to the max log level set by RUST_LOG
         .with(fmt_layer)
         .try_init()
-        .unwrap_or_else(|e| println!("Failed to initialize telemetry subscriber: {}", e));
+        .unwrap_or_else(|e| println!("Failed to initialize telemetry subscriber: {e}"));
 }
 
 #[tokio::main]
@@ -95,9 +95,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("collecting outputs");
     for (output_name, output_future) in outputs_handle {
-        tracing::info!("awaiting output: {}", output_name);
+        tracing::info!("awaiting output: {output_name}");
         let value = output_future.await.unwrap();
-        tracing::info!("got output: {}", output_name);
+        tracing::info!("got output: {output_name}");
         outputs.insert(output_name, value);
     }
 
