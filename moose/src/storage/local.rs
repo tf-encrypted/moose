@@ -19,7 +19,7 @@ impl LocalSyncStorage {
 impl SyncStorage for LocalSyncStorage {
     fn save(&self, key: &str, _session_id: &SessionId, val: &Value) -> Result<()> {
         let mut store = self.store.write().map_err(|e| {
-            tracing::error!("failed to get write lock: {:?}", e);
+            tracing::error!("failed to get write lock: {e:?}");
             Error::Unexpected(None)
         })?;
         store.insert(key.to_string(), val.clone());
@@ -40,7 +40,7 @@ impl SyncStorage for LocalSyncStorage {
             )),
         }?;
         let store = self.store.read().map_err(|e| {
-            tracing::error!("failed to get read lock: {:?}", e);
+            tracing::error!("failed to get read lock: {e:?}");
             Error::Unexpected(None)
         })?;
         let item = store
@@ -68,7 +68,7 @@ impl LocalAsyncStorage {
 #[async_trait]
 impl AsyncStorage for LocalAsyncStorage {
     async fn save(&self, key: &str, _session_id: &SessionId, val: &Value) -> Result<()> {
-        tracing::debug!("Async storage saving; key:'{}'", key);
+        tracing::debug!("Async storage saving; key:'{key}'");
         let mut store = self.store.write().await;
         store.insert(key.to_string(), val.clone());
         Ok(())
@@ -81,7 +81,7 @@ impl AsyncStorage for LocalAsyncStorage {
         type_hint: Option<Ty>,
         query: &str,
     ) -> Result<Value> {
-        tracing::debug!("Async storage loading; key:'{}'", key);
+        tracing::debug!("Async storage loading; key:'{key}'");
         match query {
             "" => Ok(()),
             _ => Err(Error::Storage(
@@ -106,8 +106,7 @@ fn check_types(item: &Value, type_hint: &Option<Ty>) -> Result<()> {
                 Ok(())
             } else {
                 Err(Error::Storage(format!(
-                    "type hint does not match type of item: type_hint: {:?} type of item: {:?}",
-                    type_hint, item_ty
+                    "type hint does not match type of item: type_hint: {type_hint:?} type of item: {item_ty:?}"
                 )))
             }
         }

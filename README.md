@@ -92,11 +92,11 @@ You will also need to have OpenBLAS installed in both cases:
 
 - macOS: `homebrew install openblas`
 
-Alternatively, you can install from the source code as described in [DEVELOP.md](./DEVELOP.md).
+Alternatively, you can install from the source code as described in [DEVELOP.md](https://github.com/tf-encrypted/moose/tree/main/DEVELOP.md).
 
 ## License
 
-Moose is distributed under the terms of Apache License (Version 2.0). Copyright as specified in [NOTICE](./NOTICE).
+Moose is distributed under the terms of Apache License (Version 2.0). Copyright as specified in [NOTICE](https://github.com/tf-encrypted/moose/tree/main/NOTICE).
 
 
 [//]: # (badges)

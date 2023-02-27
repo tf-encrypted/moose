@@ -104,8 +104,7 @@ fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Er
             Ok(Value::from(pyobj_tensor_to_host_bit_tensor(py, obj)))
         }
         otherwise => Err(anyhow::Error::msg(format!(
-            "Unsupported numpy datatype {:?}",
-            otherwise
+            "Unsupported numpy datatype {otherwise:?}",
         ))),
     }
 }
@@ -130,8 +129,7 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
                 .map_err(|e| PyRuntimeError::new_err(e.to_string()))
         }
         otherwise => Err(PyTypeError::new_err(format!(
-            r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#,
-            otherwise
+            r#"Values of type {otherwise:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#
         ))),
     }
 }

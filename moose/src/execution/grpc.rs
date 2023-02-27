@@ -27,7 +27,7 @@ impl GrpcMooseRuntime {
         let channels = role_assignments
             .iter()
             .map(|(role, identity)| {
-                let endpoint: Uri = format!("http://{}", identity).parse()?;
+                let endpoint: Uri = format!("http://{identity}").parse()?;
                 let mut channel = Channel::builder(endpoint);
                 if let Some(ref tls_config) = tls_config {
                     channel = channel.tls_config(tls_config.clone())?;

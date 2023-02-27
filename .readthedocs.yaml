@@ -1,0 +1,32 @@
+version: 2
+build:
+  os: "ubuntu-20.04"
+  apt_packages:
+    - libopenblas-dev
+    - protobuf-compiler
+  tools:
+    python: "3.10"
+    rust: "1.64"
+  jobs:
+    pre_install:
+      - cargo build --release
+      # need this for moose binaries to be picked up by jupyter-exec
+      - mv ./target/release/elk /home/docs/.asdf/bin/
+      - mv ./target/release/dasher /home/docs/.asdf/bin/
+    post_install:
+      - python -m pip install onnxmltools==1.11.0
+      - python -m pip install scikit-learn==1.0.2
+      - python -m pip install skl2onnx==1.11.2
+    pre_build:
+      - make docs-prep
+
+sphinx:
+  configuration: pymoose/docs/source/conf.py
+
+python:
+  install:
+    - requirements: pymoose/requirements/base.txt
+    - requirements: pymoose/requirements/dev.txt
+    - requirements: pymoose/docs/requirements.txt
+    - method: pip
+      path: pymoose

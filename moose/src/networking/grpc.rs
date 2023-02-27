@@ -74,19 +74,18 @@ impl GrpcNetworking {
             .channels
             .entry(receiver.clone())
             .or_try_insert_with(|| {
-                tracing::debug!("Creating channel to '{}'", receiver);
-                let endpoint: Uri = format!("http://{}", receiver).parse().map_err(|_e| {
+                tracing::debug!("Creating channel to '{receiver}'");
+                let endpoint: Uri = format!("http://{receiver}").parse().map_err(|_e| {
                     Error::Networking(format!(
-                        "failed to parse identity as endpoint: {:?}",
-                        receiver
+                        "failed to parse identity as endpoint: {receiver:?}"
                     ))
                 })?;
 
                 let mut channel = Channel::builder(endpoint);
                 if let Some(ref tls_config) = self.tls_config {
-                    channel = channel.tls_config(tls_config.clone()).map_err(|e| {
-                        Error::Networking(format!("failed to TLS config {:?}", e.to_string()))
-                    })?;
+                    channel = channel
+                        .tls_config(tls_config.clone())
+                        .map_err(|e| Error::Networking(format!("failed to TLS config {e:?}")))?;
                 };
                 Ok(channel.connect_lazy())
             })?
@@ -125,7 +124,7 @@ impl AsyncNetworking for GrpcNetworking {
                 let channel = self.channel(receiver)?;
                 let mut client = NetworkingClient::new(channel);
                 #[cfg(debug_assertions)]
-                tracing::debug!("Sending '{}' to {}", rendezvous_key, receiver);
+                tracing::debug!("Sending '{rendezvous_key}' to {receiver}");
                 let _response = client
                     .send_value(request)
                     .await
@@ -153,18 +152,17 @@ impl AsyncNetworking for GrpcNetworking {
             Some(actual_sender) => {
                 if *sender != actual_sender {
                     Err(Error::Networking(format!(
-                        "wrong sender; expected {:?} but got {:?}",
-                        sender, actual_sender
+                        "wrong sender; expected {sender:?} but got {actual_sender:?}"
                     )))
                 } else {
                     #[cfg(debug_assertions)]
-                    tracing::debug!("Received '{}' from {}", rendezvous_key, sender);
+                    tracing::debug!("Received '{rendezvous_key}' from {sender}");
                     Ok(value)
                 }
             }
             None => {
                 #[cfg(debug_assertions)]
-                tracing::debug!("Received '{}' from {}", rendezvous_key, sender);
+                tracing::debug!("Received '{rendezvous_key}' from {sender}");
                 Ok(value)
             }
         }

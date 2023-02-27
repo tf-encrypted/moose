@@ -15,18 +15,14 @@ pub(crate) async fn read_numpy(
         Some(dtype) => Ok(dtype),
         None => extract_dtype(filename).map_err(|e| {
             Error::Storage(format!(
-                "parsing failure from numpy data file: {}: {}",
-                filename, e
+                "parsing failure from numpy data file: {filename}: {e}"
             ))
         }),
     }?;
     match dtype {
         Ty::HostFloat64Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to read numpy data file: {}: {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to read numpy data file: {filename}: {e}"))
             })?;
             let tensor: HostFloat64Tensor = placement.from_raw(arr);
             let value = Value::from(tensor);
@@ -34,10 +30,7 @@ pub(crate) async fn read_numpy(
         }
         Ty::HostFloat32Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to read numpy data file: {}: {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to read numpy data file: {filename}: {e}"))
             })?;
             let tensor: HostFloat32Tensor = placement.from_raw(arr);
             let value = Value::from(tensor);
@@ -45,10 +38,7 @@ pub(crate) async fn read_numpy(
         }
         Ty::HostInt32Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to read numpy data file: {}: {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to read numpy data file: {filename}: {e}"))
             })?;
             let tensor: HostInt32Tensor = placement.from_raw(arr);
             let value = Value::from(tensor);
@@ -56,10 +46,7 @@ pub(crate) async fn read_numpy(
         }
         Ty::HostInt64Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to read numpy data file: {}: {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to read numpy data file: {filename}: {e}",))
             })?;
             let tensor: HostInt64Tensor = placement.from_raw(arr);
             let value = Value::from(tensor);
@@ -67,10 +54,7 @@ pub(crate) async fn read_numpy(
         }
         Ty::HostUint64Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to read numpy data file: {}: {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to read numpy data file: {filename}: {e}",))
             })?;
             let tensor: HostUint64Tensor = placement.from_raw(arr);
             let value = Value::from(tensor);
@@ -78,18 +62,14 @@ pub(crate) async fn read_numpy(
         }
         Ty::HostUint32Tensor => {
             let arr: ArrayD<_> = read_npy(filename).map_err(|e| {
-                Error::Storage(format!(
-                    "failed to read numpy data file: {}: {}",
-                    filename, e
-                ))
+                Error::Storage(format!("failed to read numpy data file: {filename}: {e}",))
             })?;
             let tensor: HostUint32Tensor = placement.from_raw(arr);
             let value = Value::from(tensor);
             Ok(value)
         }
         _ => Err(Error::Storage(format!(
-            "invalid dtype for numpy storage read: {}",
-            dtype
+            "invalid dtype for numpy storage read: {dtype}",
         ))),
     }
 }
@@ -100,55 +80,48 @@ pub(crate) async fn write_numpy(filename: &str, data: &Value) -> Result<()> {
         Value::HostFloat64Tensor(t) => {
             write_npy(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}",
                 ))
             })?;
         }
         Value::HostFloat32Tensor(t) => {
             write_npy(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}",
                 ))
             })?;
         }
         Value::HostUint32Tensor(t) => {
             write_npy(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}",
                 ))
             })?;
         }
         Value::HostUint64Tensor(t) => {
             write_npy(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}",
                 ))
             })?;
         }
         Value::HostInt32Tensor(t) => {
             write_npy(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}",
                 ))
             })?;
         }
         Value::HostInt64Tensor(t) => {
             write_npy(filename, &t.0).map_err(|e| {
                 Error::Storage(format!(
-                    "failed to write moose value to file: '{}': {}",
-                    filename, e
+                    "failed to write moose value to file: '{filename}': {e}",
                 ))
             })?;
         }
         _ => {
             return Err(Error::Storage(format!(
-                "cannot write unsupported tensor to numpy file: {}",
-                filename
+                "cannot write unsupported tensor to numpy file: {filename}",
             )))
         }
     }
@@ -157,10 +130,7 @@ pub(crate) async fn write_numpy(filename: &str, data: &Value) -> Result<()> {
 
 fn match_char(got: u8, expected: char) -> Result<()> {
     if got != expected as u8 {
-        Err(Error::Storage(format!(
-            "expecting: {} got: {}",
-            expected, got
-        )))
+        Err(Error::Storage(format!("expecting: {expected} got: {got}",)))
     } else {
         Ok(())
     }
@@ -178,7 +148,7 @@ fn consume_spaces(file: &mut File) -> Result<u8> {
 fn getc(file: &mut File) -> Result<u8> {
     let mut buf: [u8; 1] = [0; 1];
     file.read(&mut buf)
-        .map_err(|e| Error::Storage(format!("failed to read byte from file: {}", e)))?;
+        .map_err(|e| Error::Storage(format!("failed to read byte from file: {e}")))?;
     let byte = buf[0];
     Ok(byte)
 }
@@ -275,8 +245,7 @@ fn descr_to_dtype(descr: &[char]) -> Result<Ty> {
                 None => String::new(),
             };
             Err(Error::Storage(format!(
-                "unknown numpy descr: {}{}",
-                letter_code, number_code_display
+                "unknown numpy descr: {letter_code}{number_code_display}"
             )))
         }
     }
@@ -285,8 +254,7 @@ fn descr_to_dtype(descr: &[char]) -> Result<Ty> {
 fn extract_dtype(npy_filename: &str) -> Result<Ty> {
     let mut file = std::fs::File::open(npy_filename).map_err(|e| {
         Error::Storage(format!(
-            "failed to open numpy data file for reading: {}: {}",
-            npy_filename, e
+            "failed to open numpy data file for reading: {npy_filename}: {e}"
         ))
     })?;
     let descr = extract_descr(&mut file)?;

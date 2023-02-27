@@ -120,8 +120,7 @@ impl ExecutionContext {
                 // TODO(Morten) move filtering logic to the session
                 let placement = computation.placements.get(op.placement).ok_or_else(|| {
                     Error::MalformedComputation(format!(
-                        "Missing placement for operation '{}'",
-                        op_index
+                        "Missing placement for operation '{op_index}'"
                     ))
                 })?;
                 match placement {
@@ -150,8 +149,7 @@ impl ExecutionContext {
 
                 let operator = computation.operators.get(op.operator).ok_or_else(|| {
                     Error::MalformedComputation(format!(
-                        "Missing operator for operation '{}'",
-                        op_index
+                        "Missing operator for operation '{op_index}'"
                     ))
                 })?;
                 let is_output = matches!(operator, Operator::Output(_));

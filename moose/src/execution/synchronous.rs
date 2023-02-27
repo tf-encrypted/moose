@@ -140,8 +140,7 @@ impl DispatchKernel<SyncSession, Value> for ReceiveOp {
             })
         } else {
             Err(Error::UnimplementedOperator(format!(
-                "ReceiveOp is not implemented for placement {:?}",
-                plc
+                "ReceiveOp is not implemented for placement {plc:?}"
             )))
         }
     }
@@ -319,7 +318,7 @@ impl RuntimeSession for SyncSession {
     fn find_role_assignment(&self, role: &Role) -> Result<&Identity> {
         self.role_assignments
             .get(role)
-            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {}", role)))
+            .ok_or_else(|| Error::Networking(format!("Missing role assignment for {role}")))
     }
 }
 
@@ -355,8 +354,7 @@ impl TestSyncExecutor {
                 .execute(&op.kind, &op.placement, operands)
                 .map_err(|e| {
                     Error::Compilation(format!(
-                        "SyncSession failed to execute computation due to an error: {:?}",
-                        e,
+                        "SyncSession failed to execute computation due to an error: {e:?}",
                     ))
                 })?;
             env.insert(op.name.clone(), value);

@@ -57,16 +57,17 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> Result<()
         };
         let mut vec: Vec<u8> = vec![0; size as usize];
 
-        tracing::debug!("reading exact: {}", size);
-        stream.read_exact(&mut vec).await.map_err(|e| {
-            Error::Networking(format!("failed to read data from TCP stream: {}", e))
-        })?;
+        tracing::debug!("reading exact: {size}");
+        stream
+            .read_exact(&mut vec)
+            .await
+            .map_err(|e| Error::Networking(format!("failed to read data from TCP stream: {e}")))?;
         let data: SendData = bincode::deserialize(&vec)
-            .map_err(|e| Error::Networking(format!("failed to deserialize moose value: {}", e)))?;
+            .map_err(|e| Error::Networking(format!("failed to deserialize moose value: {e}")))?;
 
         // put value into store
         let key = (data.session_id, data.rendezvous_key);
-        tracing::debug!("storing key: {:?}", key);
+        tracing::debug!("storing key: {key:?}");
         let cell = store
             .entry(key.clone())
             .or_insert_with(async_cell::sync::AsyncCell::shared)
@@ -74,7 +75,7 @@ async fn handle_connection(mut stream: TcpStream, store: StoreType) -> Result<()
             .clone();
 
         cell.set(data.value);
-        tracing::debug!("stored key: {:?}", key);
+        tracing::debug!("stored key: {key:?}");
     }
 }
 
@@ -85,8 +86,8 @@ async fn server(listener: TcpListener, store: StoreType) -> Result<()> {
         let (stream, addr) = listener
             .accept()
             .await
-            .map_err(|e| Error::Networking(format!("failed to accept connection: {}", e)))?;
-        tracing::debug!("accepted connection: {}", addr);
+            .map_err(|e| Error::Networking(format!("failed to accept connection: {e}")))?;
+        tracing::debug!("accepted connection: {addr}");
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
             handle_connection(stream, shared_store).await.unwrap();
@@ -104,28 +105,28 @@ struct SendData {
 
 async fn send_value(stream: &mut TcpStream, send_data: &SendData) -> Result<()> {
     let raw_data: Vec<u8> = bincode::serialize(send_data)
-        .map_err(|e| Error::Networking(format!("could not serialze send_data: {}", e)))?;
+        .map_err(|e| Error::Networking(format!("could not serialze send_data: {e}")))?;
     let data_size = raw_data.len();
     let mut size_data_buf = [0; 8];
     u64_to_little_endian(
         data_size
             .try_into()
-            .map_err(|e| Error::Networking(format!("could not cast data_size: {}", e)))?,
+            .map_err(|e| Error::Networking(format!("could not cast data_size: {e}")))?,
         &mut size_data_buf,
     );
 
     // TODO: write error, re-establish connection?
     stream.write_all(&size_data_buf).await.map_err(|e| {
-        Error::Networking(format!("could not write data size over TCP stream: {}", e))
+        Error::Networking(format!("could not write data size over TCP stream: {e}"))
     })?;
     stream
         .write_all(&raw_data)
         .await
-        .map_err(|e| Error::Networking(format!("could not write data over TCP stream: {}", e)))?;
+        .map_err(|e| Error::Networking(format!("could not write data over TCP stream: {e}")))?;
     stream
         .flush()
         .await
-        .map_err(|e| Error::Networking(format!("could not flush TCP stream: {}", e)))?;
+        .map_err(|e| Error::Networking(format!("could not flush TCP stream: {e}")))?;
     Ok(())
 }
 
@@ -137,18 +138,17 @@ async fn send_loop(
         match rx.recv().await {
             Some((data, finished_send_signal)) => {
                 send_value(&mut stream, &data).await.map_err(|e| {
-                    Error::Networking(format!("could not send value to other worker: {}", e))
+                    Error::Networking(format!("could not send value to other worker: {e}"))
                 })?;
                 finished_send_signal.send(()).await.map_err(|e| {
                     Error::Networking(format!(
-                        "could not transmit the finished sending ack over mpsc channel: {}",
-                        e
+                        "could not transmit the finished sending ack over mpsc channel: {e}",
                     ))
                 })?;
             }
             None => {
                 stream.shutdown().await.map_err(|e| {
-                    Error::Networking(format!("failed to shutdown TCP stream: {}", e))
+                    Error::Networking(format!("failed to shutdown TCP stream: {e}"))
                 })?;
                 return Ok(());
             }
@@ -171,7 +171,7 @@ impl TcpStreamNetworking {
         // spawn the server
         tracing::debug!("spawned server on: {}", own_address);
         let listener = TcpListener::bind(&own_address).await.map_err(|e| {
-            Error::Networking(format!("could not bind to address: {}: {}", own_address, e))
+            Error::Networking(format!("could not bind to address: {own_address}: {e}"))
         })?;
         let shared_store = Arc::clone(&store);
         tokio::spawn(async move {
@@ -185,10 +185,10 @@ impl TcpStreamNetworking {
             .filter(|(placement, _)| *placement != own_name)
             .collect();
         others.sort();
-        tracing::debug!("others = {:?}", others);
+        tracing::debug!("others = {others:?}");
         let mut send_channels = HashMap::new();
         for (placement, address) in others.iter() {
-            tracing::debug!("trying: {} -> {}", placement, address);
+            tracing::debug!("trying: {placement} -> {address}");
             loop {
                 let stream = match TcpStream::connect(address).await {
                     Ok(s) => s,
@@ -197,7 +197,7 @@ impl TcpStreamNetworking {
                         continue;
                     }
                 };
-                tracing::debug!("connected to: {} -> {}", placement, address);
+                tracing::debug!("connected to: {placement} -> {address}");
                 let (tx, rx) = mpsc::channel(100);
                 let identity = Identity::from(placement);
                 send_channels.insert(identity, tx);
@@ -228,7 +228,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> Result<()> {
         let key = (session_id, rendezvous_key);
-        tracing::debug!("sending key: {:?} to: {}", key, receiver);
+        tracing::debug!("sending key: {key:?} to: {receiver}");
         let send_channel = self.send_channels.get(receiver).ok_or_else(|| {
             Error::Networking(format!(
                 "in session {}, channel not found to send rendezvous key {} from {} to {}",
@@ -265,7 +265,7 @@ impl AsyncNetworking for TcpStreamNetworking {
         session_id: &SessionId,
     ) -> Result<Value> {
         let key = (session_id.clone(), rendezvous_key.clone());
-        tracing::debug!("receiving key: {:?} from: {}", key, sender);
+        tracing::debug!("receiving key: {key:?} from: {sender}");
 
         let cell = self
             .store
@@ -274,11 +274,11 @@ impl AsyncNetworking for TcpStreamNetworking {
             .value()
             .clone();
 
-        tracing::debug!("awaiting receive key: {:?}", key);
+        tracing::debug!("awaiting receive key: {key:?}");
         let value = cell.take().await;
-        tracing::debug!("got key: {:?}", key);
+        tracing::debug!("got key: {key:?}");
         self.store.remove(&key).ok_or_else(|| {
-            Error::Networking(format!("failed to remove key: {:?} from store", key))
+            Error::Networking(format!("failed to remove key: {key:?} from store"))
         })?;
         Ok(value)
     }
@@ -293,10 +293,10 @@ mod test {
         let x: u64 = 0xdeadbeefcafe1234;
         let mut buf: [u8; 8] = [0; 8];
         u64_to_little_endian(x, &mut buf);
-        println!("{:x?}", buf);
+        println!("{buf:x?}");
 
         let test_int = little_endian_to_u64(&buf);
-        println!("{:x?}", test_int);
+        println!("{test_int:x?}");
         assert_eq!(test_int, x);
     }
 }

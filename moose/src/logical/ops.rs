@@ -2564,8 +2564,7 @@ impl ConstantOp {
                 Ok(AbstractTensor::Bool(z))
             }
             ret => Err(Error::UnimplementedOperator(format!(
-                "ConstantOp can not produce tensors of type {:?} yet",
-                ret
+                "ConstantOp can not produce tensors of type {ret:?} yet"
             ))),
         }
     }
@@ -2598,8 +2597,7 @@ impl ConstantOp {
                 Ok(AbstractTensor::Float64(z))
             }
             ret => Err(Error::UnimplementedOperator(format!(
-                "ConstantOp can not produce tensors of type {:?} yet",
-                ret
+                "ConstantOp can not produce tensors of type {ret:?} yet"
             ))),
         }
     }
@@ -2619,8 +2617,7 @@ impl ConstantOp {
                 Ok(AbstractShape::Host(z))
             }
             ret => Err(Error::UnimplementedOperator(format!(
-                "ConstantOp can not produce tensors of type {:?} yet",
-                ret
+                "ConstantOp can not produce tensors of type {ret:?} yet"
             ))),
         }
     }
@@ -2655,8 +2652,7 @@ impl InputOp {
                 Ok(AbstractTensor::Float64(z))
             }
             ret => Err(Error::UnimplementedOperator(format!(
-                "InputOp can not produce tensors of type {:?} yet",
-                ret
+                "InputOp can not produce tensors of type {ret:?} yet"
             ))),
         }
     }

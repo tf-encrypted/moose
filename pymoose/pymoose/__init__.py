@@ -9,10 +9,13 @@ from pymoose.computation.dtypes import ring64
 from pymoose.computation.dtypes import uint64
 from pymoose.computation.types import AesKeyType
 from pymoose.computation.types import AesTensorType
+from pymoose.computation.types import BytesType
 from pymoose.computation.types import FloatType
 from pymoose.computation.types import IntType
+from pymoose.computation.types import ShapeType
 from pymoose.computation.types import StringType
 from pymoose.computation.types import TensorType
+from pymoose.computation.types import UnitType
 from pymoose.edsl.base import Argument
 from pymoose.edsl.base import abs
 from pymoose.edsl.base import add
@@ -28,6 +31,8 @@ from pymoose.edsl.base import div
 from pymoose.edsl.base import dot
 from pymoose.edsl.base import exp
 from pymoose.edsl.base import expand_dims
+from pymoose.edsl.base import get_current_placement
+from pymoose.edsl.base import get_current_runtime
 from pymoose.edsl.base import greater
 from pymoose.edsl.base import host_placement
 from pymoose.edsl.base import identity
@@ -51,6 +56,7 @@ from pymoose.edsl.base import replicated_placement
 from pymoose.edsl.base import reshape
 from pymoose.edsl.base import save
 from pymoose.edsl.base import select
+from pymoose.edsl.base import set_current_runtime
 from pymoose.edsl.base import shape
 from pymoose.edsl.base import sigmoid
 from pymoose.edsl.base import sliced
@@ -73,75 +79,81 @@ from pymoose.runtime import LocalMooseRuntime
 MooseComputation = _moose_runtime.MooseComputation
 
 __all__ = [
-    abs,
-    add,
-    add_n,
-    argmax,
-    atleast_2d,
-    AesKeyType,
-    AesTensorType,
-    Argument,
-    bool_,
-    cast,
-    computation,
-    concatenate,
-    constant,
-    decrypt,
-    div,
-    dot,
-    elk_compiler,
-    exp,
-    expand_dims,
-    fixed,
-    float32,
-    float64,
-    FloatType,
-    host_placement,
-    greater,
-    GrpcMooseRuntime,
-    identity,
-    index_axis,
-    int32,
-    int64,
-    inverse,
-    IntType,
-    less,
-    load,
-    LocalMooseRuntime,
-    log,
-    log2,
-    logical_and,
-    logical_or,
-    maximum,
-    mean,
-    mirrored_placement,
-    mul,
-    mux,
-    MooseComputation,
-    ones,
-    output,
-    predictors,
-    relu,
-    replicated_placement,
-    reshape,
-    ring64,
-    save,
-    select,
-    shape,
-    sliced,
-    softmax,
-    square,
-    squeeze,
-    strided_slice,
-    sigmoid,
-    sub,
-    sum,
-    sqrt,
-    uint64,
-    transpose,
-    trace,
-    trace_and_compile,
-    TensorType,
-    StringType,
-    zeros,
+    "abs",
+    "add",
+    "add_n",
+    "argmax",
+    "atleast_2d",
+    "AesKeyType",
+    "AesTensorType",
+    "Argument",
+    "bool_",
+    "BytesType",
+    "cast",
+    "computation",
+    "concatenate",
+    "constant",
+    "decrypt",
+    "div",
+    "dot",
+    "elk_compiler",
+    "exp",
+    "expand_dims",
+    "fixed",
+    "float32",
+    "float64",
+    "FloatType",
+    "host_placement",
+    "get_current_placement",
+    "get_current_runtime",
+    "greater",
+    "GrpcMooseRuntime",
+    "identity",
+    "index_axis",
+    "int32",
+    "int64",
+    "inverse",
+    "IntType",
+    "less",
+    "load",
+    "log",
+    "log2",
+    "logical_and",
+    "logical_or",
+    "LocalMooseRuntime",
+    "maximum",
+    "mean",
+    "mirrored_placement",
+    "mul",
+    "mux",
+    "MooseComputation",
+    "ones",
+    "output",
+    "predictors",
+    "relu",
+    "replicated_placement",
+    "reshape",
+    "ring64",
+    "save",
+    "select",
+    "set_current_runtime",
+    "shape",
+    "ShapeType",
+    "sigmoid",
+    "sliced",
+    "softmax",
+    "sqrt",
+    "square",
+    "squeeze",
+    "strided_slice",
+    "StringType",
+    "sub",
+    "sum",
+    "TensorType",
+    "trace",
+    "trace_and_compile",
+    "transpose",
+    "uint64",
+    "UnitType",
+    "zeros",
 ]

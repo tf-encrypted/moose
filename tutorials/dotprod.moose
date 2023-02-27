@@ -1,0 +1,7 @@
+constant_0 = Constant{value = HostFloat64Tensor([[1.0, 2.0, 3.0]])}: () -> Tensor<Float64> () @Host(player0)
+cast_0 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_0) @Host(player0)
+constant_1 = Constant{value = HostFloat64Tensor([[4.0], [5.0], [6.0]])}: () -> Tensor<Float64> () @Host(player1)
+cast_1 = Cast: (Tensor<Float64>) -> Tensor<Fixed128(24, 40)> (constant_1) @Host(player1)
+dot_0 = Dot: (Tensor<Fixed128(24, 40)>, Tensor<Fixed128(24, 40)>) -> Tensor<Fixed128(24, 40)> (cast_0, cast_1) @Replicated(player0, player1, player2)
+cast_2 = Cast: (Tensor<Fixed128(24, 40)>) -> Tensor<Float64> (dot_0) @Host(player2)
+output_0 = Output{tag = "output_0"}: (Tensor<Float64>) -> Tensor<Float64> (cast_2) @Host(player2)

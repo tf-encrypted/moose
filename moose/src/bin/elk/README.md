@@ -21,7 +21,7 @@ cargo run --bin elk --
 To use Elk as a compiler:
 
 ```sh
-elk compile in.moose out.moose
+elk compile in.moose -o out.moose
 ```
 
 To use Elk to collect (static) statistics about a computation:

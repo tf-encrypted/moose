@@ -787,7 +787,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -822,7 +822,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -852,7 +852,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -867,7 +867,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -882,7 +882,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -897,7 +897,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -912,7 +912,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -927,7 +927,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -942,7 +942,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -957,7 +957,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -972,7 +972,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["selector", "x", "y"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -989,7 +989,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1004,7 +1004,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x", "shape"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1019,7 +1019,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1036,7 +1036,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1052,7 +1052,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["index", "x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1072,7 +1072,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1098,7 +1098,7 @@ impl TryFrom<PyComputation> for Computation {
                             }
                             .into(),
                             inputs: map_inputs(&op.inputs, &["x"])
-                                .with_context(|| format!("Failed at op {:?}", op))?,
+                                .with_context(|| format!("Failed at op {op:?}"))?,
                             name: op.name.clone(),
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
@@ -1114,7 +1114,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["shape"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1129,7 +1129,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["shape"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1145,7 +1145,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1161,7 +1161,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1176,7 +1176,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1191,7 +1191,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1206,7 +1206,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1221,7 +1221,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1236,7 +1236,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1253,7 +1253,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1270,7 +1270,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1328,7 +1328,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["key", "ciphertext"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1343,7 +1343,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1359,7 +1359,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1375,7 +1375,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1390,7 +1390,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1407,7 +1407,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1422,7 +1422,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1454,7 +1454,7 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     SaveOperation(op) => Ok(Operation {
@@ -1469,7 +1469,7 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     LoadOperation(op) => Ok(Operation {
@@ -1484,7 +1484,7 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     CastOperation(op) => Ok(Operation {
@@ -1499,7 +1499,7 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["x"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
+                            .with_context(|| format!("Failed at op {op:?}"))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                 }

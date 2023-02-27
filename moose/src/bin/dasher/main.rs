@@ -106,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (output_name, output_value) in outputs {
         tokio::spawn(async move {
             let value = output_value.await;
-            println!("Output '{}' ready:\n{:?}\n", output_name, value);
+            println!("Output '{output_name}' ready:\n{value:?}\n");
         });
     }
 

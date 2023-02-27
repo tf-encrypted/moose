@@ -43,7 +43,7 @@ pub fn get_dot_graph(comp: &Computation) -> String {
                             rendezvous_key: key,
                             ..
                         }),
-                    ) => format!("label={} style = dotted", key),
+                    ) => format!("label={key} style = dotted"),
                     _ => "".into(),
                 }
             },
@@ -63,7 +63,7 @@ pub fn get_dot_graph(comp: &Computation) -> String {
 /// Prints the computation's graph DOT representation to stdout
 pub fn print_graph(comp: Computation) -> anyhow::Result<Computation> {
     let graph = get_dot_graph(&comp);
-    println!("{}", graph);
+    println!("{graph}");
     Ok(comp)
 }
 

@@ -70,3 +70,37 @@ ci-clean-check: clean ci-ready
 .PHONY: release
 release: ci-ready
 	cargo release --workspace --no-publish --execute
+
+
+# PyMoose Docs
+
+.PHONY: install-docs
+install-docs:
+	pip install -r pymoose/docs/requirements.txt
+	# extra deps for onnx inference notebook
+	pip install onnxmltools==1.11.0 scikit-learn==1.0.2 skl2onnx==1.11.2
+
+.PHONY: docs-clean
+docs-clean:
+	find pymoose/docs/source -name "*.moose" -exec rm {} \+
+	find pymoose/docs/source -name "*.ipynb" -exec rm {} \+
+	find pymoose/docs/source -name "*.md" -exec rm {} \+
+	find pymoose/docs/source/_static -name "*.png" -exec rm {} \+
+	cd pymoose/docs && \
+	make clean && \
+	cd ../../
+
+.PHONY: docs-prep
+docs-prep:
+	cp README.md pymoose/docs/source/moose-readme.md && \
+	cp tutorials/README.md pymoose/docs/source/tutorial-readme.md && \
+	cp tutorials/scientific-computing-multiple-players.ipynb pymoose/docs/source/ && \
+	cp tutorials/ml-inference-with-onnx.ipynb pymoose/docs/source/ && \
+	cp tutorials/interfacing-moose-with-pymoose.ipynb pymoose/docs/source/ && \
+	cp -r tutorials/_static/ pymoose/docs/source/
+
+.PHONY: docs
+docs: docs-prep
+	cd pymoose/docs && \
+	make html && \
+	cd ../../

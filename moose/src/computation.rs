@@ -38,7 +38,7 @@ pub struct RendezvousKey(pub(crate) [u8; TAG_BYTES]);
 impl std::fmt::Display for RendezvousKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         for byte in self.0 {
-            write!(f, "{:02X}", byte)?
+            write!(f, "{byte:02X}")?
         }
         Ok(())
     }
@@ -134,7 +134,7 @@ impl SessionId {
         let mut rng = rand::thread_rng();
         rng.fill_bytes(&mut raw);
 
-        let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{:02X}", byte)).collect();
+        let hex_vec: Vec<String> = raw.iter().map(|byte| format!("{byte:02X}")).collect();
         let hex_string = hex_vec.join("");
         SessionId {
             logical: hex_string,
@@ -1763,11 +1763,7 @@ impl TryFrom<&IndexedComputation> for Computation {
                     ))
                 })?;
 
-                let inputs = op
-                    .inputs
-                    .iter()
-                    .map(|inp| format!("op_{:?}", inp))
-                    .collect();
+                let inputs = op.inputs.iter().map(|inp| format!("op_{inp:?}")).collect();
 
                 let placement = compact
                     .placements
@@ -1781,7 +1777,7 @@ impl TryFrom<&IndexedComputation> for Computation {
                     })?;
 
                 Ok(Operation {
-                    name: format!("op_{:?}", i),
+                    name: format!("op_{i:?}"),
                     kind,
                     inputs,
                     placement,
@@ -1828,8 +1824,7 @@ impl NamedComputation {
 
         for op in self.operations.iter() {
             let op_textual = op.to_textual();
-            writeln!(file, "{}", op_textual)
-                .map_err(|e| Error::SerializationError(e.to_string()))?;
+            writeln!(file, "{op_textual}").map_err(|e| Error::SerializationError(e.to_string()))?;
         }
 
         file.flush()
@@ -1902,8 +1897,7 @@ impl NamedComputation {
 
                     if send_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
-                            "Already had a send node with same rdv key at key {}",
-                            key
+                            "Already had a send node with same rdv key at key {key}"
                         ));
                     }
 
@@ -1915,8 +1909,7 @@ impl NamedComputation {
 
                     if recv_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
-                            "Already had a recv node with same rdv key at key {}",
-                            key
+                            "Already had a recv node with same rdv key at key {key}"
                         ));
                     }
 
@@ -1936,10 +1929,10 @@ impl NamedComputation {
 
         for key in rdv_keys.into_iter() {
             if !send_nodes.contains_key(key) {
-                Error::MalformedComputation(format!("No send node with rdv key {}", key));
+                Error::MalformedComputation(format!("No send node with rdv key {key}"));
             }
             if !recv_nodes.contains_key(key) {
-                Error::MalformedComputation(format!("No recv node with rdv key {}", key));
+                Error::MalformedComputation(format!("No recv node with rdv key {key}"));
             }
             // add edge send->recv (send must be evaluated before recv)
             graph.add_edge(send_nodes[key], recv_nodes[key], ());

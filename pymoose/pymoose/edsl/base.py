@@ -591,9 +591,11 @@ def _docinject_placement_arg(f):
             in_args = True
             arg_indentation = line_indentation + 4
             continue
-        if in_args and nextline == "    ":
+        if in_args and nextline == "":
             placement_arg_doc = textwrap.indent(
-                "placement: An optional Placement to pin this operation to.",
+                "placement: An optional "
+                ":class:`~pymoose.computation.placements.Placement` "
+                "to pin this operation to.",
                 " " * arg_indentation,
             )
             lines.insert(i + 1, placement_arg_doc)
@@ -663,7 +665,7 @@ def concatenate(arrays, axis=0, placement=None):
 
     Note the tensors must have similar dtype and shape along all dimensions but the
     given one. The dimension must already exist in the input tensors; use
-    ``pm.expand_dims`` on inputs to create a new dimnesion for concatenating along.
+    :func:`expand_dims` on inputs to create a new dimnesion for concatenating along.
 
     Args:
         arrays: Tuple or List of tensors to be concatenated.
@@ -1222,7 +1224,7 @@ def mean(x, axis=None, placement=None):
 
 @_docinject_placement_arg
 def exp(x, placement=None):
-    """Apply the exponential function, ``f(x) = e^x``.
+    """Elementiwise exponential function: :math:`e^x`.
 
     If the input is a tensor, the operation is performed elementwise.
 
@@ -1239,7 +1241,7 @@ def exp(x, placement=None):
 
 @_docinject_placement_arg
 def sqrt(x, placement=None):
-    """Compute the square-root of a value.
+    """Compute the square-root of a value :math:`\\sqrt{x}`.
 
     If the input is a tensor, the operation is performed elementwise.
 
@@ -1256,7 +1258,7 @@ def sqrt(x, placement=None):
 
 @_docinject_placement_arg
 def sigmoid(x, placement=None):
-    """Apply the sigmoid function, ``f(x) = 1 / (1 - e^x)``.
+    r"""Apply the sigmoid function, :math:`\frac{1}{1 + e^{-x}}`.
 
     If the input is a tensor, the operation is performed elementwise.
 
@@ -1290,7 +1292,10 @@ def relu(x, placement=None):
 
 @_docinject_placement_arg
 def softmax(x, axis, upmost_index, placement=None):
-    """Apply the softmax function, ``f(x_i) = e^x_i / sum_j(e^x_j)``.
+    r"""Softmax function.
+
+    .. math ::
+        \mathrm{softmax}(x) = \frac{\exp(x_i)}{\sum_j \exp(x_j)}
 
     Args:
         x: A tensor.
@@ -1427,7 +1432,7 @@ def select(x, axis, index, placement=None):
         index: A 1-d boolean tensor such that ``len(index) == x.shape[axis]``.
 
     Returns:
-        The tensor ``x``, with the values along `axis` filtered such that
+        Copy of the tensor ``x``, with the values along `axis` filtered such that
         ``x[..., i, ...]`` is kept iff ``index[i] == 1``.
     """
     # TODO (Yann) extend kernels to support tuple of ints for axis

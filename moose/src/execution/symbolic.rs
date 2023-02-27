@@ -159,8 +159,8 @@ impl Default for SymbolicSession {
 
 impl SymbolicSession {
     /// Add operation to the session's underlying computation
-    pub(crate) fn add_operation<'s, O, P, Q>(
-        &'s self,
+    pub(crate) fn add_operation<O, P, Q>(
+        &self,
         operator: &O,
         operands: &[&str],
         plc: &P,
@@ -419,8 +419,7 @@ impl SymbolicExecutor {
                     .execute(&op.kind, &op.placement, operands)
                     .map_err(|e| {
                         Error::Compilation(format!(
-                            "SymbolicSession failed to lower computation due to an error: {}",
-                            e,
+                            "SymbolicSession failed to lower computation due to an error: {e}"
                         ))
                     })?;
                 env.insert(&op.name, result);
