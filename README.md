@@ -2,6 +2,7 @@
 
 [![crate][crate-image]][crate-link]
 [![Docs][docs-image]][docs-link]
+[![PyDocs][pydocs-image]][pydocs-link]
 [![Build Status][build-image]][build-link]
 [![Apache2 License 2.0][license-image]][license-link]
 [![Minimum rustc version][rustc-image]][rustc-link]
@@ -106,6 +107,8 @@ Moose is distributed under the terms of Apache License (Version 2.0). Copyright 
 [crate-link]: https://crates.io/crates/moose
 [docs-image]: https://docs.rs/moose/badge.svg
 [docs-link]: https://docs.rs/moose
+[pydocs-image]: https://img.shields.io/readthedocs/pymoose?label=pydocs
+[pydocs-link]: https://pymoose.readthedocs.io
 [build-image]: https://github.com/tf-encrypted/moose/workflows/CI/badge.svg
 [build-link]: https://github.com/tf-encrypted/moose/actions
 [license-image]: https://img.shields.io/badge/license-Apache%20License%202.0-blue.svg?style=flat
